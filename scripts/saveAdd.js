@@ -634,67 +634,6 @@ function addItemFromUI() {
 
 
 
-
-
-
-
-function updateSelectedItem() {
-  const cat = (document.getElementById('newItemCategory')||{}).value;
-  const itemSel = document.getElementById('existingItemSelect');
-  const itemIdx = itemSel ? itemSel.value : '';
-  const msg = document.getElementById('adminPanelMessage');
-  
-  if (!cat || itemIdx === '') { msg.textContent = 'Select category and item.'; return; }
-  const list = foods[cat] || [];
-  const idx = Number(itemIdx);
-  if (!Number.isInteger(idx) || !list[idx]) { msg.textContent = 'Invalid item selected.'; return; }
-  
-  const it = list[idx];
-  const name = (document.getElementById('newItemName')||{}).value;
-  const priceRaw = (document.getElementById('newItemPrice')||{}).value;
-  const imageInput = document.getElementById('newItemImage');
-  const ingredient = (document.getElementById('newItemIngredient')||{}).value;
-
-  const saveUpdates = (imageData) => {
-    if (name !== undefined && name !== null && name.trim() !== '') it.name = name.trim();
-    if (priceRaw !== undefined && priceRaw !== null && priceRaw !== '') {
-      const p = Number(priceRaw);
-      if (!Number.isNaN(p)) it.price = p;
-    }
-    
-    // Only update image if a new image was selected
-    if (imageData !== null) {
-      it.image = imageData;
-    }
-
-    if (ingredient !== undefined && ingredient !== null) it.ingridient = ingredient.trim();
-
-    renderItems();
-    updateAdminCategoryOptions();
-    renderCategoryButtons();
-    refreshExistingItemsSelect();
-    if (itemSel && Array.from(itemSel.options).some(o => o.value === String(idx))) {
-      itemSel.value = String(idx);
-      populateSelectedItemFields();
-    }
-    msg.textContent = 'Item updated.';
-  };
-
-  const file = imageInput && imageInput.files ? imageInput.files[0] : null;
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => saveUpdates(e.target.result);
-    reader.readAsDataURL(file);
-  } else {
-    saveUpdates(null); // Keeps the previous valid base64 image string
-  }
-}
-
-
-
-
-
-
 function updateSelectedItem() {
   const cat = (document.getElementById('newItemCategory')||{}).value;
   const itemSel = document.getElementById('existingItemSelect');
@@ -751,7 +690,29 @@ function updateSelectedItem() {
 }
 
 
-
+function deleteSelectedItem() {
+  const cat = (document.getElementById('newItemCategory')||{}).value;
+  const itemIdx = (document.getElementById('existingItemSelect')||{}).value;
+  const msg = document.getElementById('adminPanelMessage');
+  
+  if (!cat || itemIdx === '') { 
+    msg.textContent = 'Select category and item.'; 
+    return; 
+  }
+  
+  const list = foods[cat] || [];
+  const idx = Number(itemIdx);
+  
+  if (!Number.isInteger(idx) || !list[idx]) { 
+    msg.textContent = 'Invalid item selected.'; 
+    return; 
+  }
+  
+  list.splice(idx, 1);
+  renderItems();
+  msg.textContent = 'Item deleted.';
+  refreshExistingItemsSelect();
+}
 
 
 
