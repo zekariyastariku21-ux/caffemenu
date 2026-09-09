@@ -9,8 +9,9 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 
-app.use(express.static('public'));
+app.use(express.static(__dirname));
 // Enable CORS for all routes (simple dev convenience)
+app.use('/image', express.static(path.join(__dirname, 'image')));
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
