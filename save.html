@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>save html</title>
+  <link rel="stylesheet" href="stylesheets/save.css">
+</head>
+<body>
+  <div id="imageViewer" class="image-viewer">
+    <button class="close-image" onclick="closeImage()">✕</button>
+    <img id="bigImage">
+  </div>
+
+  <div id="adminLoginModal" class="auth-overlay">
+    <div class="auth-card">
+      <button class="close-image" onclick="closeAdminLogin()" style="position:absolute;right:8px;top:8px;">✕</button>
+      <h3>Admin Login</h3>
+      <input id="adminEmail" placeholder="email" style="width:100%;margin:6px 0;padding:8px;" />
+      <input id="adminPassword" placeholder="password" type="password" style="width:100%;margin:6px 0;padding:8px;" />
+      <div style="margin-top:8px;">
+        <button onclick="adminLogin()">Login</button>
+      </div>
+      <div id="adminLoginMessage" style="margin-top:8px;color:#333;"></div>
+    </div>
+  </div>
+
+  <div id="adminPanelModal" class="auth-overlay">
+    <div class="admin-panel">
+      <button class="close-image" onclick="closeAdminPanel()" style="position:absolute;right:8px;top:8px;">✕</button>
+      <h3>Admin Panel</h3>
+      <p>Use the controls below to add, update or remove categories and items. Click Save to persist changes.</p>
+      <div id="adminEditorContainer">
+        <div style="margin-top:8px;border-top:1px solid #e6e6e6;padding-top:10px;">
+        <h4 style="margin:6px 0 8px 0;">Quick Add / Update</h4>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <strong>Add Category</strong><br>
+            <input id="newCategoryName" placeholder="Category name" style="width:220px;padding:6px;margin-top:4px;display:inline-block;" />
+            <button onclick="addCategoryFromUI()">Add</button>
+          </div>
+
+          <div>
+            <strong>Add / Update Item</strong><br>
+
+
+
+
+            <!-- In save.html inside #adminPanelModal -->
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px;">
+              <input id="newItemName" placeholder="Item name" style="width:180px;padding:6px;" />
+              <input id="newItemPrice" placeholder="Price" style="width:80px;padding:6px;" />
+              <input id="newItemImage" type="file" placeholder="Image path" accept="image/*" style="width:180px;padding:6px;" />
+              <input id="newItemIngredient" placeholder="Ingredient" style="width:220px;padding:6px;" />
+              
+              <!-- NEW: Availability Checkbox -->
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input id="newItemAvailable" type="checkbox" checked /> Available
+              </label>
+
+              <select id="newItemCategory" style="padding:6px;min-width:140px;" onchange="refreshExistingItemsSelect()"></select>
+              <select id="existingItemSelect" style="padding:6px;min-width:160px;" onchange="populateSelectedItemFields()">
+                <option value="">-- select item --</option>
+              </select>
+            </div>
+
+
+
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+              <button onclick="addItemFromUI()">Add Item</button>
+              <button onclick="updateSelectedItem()">Update Item</button>
+              <button onclick="deleteSelectedItem()" style="color:#a00;">Delete Item</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+      <div style="margin-top:8px;">
+        <button onclick="saveMenuToServer()">Save Menu</button>
+        <button onclick="closeAdminPanel()">Close</button>
+      </div>
+      <div id="adminPanelMessage" style="margin-top:8px;color:#333;"></div>
+    </div>
+  </div>
+
+  <div id="paymentModal" class="payment-overlay" role="dialog" aria-modal="true" aria-labelledby="paymentTitle">
+    <div class="payment-card">
+      <button class="payment-close" type="button" onclick="closePaymentModal()" aria-label="Close payment options">&times;</button>
+      <h2 id="paymentTitle">Choose a payment method</h2>
+      <p class="payment-total">Total to pay: <strong id="payment-total">0 ETB</strong></p>
+      <div class="payment-options" role="group" aria-label="Payment methods">
+        <button type="button" class="payment-option selected" data-method="Telebirr">Telebirr</button>
+        <button type="button" class="payment-option" data-method="CBE Contactless">CBE Tap</button>
+        <button type="button" class="payment-option" data-method="BOA">BOA</button>
+      </div>
+      <form id="telebirrPaymentForm" class="payment-form">
+        <label for="telebirrAccount">Telebirr account number</label>
+        <input id="telebirrAccount" name="telebirrAccount" type="tel" inputmode="tel" autocomplete="tel" placeholder="09XXXXXXXX" required>
+        <button type="submit" class="payment-submit">Pay with Telebirr</button>
+      </form>
+      <p id="paymentMessage" class="payment-message" aria-live="polite"></p>
+    </div>
+  </div>
+
+    
+
+    <!-- In save.html -->
+  <div class="head">
+    <div class="top">
+      <div class="name">
+        <div>etete coffee</div>
+        <div style="font-size: 0.85em; opacity: 0.9; margin-top: 1px;">እቴቴ ቡና</div>
+      </div>
+      <button class="login" onclick="openAdminLogin()">login</button>
+    </div>
+  </div>
+
+
+
+
+
+  <div class="main">
+    <div class="filter-bar">
+      <input id="searchInput" type="text" placeholder="Search items..." />
+      <div class="buttons" id="categoryButtons">
+        <button>all item</button>
+      </div>
+    </div>
+    
+    <div class="container">
+      
+    </div>
+
+
+    <div class="container2">
+      <div class="cart">
+        <div class="cart-actions">
+          <!-- Save/Load cart buttons removed — cart persists per-device via localStorage -->
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Price</th>
+              <th>Qty</th>
+            </tr>
+          </thead>
+          <tbody id="cart-body">
+            <!-- Cart items will be added here dynamically -->
+          </tbody>
+          <tfoot>
+            <tr>
+              <td><strong>Total price</strong></td>
+              <td  colspan="2" id="total-price">0</td>
+            </tr>
+          </tfoot>
+        </table>
+    
+          <button class="payment" type="button">Pay Now</button>
+        
+      </div>
+      
+    </div>
+
+
+    <div>
+      <button class="cartbutton">🛒cart</button>
+    </div>
+
+  </div>
+
+  <script src="scripts/saveAdd.js"></script>
+
+</body>
+</html>
