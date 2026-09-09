@@ -10,7 +10,7 @@ let isAdminLoggedIn = false;
 const API_BASE = (location.port && location.port !== '3000') ? `${location.protocol}//${location.hostname}:3000` : '';
 let foods = {
   breakfast: [{
-    image: 'image/foul (1).jpeg',
+    image: 'image/foul.jpeg',
     ingridient: 'Freshly baked pita, rich beans, eggs, and a touch of spice.',
     name: 'SPECIAL FOUL',
     price: 750,
