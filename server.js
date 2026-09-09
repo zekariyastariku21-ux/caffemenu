@@ -7,11 +7,11 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-
-
+// Serve static files from root and image directories
 app.use(express.static(__dirname));
-// Enable CORS for all routes (simple dev convenience)
 app.use('/image', express.static(path.join(__dirname, 'image')));
+
+// Enable CORS for all routes (simple dev convenience)
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
@@ -69,9 +69,6 @@ function saveMenu(menu) {
   fs.writeFileSync(MENU_FILE, JSON.stringify(menu, null, 2));
 }
 
-// Note: cart persistence is handled locally in the browser (localStorage).
-// The server exposes only admin APIs under /api/* for managing the menu.
-
 app.post('/api/admin/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -116,13 +113,13 @@ app.post('/api/admin/menu', (req, res) => {
   res.json({ ok: true, message: 'Menu saved.' });
 });
 
-// Debug endpoint: echoes method, headers and parsed body for troubleshooting
+// Debug endpoint
 app.all('/api/debug', (req, res) => {
   console.log('[api-debug] method=%s path=%s headers=%o body=%o', req.method, req.path, req.headers, req.body);
   res.json({ ok: true, method: req.method, path: req.path, headers: req.headers, body: req.body });
 });
 
-// Fallback for API paths to log unmatched requests
+// Fallback for unmatched API routes
 app.use((req, res, next) => {
   if (req.path && req.path.startsWith('/api/')) {
     console.log(`[api] No matching route for ${req.method} ${req.path}`);
@@ -131,6 +128,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.listen(3000, '0.0.0.0', () => {
-  console.log('Server running on http://0.0.0.0:3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
 });
