@@ -5,11 +5,17 @@ const LOCAL_ADMIN_PASSWORD = 'admin123';
 let currentCategory = 'all';
 let searchTerm = '';
 let isAdminLoggedIn = false;
-// If the page is served from a different port (eg. Live Server on 5506),
-// point API requests to the node server on port 3000 so fetch calls reach it.
+
 const API_BASE = (location.port && location.port !== '3000') ? `${location.protocol}//${location.hostname}:3000` : '';
+
 let foods = {
   breakfast: [{
+    image: 'image/fouls.jpeg',
+    ingridient: 'Freshly baked pita, rich beans, eggs, and a touch of spice.',
+    name: 'SPECIAL FOUL',
+    price: 750,
+    id: 1
+  },{
     image: 'image/qus.jpeg',
     ingridient: 'Honey glaze, soft tortilla, cheese, and fresh vegetables.',
     name: 'HONEY QUSSADILA',
@@ -70,49 +76,84 @@ let foods = {
   }]
 };
 
-  async function loadMenuFromServer() {
-    try {
-      const res = await fetch(API_BASE + '/api/menu');
-      const text = await res.text();
-      let data = null;
-      try { data = text ? JSON.parse(text) : null; } catch (e) { throw new Error('Invalid server response: ' + text); }
-      if (!res.ok) throw new Error((data && data.message) || 'Failed to fetch menu');
-      if (data && typeof data === 'object') {
-        foods = data;
-        renderItems();
-        renderCategoryButtons();
-      }
-    } catch (err) {
-      console.warn('Could not load menu from server, using local menu.', err);
-    }
+/**
+ * Centered Toast Notification System
+ * @param {string} message - Text to display
+ * @param {'success' | 'error' | 'loading'} type - Type of toast notification
+ * @param {number} duration - Time in ms before auto-hiding (ignored if type === 'loading')
+ */
+function showToast(message, type = 'success', duration = 3000) {
+  let toastContainer = document.getElementById('toast-container');
+  
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'toast-container';
+    document.body.appendChild(toastContainer);
   }
 
+  // Clear existing toasts
+  toastContainer.innerHTML = '';
 
+  const toast = document.createElement('div');
+  toast.className = `toast-message toast-${type}`;
 
- function renderCategoryButtons() {
+  if (type === 'loading') {
+    toast.innerHTML = `<span class="toast-spinner"></span><span>${message}</span>`;
+  } else {
+    toast.innerHTML = `<span>${message}</span>`;
+  }
+
+  toastContainer.appendChild(toast);
+
+  if (type !== 'loading') {
+    setTimeout(() => {
+      toast.classList.add('toast-hide');
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+}
+
+function hideToast() {
+  const toastContainer = document.getElementById('toast-container');
+  if (toastContainer) toastContainer.innerHTML = '';
+}
+
+async function loadMenuFromServer() {
+  try {
+    const res = await fetch(API_BASE + '/api/menu');
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (e) { throw new Error('Invalid server response: ' + text); }
+    if (!res.ok) throw new Error((data && data.message) || 'Failed to fetch menu');
+    if (data && typeof data === 'object') {
+      foods = data;
+      renderItems();
+      renderCategoryButtons();
+    }
+  } catch (err) {
+    console.warn('Could not load menu from server, using local menu.', err);
+  }
+}
+
+function renderCategoryButtons() {
   const container = document.getElementById('categoryButtons');
   if (!container) return;
   container.innerHTML = '';
 
-  // All Items Button
   const allBtn = document.createElement('button');
   allBtn.textContent = 'all item';
-  if (currentCategory === 'all') allBtn.classList.add('active'); // Add active class
+  if (currentCategory === 'all') allBtn.classList.add('active');
   allBtn.onclick = () => { showCatagories('all'); };
   container.appendChild(allBtn);
 
-  // Dynamic Category Buttons
   Object.keys(foods).forEach(cat => {
     const btn = document.createElement('button');
     btn.textContent = cat;
-    if (currentCategory === cat) btn.classList.add('active'); // Add active class
+    if (currentCategory === cat) btn.classList.add('active');
     btn.onclick = () => { showCatagories(cat); };
     container.appendChild(btn);
   });
 }
-
-
-
 
 function loadFromLocalStorage() {
   try {
@@ -127,10 +168,6 @@ function loadFromLocalStorage() {
 function saveToLocalStorage() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
 }
-
-
-
-
 
 function renderItems() {
   const Container = document.querySelector('.container');
@@ -153,7 +190,7 @@ function renderItems() {
   }
 
   filteredItems.forEach((food) => {
-    const isAvailable = food.isAvailable !== false; // true unless explicitly false
+    const isAvailable = food.isAvailable !== false;
 
     Container.innerHTML += `
     <div class="foodd ${!isAvailable ? 'unavailable' : ''}">
@@ -185,35 +222,23 @@ function renderItems() {
   });
 }
 
-
-
-
-
-
 function showCatagories(catagory) {
-  console.debug('showCatagories called with', catagory);
   currentCategory = catagory;
   renderItems();
-  renderCategoryButtons(); // Refresh buttons to update active state
+  renderCategoryButtons();
 }
-
 
 async function loadCart() {
   cart = loadFromLocalStorage();
   renderCart();
-  // No server calls: cart is device-local only (localStorage)
 }
 
 async function saveCart() {
   saveToLocalStorage();
-  // Cart is saved to localStorage only for this device.
 }
 
 function addToCart(event, button) {
-  console.debug('addToCart called', { currentCategory, buttonName: button && button.dataset && button.dataset.name });
   const name = button.dataset.name;
-
-  // preserve current category and scroll position so UI doesn't jump
   const containerEl = document.querySelector('.container');
   const prevScroll = containerEl ? containerEl.scrollTop : 0;
   const prevCategory = currentCategory;
@@ -234,8 +259,6 @@ function addToCart(event, button) {
   saveCart();
   renderCart();
 
-  // Re-show the previous category and restore scroll position to avoid UI jumping
-  console.debug('showing previous category', prevCategory);
   showCatagories(prevCategory);
   if (containerEl) containerEl.scrollTop = prevScroll;
 }
@@ -266,15 +289,12 @@ function renderCart() {
     `).join('');
   }
 
-  const total = cart.reduce((sum, item) => {
-    return sum + (item.price * item.quantity);
-  }, 0);
+  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   document.getElementById('total-price').textContent = total + ' ETB';
 }
 
 function increaseQuantity(name) {
   const item = cart.find(item => item.name === name);
-
   if (item) {
     item.quantity++;
   }
@@ -284,11 +304,9 @@ function increaseQuantity(name) {
 
 function decreaseQuantity(name) {
   const item = cart.find(item => item.name === name);
-
   if (!item) return;
 
   item.quantity--;
-
   if (item.quantity <= 0) {
     cart = cart.filter(item => item.name !== name);
   }
@@ -303,7 +321,7 @@ function openPaymentModal() {
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   if (!total) {
-    alert('Add an item to the cart before paying.');
+    showToast('Add an item to the cart before paying.', 'error');
     return;
   }
 
@@ -320,6 +338,8 @@ function setupPayment() {
   const paymentButton = document.querySelector('.payment');
   const paymentModal = document.getElementById('paymentModal');
   const paymentForm = document.getElementById('telebirrPaymentForm');
+
+  if (!paymentButton || !paymentModal || !paymentForm) return;
 
   paymentButton.addEventListener('click', openPaymentModal);
   paymentModal.addEventListener('click', event => {
@@ -342,18 +362,17 @@ function setupPayment() {
 
 async function startTelebirrPayment(event) {
   event.preventDefault();
-  const message = document.getElementById('paymentMessage');
   const accountNumber = document.getElementById('telebirrAccount').value.trim();
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const submitButton = event.target.querySelector('.payment-submit');
 
   if (!/^0\d{9}$/.test(accountNumber)) {
-    message.textContent = 'Enter a valid 10-digit Telebirr account number.';
+    showToast('Enter a valid 10-digit Telebirr account number.', 'error');
     return;
   }
 
   submitButton.disabled = true;
-  message.textContent = 'Preparing Telebirr...';
+  showToast('Preparing Telebirr payment...', 'loading');
 
   try {
     const response = await fetch(API_BASE + '/api/payments/telebirr/create', {
@@ -364,12 +383,12 @@ async function startTelebirrPayment(event) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Could not create payment.');
     await copyPaymentDetails(`Telebirr: ${total} ETB to ${data.merchantAccount}`);
-    message.textContent = '';
     submitButton.textContent = 'Payment details copied';
     submitButton.disabled = false;
+    showToast('Payment details copied successfully!', 'success');
   } catch (error) {
-    message.textContent = error.message;
     submitButton.disabled = false;
+    showToast(error.message || 'Payment creation failed.', 'error');
   }
 }
 
@@ -384,30 +403,25 @@ async function copyPaymentDetails(details) {
 const cartButton = document.querySelector('.cartbutton');
 const container2 = document.querySelector('.container2');
 
-cartButton.addEventListener('click', () => {
-  container2.classList.toggle('open');
-});
-
+if (cartButton && container2) {
+  cartButton.addEventListener('click', () => {
+    container2.classList.toggle('open');
+  });
+}
 
 function zoomImage(src){
-
   const viewer = document.getElementById("imageViewer");
   const image = document.getElementById("bigImage");
-
-  image.src = src;
-
-  viewer.classList.add("show");
+  if (viewer && image) {
+    image.src = src;
+    viewer.classList.add("show");
+  }
 }
-
-
 
 function closeImage(){
-
   const viewer = document.getElementById("imageViewer");
-
-  viewer.classList.remove("show");
+  if (viewer) viewer.classList.remove("show");
 }
-
 
 function setupSearch() {
   const searchInput = document.getElementById('searchInput');
@@ -418,7 +432,6 @@ function setupSearch() {
     });
   }
 }
-
 
 window.onload = async function() {
   setupSearch();
@@ -445,11 +458,11 @@ function closeAdminPanel() {
 async function adminLogin() {
   const email = document.getElementById('adminEmail').value;
   const password = document.getElementById('adminPassword').value;
-  const msg = document.getElementById('adminLoginMessage');
-  msg.textContent = '';
+
+  showToast('Logging in...', 'loading');
 
   try {
-      const res = await fetch(API_BASE + '/api/admin/login', {
+    const res = await fetch(API_BASE + '/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -460,18 +473,17 @@ async function adminLogin() {
     if (!res.ok) throw new Error((data && data.message) || `Server returned ${res.status}`);
     if (!data || !data.ok) throw new Error((data && data.message) || 'Login failed');
     isAdminLoggedIn = true;
-    msg.textContent = 'Logged in as admin.';
     closeAdminLogin();
     openAdminPanel();
+    showToast('Logged in successfully!', 'success');
   } catch (err) {
-    msg.textContent = 'Login error: ' + (err.message || err);
+    showToast('Login error: ' + (err.message || err), 'error');
   }
 }
 
 function openAdminPanel() {
   if (!isAdminLoggedIn) return openAdminLogin();
   document.getElementById('adminPanelModal').classList.add('show');
-  // populate category / item selects in the admin UI
   updateAdminCategoryOptions();
   refreshExistingItemsSelect();
 }
@@ -487,16 +499,10 @@ function updateAdminCategoryOptions() {
     opt.textContent = cat;
     sel.appendChild(opt);
   });
-  // Restore previous selection if still available
   if (prev && Array.from(sel.options).some(o => o.value === prev)) {
     sel.value = prev;
   }
 }
-
-
-
-
-
 
 function refreshExistingItemsSelect() {
   const catSel = document.getElementById('newItemCategory');
@@ -515,26 +521,19 @@ function refreshExistingItemsSelect() {
   
   if (prevItem !== undefined && prevItem !== null && prevItem !== '' && Array.from(itemSel.options).some(o => o.value === prevItem)) {
     itemSel.value = prevItem;
-  } else {
-    document.getElementById('newItemName').value = '';
-    document.getElementById('newItemPrice').value = '';
-    document.getElementById('newItemImage').value = '';
-    document.getElementById('newItemIngredient').value = '';
-    document.getElementById('newItemAvailable').checked = true; // Default to available
   }
 }
-
-
-
-
-
-
-
 
 function populateSelectedItemFields() {
   const cat = (document.getElementById('newItemCategory')||{}).value;
   const itemIdx = (document.getElementById('existingItemSelect')||{}).value;
-  if (!cat || itemIdx === '') return;
+  if (!cat || itemIdx === '') {
+    document.getElementById('newItemName').value = '';
+    document.getElementById('newItemPrice').value = '';
+    document.getElementById('newItemIngredient').value = '';
+    document.getElementById('newItemAvailable').checked = true;
+    return;
+  }
   const list = foods[cat] || [];
   const idx = Number(itemIdx);
   if (!Number.isInteger(idx) || !list[idx]) return;
@@ -543,7 +542,6 @@ function populateSelectedItemFields() {
   document.getElementById('newItemPrice').value = it.price || '';
   document.getElementById('newItemIngredient').value = it.ingridient || '';
   
-  // Set checkbox state (defaults to true if property doesn't exist)
   document.getElementById('newItemAvailable').checked = it.isAvailable !== false;
   
   const imgInput = document.getElementById('newItemImage');
@@ -552,28 +550,24 @@ function populateSelectedItemFields() {
   }
 }
 
-
-
-
-
-
 function addCategoryFromUI() {
   const nameEl = document.getElementById('newCategoryName');
-  const msg = document.getElementById('adminPanelMessage');
   const raw = nameEl && nameEl.value;
   const name = raw ? raw.trim() : '';
-  if (!name) { msg.textContent = 'Provide a category name.'; return; }
-  // Prevent case-insensitive duplicates
+  if (!name) { 
+    showToast('Please provide a category name.', 'error'); 
+    return; 
+  }
   const exists = Object.keys(foods).some(k => k.toLowerCase() === name.toLowerCase());
-  if (exists) { msg.textContent = 'Category already exists.'; return; }
+  if (exists) { 
+    showToast('Category already exists.', 'error'); 
+    return; 
+  }
   foods[name] = [];
   updateAdminCategoryOptions();
   renderCategoryButtons();
-  msg.textContent = 'Category added.';
+  showToast(`Category "${name}" added successfully!`, 'success');
 }
-
-
-
 
 function addItemFromUI() {
   const name = (document.getElementById('newItemName')||{}).value || '';
@@ -581,21 +575,22 @@ function addItemFromUI() {
   const imageInput = document.getElementById('newItemImage');
   const ingredient = (document.getElementById('newItemIngredient')||{}).value || '';
   const category = (document.getElementById('newItemCategory')||{}).value;
-  const isAvailable = document.getElementById('newItemAvailable').checked; // Read availability
-  const msg = document.getElementById('adminPanelMessage');
+  const isAvailable = document.getElementById('newItemAvailable').checked;
 
   if (!name || !priceRaw || !category) { 
-    msg.textContent = 'Fill name, price and category.'; 
+    showToast('Please fill in name, price, and category.', 'error'); 
     return; 
   }
 
   const price = Number(priceRaw);
   if (Number.isNaN(price)) { 
-    msg.textContent = 'Price must be a number.'; 
+    showToast('Price must be a valid number.', 'error'); 
     return; 
   }
 
   const file = imageInput && imageInput.files ? imageInput.files[0] : null;
+
+  showToast('Adding item...', 'loading');
 
   const saveItem = (imageData) => {
     const id = Date.now();
@@ -605,7 +600,7 @@ function addItemFromUI() {
       price, 
       image: imageData, 
       ingridient: ingredient.trim() || '', 
-      isAvailable, // Save flag
+      isAvailable,
       id 
     });
 
@@ -613,7 +608,7 @@ function addItemFromUI() {
     renderCategoryButtons();
     updateAdminCategoryOptions();
     refreshExistingItemsSelect();
-    msg.textContent = 'Item added to ' + category + '.';
+    showToast(`"${name.trim()}" added to ${category}!`, 'success');
   };
 
   if (file) {
@@ -625,26 +620,29 @@ function addItemFromUI() {
   }
 }
 
-
-
-
 function updateSelectedItem() {
   const cat = (document.getElementById('newItemCategory')||{}).value;
   const itemSel = document.getElementById('existingItemSelect');
   const itemIdx = itemSel ? itemSel.value : '';
-  const msg = document.getElementById('adminPanelMessage');
   
-  if (!cat || itemIdx === '') { msg.textContent = 'Select category and item.'; return; }
+  if (!cat || itemIdx === '') { 
+    showToast('Please select a category and an item to update.', 'error'); 
+    return; 
+  }
   const list = foods[cat] || [];
   const idx = Number(itemIdx);
-  if (!Number.isInteger(idx) || !list[idx]) { msg.textContent = 'Invalid item selected.'; return; }
+  if (!Number.isInteger(idx) || !list[idx]) { 
+    showToast('Invalid item selected.', 'error'); 
+    return; 
+  }
   
   const it = list[idx];
   const name = (document.getElementById('newItemName')||{}).value;
   const priceRaw = (document.getElementById('newItemPrice')||{}).value;
   const imageInput = document.getElementById('newItemImage');
   const ingredient = (document.getElementById('newItemIngredient')||{}).value;
-  const isAvailable = document.getElementById('newItemAvailable').checked;
+
+  showToast('Updating item...', 'loading');
 
   const saveUpdates = (imageData) => {
     if (name !== undefined && name !== null && name.trim() !== '') it.name = name.trim();
@@ -658,19 +656,19 @@ function updateSelectedItem() {
     }
 
     if (ingredient !== undefined && ingredient !== null) it.ingridient = ingredient.trim();
-    
-    // Save updated flag
-    it.isAvailable = isAvailable;
+
+    it.isAvailable = document.getElementById('newItemAvailable').checked;
 
     renderItems();
     updateAdminCategoryOptions();
     renderCategoryButtons();
     refreshExistingItemsSelect();
+    
     if (itemSel && Array.from(itemSel.options).some(o => o.value === String(idx))) {
       itemSel.value = String(idx);
       populateSelectedItemFields();
     }
-    msg.textContent = 'Item updated.';
+    showToast(`Item "${it.name}" updated successfully!`, 'success');
   };
 
   const file = imageInput && imageInput.files ? imageInput.files[0] : null;
@@ -683,14 +681,12 @@ function updateSelectedItem() {
   }
 }
 
-
 function deleteSelectedItem() {
   const cat = (document.getElementById('newItemCategory')||{}).value;
   const itemIdx = (document.getElementById('existingItemSelect')||{}).value;
-  const msg = document.getElementById('adminPanelMessage');
   
   if (!cat || itemIdx === '') { 
-    msg.textContent = 'Select category and item.'; 
+    showToast('Please select a category and an item to delete.', 'error'); 
     return; 
   }
   
@@ -698,23 +694,21 @@ function deleteSelectedItem() {
   const idx = Number(itemIdx);
   
   if (!Number.isInteger(idx) || !list[idx]) { 
-    msg.textContent = 'Invalid item selected.'; 
+    showToast('Invalid item selected.', 'error'); 
     return; 
   }
   
+  const deletedName = list[idx].name;
   list.splice(idx, 1);
   renderItems();
-  msg.textContent = 'Item deleted.';
   refreshExistingItemsSelect();
+  populateSelectedItemFields();
+  showToast(`Item "${deletedName}" deleted.`, 'success');
 }
 
-
-
 async function saveMenuToServer() {
-  const msg = document.getElementById('adminPanelMessage');
-  msg.textContent = '';
+  showToast('Saving menu to server...', 'loading');
   try {
-    // Strip empty categories before saving
     const menuToSave = {};
     Object.keys(foods).forEach(k => {
       if (Array.isArray(foods[k]) && foods[k].length > 0) {
@@ -733,7 +727,6 @@ async function saveMenuToServer() {
     if (!res.ok) throw new Error((data && data.message) || `Server returned ${res.status}`);
     if (!data || !data.ok) throw new Error((data && data.message) || 'Save failed');
 
-    // Remove empty categories locally as they are not saved
     Object.keys(foods).forEach(k => {
       if (!Array.isArray(foods[k]) || foods[k].length === 0) delete foods[k];
     });
@@ -741,10 +734,8 @@ async function saveMenuToServer() {
     renderCategoryButtons();
     updateAdminCategoryOptions();
     refreshExistingItemsSelect();
-    msg.textContent = 'Menu saved successfully.';
+    showToast('Menu saved successfully to server!', 'success');
   } catch (err) {
-    msg.textContent = 'Save error: ' + (err.message || err);
+    showToast('Save error: ' + (err.message || err), 'error');
   }
 }
-
-// Clean up: remove any remaining references to menu editor if present elsewhere
