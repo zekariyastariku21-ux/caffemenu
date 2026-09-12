@@ -135,25 +135,58 @@ async function loadMenuFromServer() {
   }
 }
 
+
+
+
+
 function renderCategoryButtons() {
+
   const container = document.getElementById('categoryButtons');
+
   if (!container) return;
+
   container.innerHTML = '';
 
   const allBtn = document.createElement('button');
+
   allBtn.textContent = 'all item';
+
   if (currentCategory === 'all') allBtn.classList.add('active');
+
   allBtn.onclick = () => { showCatagories('all'); };
+
   container.appendChild(allBtn);
 
-  Object.keys(foods).forEach(cat => {
+  const categoryOrder = [
+    'breakfast',
+    'lunch',
+    'dessert',
+    'hotdrinks',
+    'mocktail',
+    'tortas'
+  ];
+
+  categoryOrder.forEach(cat => {
+
+    if (!foods[cat]) return;
+
     const btn = document.createElement('button');
+
     btn.textContent = cat;
+
     if (currentCategory === cat) btn.classList.add('active');
+
     btn.onclick = () => { showCatagories(cat); };
+
     container.appendChild(btn);
+
   });
+
 }
+
+
+
+
 
 function loadFromLocalStorage() {
   try {
