@@ -1,8 +1,21 @@
+
+require('dotenv').config();
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+});
+
+pool.query('SELECT NOW()')
+  .then(() => console.log('PostgreSQL connected'))
+  .catch(err => console.error('PostgreSQL connection error:', err.message));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -82,9 +95,32 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ ok: true, message: 'Admin login successful.' });
 });
 
-app.get('/api/menu', (req, res) => {
-  res.json(loadMenu());
+
+app.get('/api/menu', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT menu FROM menu_data WHERE id = 1'
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Menu not found in PostgreSQL.'
+      });
+    }
+
+    res.json(result.rows[0].menu);
+  } catch (error) {
+    console.error('Error loading menu from PostgreSQL:', error.message);
+
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to load menu from PostgreSQL.'
+    });
+  }
 });
+
+
 
 app.post('/api/payments/telebirr/create', (req, res) => {
   const { accountNumber, amount, items } = req.body || {};
@@ -103,15 +139,50 @@ app.post('/api/payments/telebirr/create', (req, res) => {
   res.json({ ok: true, paymentId, merchantAccount: TELEBIRR_MERCHANT_ACCOUNT });
 });
 
-app.post('/api/admin/menu', (req, res) => {
+
+
+
+app.post('/api/admin/menu', async (req, res) => {
   const { menu } = req.body;
+
   if (!menu || typeof menu !== 'object') {
-    return res.status(400).json({ ok: false, message: 'Menu data is required.' });
+    return res.status(400).json({
+      ok: false,
+      message: 'Menu data is required.'
+    });
   }
 
-  saveMenu(menu);
-  res.json({ ok: true, message: 'Menu saved.' });
+  try {
+    await pool.query(
+      `
+      INSERT INTO menu_data (id, menu, updated_at)
+      VALUES (1, $1, NOW())
+      ON CONFLICT (id)
+      DO UPDATE SET
+        menu = EXCLUDED.menu,
+        updated_at = NOW()
+      `,
+      [menu]
+    );
+
+    console.log('Menu saved to PostgreSQL.');
+
+    res.json({
+      ok: true,
+      message: 'Menu saved to PostgreSQL.'
+    });
+  } catch (error) {
+    console.error('Error saving menu to PostgreSQL:', error.message);
+
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to save menu to PostgreSQL.'
+    });
+  }
 });
+
+
+
 
 // Debug endpoint
 app.all('/api/debug', (req, res) => {
