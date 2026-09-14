@@ -5,6 +5,44 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
+const jwt = require('jsonwebtoken');
+
+
+function requireOwner(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        ok: false,
+        message: 'Owner authentication required.'
+      });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (decoded.role !== 'super_admin') {
+      return res.status(403).json({
+        ok: false,
+        message: 'Owner access required.'
+      });
+    }
+
+    req.user = decoded;
+
+    next();
+
+  } catch (error) {
+    return res.status(401).json({
+      ok: false,
+      message: 'Invalid or expired authentication token.'
+    });
+  }
+}
+
+
 
 const app = express();
 
@@ -82,43 +120,187 @@ function saveMenu(menu) {
   fs.writeFileSync(MENU_FILE, JSON.stringify(menu, null, 2));
 }
 
-app.post('/api/admin/login', (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ ok: false, message: 'Email and password are required.' });
-  }
 
-  if (ADMIN_USERS[email] !== password) {
-    return res.status(401).json({ ok: false, message: 'Invalid email or password.' });
-  }
-
-  res.json({ ok: true, message: 'Admin login successful.' });
-});
-
-
-app.get('/api/menu', async (req, res) => {
+app.post('/api/admin/login', async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT menu FROM menu_data WHERE id = 1'
-    );
+    const { email, password } = req.body;
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
+    if (!email || !password) {
+      return res.status(400).json({
         ok: false,
-        message: 'Menu not found in PostgreSQL.'
+        message: 'Email and password are required.'
       });
     }
 
-    res.json(result.rows[0].menu);
-  } catch (error) {
-    console.error('Error loading menu from PostgreSQL:', error.message);
+  
+    const result = await pool.query(
+  `
+  SELECT
+    users.*,
+    restaurants.slug AS restaurant_slug,
+    restaurants.name AS restaurant_name
+  FROM users
+  LEFT JOIN restaurants
+    ON users.restaurant_id = restaurants.id
+  WHERE users.email = $1
+  `,
+  [email]
+);
 
+
+
+
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        ok: false,
+        message: 'Invalid email or password.'
+      });
+    }
+
+    const user = result.rows[0];
+
+    if (user.password !== password) {
+      return res.status(401).json({
+        ok: false,
+        message: 'Invalid email or password.'
+      });
+    }
+
+
+    const token = jwt.sign(
+        {
+          user_id: user.id,
+          role: user.role,
+          restaurant_id: user.restaurant_id
+        },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: '7d'
+        }
+      );
+
+    
+    res.json({
+      ok: true,
+      token,
+      role: user.role,
+      restaurant_id: user.restaurant_id,
+      restaurant_slug: user.restaurant_slug,
+      restaurant_name: user.restaurant_name,
+      message: 'Login successful.'
+    });
+
+
+
+  } catch (err) {
+    console.error(err);
     res.status(500).json({
       ok: false,
-      message: 'Failed to load menu from PostgreSQL.'
+      message: 'Server error'
     });
   }
 });
+
+
+
+// OWNER: Get all restaurants
+app.get('/api/owner/restaurants', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        name,
+        slug,
+        status
+      FROM restaurants
+      ORDER BY id ASC
+    `);
+
+    res.json({
+      ok: true,
+      restaurants: result.rows
+    });
+
+  } catch (error) {
+    console.error('Error loading restaurants:', error.message);
+
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to load restaurants.'
+    });
+  }
+});
+
+
+
+app.get('/api/menu/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const restaurantResult = await pool.query(
+      `
+      SELECT id, name, slug, status
+      FROM restaurants
+      WHERE slug = $1
+      `,
+      [slug]
+    );
+
+    if (restaurantResult.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Restaurant not found.'
+      });
+    }
+
+    const restaurant = restaurantResult.rows[0];
+
+    if (restaurant.status !== 'active') {
+      return res.status(403).json({
+        ok: false,
+        message: 'Restaurant is not active.'
+      });
+    }
+
+    const menuResult = await pool.query(
+      `
+      SELECT menu
+      FROM menu_data
+      WHERE restaurant_id = $1
+      `,
+      [restaurant.id]
+    );
+
+    if (menuResult.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Menu not found for this restaurant.'
+      });
+    }
+
+    res.json({
+      ok: true,
+      restaurant: {
+        id: restaurant.id,
+        name: restaurant.name,
+        slug: restaurant.slug
+      },
+      menu: menuResult.rows[0].menu
+    });
+
+  } catch (error) {
+    console.error('Error loading restaurant menu:', error.message);
+
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to load restaurant menu.'
+    });
+  }
+});
+
+
+
 
 
 
@@ -142,7 +324,8 @@ app.post('/api/payments/telebirr/create', (req, res) => {
 
 
 
-app.post('/api/admin/menu', async (req, res) => {
+app.post('/api/admin/menu/:slug', async (req, res) => {
+  const { slug } = req.params;
   const { menu } = req.body;
 
   if (!menu || typeof menu !== 'object') {
@@ -153,33 +336,74 @@ app.post('/api/admin/menu', async (req, res) => {
   }
 
   try {
-    await pool.query(
+    // Find the restaurant using its slug
+    const restaurantResult = await pool.query(
       `
-      INSERT INTO menu_data (id, menu, updated_at)
-      VALUES (1, $1, NOW())
-      ON CONFLICT (id)
-      DO UPDATE SET
-        menu = EXCLUDED.menu,
-        updated_at = NOW()
+      SELECT id, name, slug, status
+      FROM restaurants
+      WHERE slug = $1
       `,
-      [menu]
+      [slug]
     );
 
-    console.log('Menu saved to PostgreSQL.');
+    if (restaurantResult.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Restaurant not found.'
+      });
+    }
+
+    const restaurant = restaurantResult.rows[0];
+
+    if (restaurant.status !== 'active') {
+      return res.status(403).json({
+        ok: false,
+        message: 'Restaurant is not active.'
+      });
+    }
+
+    // Save this menu only for this restaurant
+    
+
+    const menuResult = await pool.query(
+  `
+  UPDATE menu_data
+  SET
+    menu = $1,
+    updated_at = NOW()
+  WHERE restaurant_id = $2
+  `,
+  [menu, restaurant.id]
+);
+
+if (menuResult.rowCount === 0) {
+  return res.status(404).json({
+    ok: false,
+    message: 'Menu record not found for this restaurant.'
+  });
+}
+
+
+
+
+    console.log(`Menu saved for ${restaurant.name} (${restaurant.slug}).`);
 
     res.json({
       ok: true,
-      message: 'Menu saved to PostgreSQL.'
+      message: `Menu saved for ${restaurant.name}.`
     });
+
   } catch (error) {
-    console.error('Error saving menu to PostgreSQL:', error.message);
+    console.error('Error saving restaurant menu:', error.message);
 
     res.status(500).json({
       ok: false,
-      message: 'Failed to save menu to PostgreSQL.'
+      message: 'Failed to save restaurant menu.'
     });
   }
 });
+
+
 
 
 
@@ -189,6 +413,39 @@ app.all('/api/debug', (req, res) => {
   console.log('[api-debug] method=%s path=%s headers=%o body=%o', req.method, req.path, req.headers, req.body);
   res.json({ ok: true, method: req.method, path: req.path, headers: req.headers, body: req.body });
 });
+
+
+
+// OWNER: Get all restaurants
+app.get('/api/owner/restaurants', requireOwner, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        name,
+        slug,
+        status
+      FROM restaurants
+      ORDER BY id ASC
+    `);
+
+    res.json({
+      ok: true,
+      restaurants: result.rows
+    });
+
+  } catch (error) {
+    console.error('Error loading restaurants:', error.message);
+
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to load restaurants.'
+    });
+  }
+});
+
+
+
 
 // Fallback for unmatched API routes
 app.use((req, res, next) => {

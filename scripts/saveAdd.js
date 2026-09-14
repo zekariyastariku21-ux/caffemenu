@@ -8,6 +8,10 @@ let isAdminLoggedIn = false;
 
 const API_BASE = (location.port && location.port !== '3000') ? `${location.protocol}//${location.hostname}:3000` : '';
 
+const CAFE_SLUG = localStorage.getItem('adminRestaurantSlug') || 'etete-coffee';
+
+
+
 let foods = {
   breakfast: [{
     image: 'image/fouls.jpeg',
@@ -136,15 +140,26 @@ async function loadMenuFromServer() {
       throw new Error((data && data.message) || 'Failed to fetch menu');
     }
 
+    
     if (data && data.menu && typeof data.menu === 'object') {
-      foods = data.menu;
+  foods = data.menu;
 
-      console.log('Loaded menu for:', data.restaurant?.name);
-      console.log('Menu:', foods);
+  console.log('Loaded menu for:', data.restaurant?.name);
+  console.log('Menu:', foods);
 
-      renderItems();
-      renderCategoryButtons();
-    }
+  // Show restaurant name at the top of the page
+  const cafeName = document.getElementById('cafeName');
+
+  if (cafeName && data.restaurant?.name) {
+    cafeName.textContent = data.restaurant.name;
+  }
+
+  renderItems();
+  renderCategoryButtons();
+}
+
+
+
 
   } catch (err) {
     console.warn('Could not load menu from server, using local menu.', err);
@@ -522,8 +537,21 @@ async function adminLogin() {
     if (!res.ok) throw new Error((data && data.message) || `Server returned ${res.status}`);
     if (!data || !data.ok) throw new Error((data && data.message) || 'Login failed');
     isAdminLoggedIn = true;
+
+    localStorage.setItem('adminToken', data.token);
+    localStorage.setItem('adminRole', data.role);
+    localStorage.setItem('adminRestaurantId', data.restaurant_id || '');
+    localStorage.setItem('adminRestaurantSlug', data.restaurant_slug || '');
     closeAdminLogin();
-    openAdminPanel();
+    
+
+    if (data.role === 'super_admin') {
+      openOwnerDashboard();
+    } else {
+      openAdminPanel();
+    }
+
+
     showToast('Logged in successfully!', 'success');
   } catch (err) {
     showToast('Login error: ' + (err.message || err), 'error');
@@ -788,5 +816,68 @@ async function saveMenuToServer() {
     showToast('Menu saved successfully to server!', 'success');
   } catch (err) {
     showToast('Save error: ' + (err.message || err), 'error');
+  }
+}
+
+
+function openOwnerDashboard() {
+  const modal = document.getElementById('ownerDashboardModal');
+
+  if (modal) {
+    modal.style.display = 'flex';
+    loadOwnerCafes();
+  }
+}
+
+function closeOwnerDashboard() {
+  const modal = document.getElementById('ownerDashboardModal');
+
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+async function loadOwnerCafes() {
+  const container = document.getElementById('ownerCafeList');
+
+  if (!container) return;
+
+  container.innerHTML = 'Loading cafés...';
+
+  try {
+    const response = await fetch(API_BASE + '/api/owner/restaurants');
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to load cafés.');
+    }
+
+    if (!data.restaurants || data.restaurants.length === 0) {
+      container.innerHTML = '<p>No cafés found.</p>';
+      return;
+    }
+
+    container.innerHTML = data.restaurants.map(cafe => `
+      <div style="
+        border:1px solid #ddd;
+        padding:10px;
+        margin:8px 0;
+        border-radius:6px;
+      ">
+        <strong>${cafe.name}</strong><br>
+        Slug: ${cafe.slug}<br>
+        Status: ${cafe.status}
+      </div>
+    `).join('');
+
+  } catch (error) {
+    console.error(error);
+
+    container.innerHTML = `
+      <p style="color:#a00;">
+        ${error.message}
+      </p>
+    `;
   }
 }

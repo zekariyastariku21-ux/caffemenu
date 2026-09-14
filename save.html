@@ -24,6 +24,43 @@
     </div>
   </div>
 
+
+
+<!-- OWNER DASHBOARD -->
+<div id="ownerDashboardModal" class="auth-overlay">
+  <div class="admin-panel">
+    <button
+      class="close-image"
+      onclick="closeOwnerDashboard()"
+      style="position:absolute;right:8px;top:8px;"
+    >✕</button>
+
+    <h3>Owner Dashboard</h3>
+
+    <p>
+      Manage all cafés from this dashboard.
+    </p>
+
+    <div id="ownerCafeList">
+      Loading cafés...
+    </div>
+
+    <div style="margin-top:12px;">
+      <button onclick="loadOwnerCafes()">Refresh</button>
+      <button onclick="closeOwnerDashboard()">Close</button>
+    </div>
+
+    <div
+      id="ownerDashboardMessage"
+      style="margin-top:8px;color:#333;"
+    ></div>
+  </div>
+</div>
+
+
+
+
+
   <div id="adminPanelModal" class="auth-overlay">
     <div class="admin-panel">
       <button class="close-image" onclick="closeAdminPanel()" style="position:absolute;right:8px;top:8px;">✕</button>
@@ -107,8 +144,8 @@
   <div class="head">
     <div class="top">
       <div class="name">
-        <div>etete coffee</div>
-        <div style="font-size: 0.85em; opacity: 0.9; margin-top: 1px;">እቴቴ ቡና</div>
+        <div id="cafeName">Loading...</div>
+        <div id="cafeNameAmharic" style="font-size: 0.85em; opacity: 0.9; margin-top: 1px;"></div>
       </div>
       <button class="login" onclick="openAdminLogin()">login</button>
     </div>
