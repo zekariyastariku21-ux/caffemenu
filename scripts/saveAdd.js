@@ -120,16 +120,32 @@ function hideToast() {
 
 async function loadMenuFromServer() {
   try {
-    const res = await fetch(API_BASE + '/api/menu');
+    const res = await fetch(API_BASE + `/api/menu/${CAFE_SLUG}`);
+
     const text = await res.text();
+
     let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch (e) { throw new Error('Invalid server response: ' + text); }
-    if (!res.ok) throw new Error((data && data.message) || 'Failed to fetch menu');
-    if (data && typeof data === 'object') {
-      foods = data;
+
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch (e) {
+      throw new Error('Invalid server response: ' + text);
+    }
+
+    if (!res.ok) {
+      throw new Error((data && data.message) || 'Failed to fetch menu');
+    }
+
+    if (data && data.menu && typeof data.menu === 'object') {
+      foods = data.menu;
+
+      console.log('Loaded menu for:', data.restaurant?.name);
+      console.log('Menu:', foods);
+
       renderItems();
       renderCategoryButtons();
     }
+
   } catch (err) {
     console.warn('Could not load menu from server, using local menu.', err);
   }
@@ -749,11 +765,13 @@ async function saveMenuToServer() {
       }
     });
 
-    const res = await fetch(API_BASE + '/api/admin/menu', {
+    const res = await fetch(API_BASE + `/api/admin/menu/${CAFE_SLUG}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ menu: menuToSave })
     });
+
+    
     const text = await res.text();
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch (e) { throw new Error('Invalid server response: ' + text); }
