@@ -887,3 +887,54 @@ async function loadOwnerCafes() {
     `;
   }
 }
+
+async function createOwnerCafe() {
+  const nameInput = document.getElementById('newCafeName');
+  const slugInput = document.getElementById('newCafeSlug');
+  const message = document.getElementById('ownerDashboardMessage');
+
+  const name = nameInput.value.trim();
+  const slug = slugInput.value.trim().toLowerCase();
+
+  if (!name || !slug) {
+    message.style.color = '#a00';
+    message.textContent = 'Please enter both café name and slug.';
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('adminToken');
+
+    const response = await fetch(API_BASE + '/api/owner/restaurants', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        name: name,
+        slug: slug
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to create café.');
+    }
+
+    message.style.color = 'green';
+    message.textContent = `Café "${data.restaurant.name}" created successfully.`;
+
+    nameInput.value = '';
+    slugInput.value = '';
+
+    await loadOwnerCafes();
+
+  } catch (error) {
+    console.error(error);
+
+    message.style.color = '#a00';
+    message.textContent = error.message;
+  }
+}

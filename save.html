@@ -45,6 +45,27 @@
       Loading cafés...
     </div>
 
+
+    <div style="margin-top:16px;">
+      <h4>Create New Café</h4>
+
+      <input
+        id="newCafeName"
+        type="text"
+        placeholder="Café name"
+        style="width:100%;margin-bottom:8px;"
+      >
+
+      <input
+        id="newCafeSlug"
+        type="text"
+        placeholder="cafe-slug"
+        style="width:100%;margin-bottom:8px;"
+      >
+
+      <button onclick="createOwnerCafe()">Create Café</button>
+    </div>
+
     <div style="margin-top:12px;">
       <button onclick="loadOwnerCafes()">Refresh</button>
       <button onclick="closeOwnerDashboard()">Close</button>
