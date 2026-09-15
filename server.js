@@ -204,34 +204,6 @@ app.post('/api/admin/login', async (req, res) => {
 
 
 
-// OWNER: Get all restaurants
-app.get('/api/owner/restaurants', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT
-        id,
-        name,
-        slug,
-        status
-      FROM restaurants
-      ORDER BY id ASC
-    `);
-
-    res.json({
-      ok: true,
-      restaurants: result.rows
-    });
-
-  } catch (error) {
-    console.error('Error loading restaurants:', error.message);
-
-    res.status(500).json({
-      ok: false,
-      message: 'Failed to load restaurants.'
-    });
-  }
-});
-
 
 
 app.get('/api/menu/:slug', async (req, res) => {
