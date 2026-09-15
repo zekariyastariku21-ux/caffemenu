@@ -845,7 +845,13 @@ async function loadOwnerCafes() {
   container.innerHTML = 'Loading cafés...';
 
   try {
-    const response = await fetch(API_BASE + '/api/owner/restaurants');
+    const token = localStorage.getItem('adminToken');
+
+    const response = await fetch(API_BASE + '/api/owner/restaurants', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
 
     const data = await response.json();
 
