@@ -418,6 +418,44 @@ app.get('/api/owner/restaurants', requireOwner, async (req, res) => {
 
 
 
+// OWNER: Create a new restaurant
+app.post('/api/owner/restaurants', requireOwner, async (req, res) => {
+  try {
+    const { name, slug } = req.body;
+
+    if (!name || !slug) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Restaurant name and slug are required.'
+      });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO restaurants (name, slug, status)
+      VALUES ($1, $2, 'active')
+      RETURNING id, name, slug, status
+      `,
+      [name.trim(), slug.trim().toLowerCase()]
+    );
+
+    res.status(201).json({
+      ok: true,
+      restaurant: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error creating restaurant:', error.message);
+
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to create restaurant.'
+    });
+  }
+});
+
+
+
 
 // Fallback for unmatched API routes
 app.use((req, res, next) => {
