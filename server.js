@@ -44,6 +44,41 @@ function requireOwner(req, res, next) {
 
 
 
+
+function requireRestaurantAdmin(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        ok: false,
+        message: 'Admin authentication required.'
+      });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (decoded.role !== 'super_admin' && decoded.role !== 'cafe_admin') {
+      return res.status(403).json({
+        ok: false,
+        message: 'Restaurant admin access required.'
+      });
+    }
+
+    req.user = decoded;
+
+    next();
+
+  } catch (error) {
+    return res.status(401).json({
+      ok: false,
+      message: 'Invalid or expired authentication token.'
+    });
+  }
+}
+
 const app = express();
 
 const pool = new Pool({
@@ -296,7 +331,7 @@ app.post('/api/payments/telebirr/create', (req, res) => {
 
 
 
-app.post('/api/admin/menu/:slug', async (req, res) => {
+app.post('/api/admin/menu/:slug', requireRestaurantAdmin, async (req, res) => {
   const { slug } = req.params;
   const { menu } = req.body;
 
@@ -326,6 +361,18 @@ app.post('/api/admin/menu/:slug', async (req, res) => {
     }
 
     const restaurant = restaurantResult.rows[0];
+
+    // Cafe admins can only edit their own restaurant.
+    // Super admins can edit any restaurant.
+    if (
+      req.user.role === 'cafe_admin' &&
+      Number(req.user.restaurant_id) !== Number(restaurant.id)
+    ) {
+      return res.status(403).json({
+        ok: false,
+        message: 'You can only edit your own restaurant menu.'
+      });
+    }
 
     if (restaurant.status !== 'active') {
       return res.status(403).json({
@@ -439,6 +486,18 @@ app.post('/api/owner/restaurants', requireOwner, async (req, res) => {
       [name.trim(), slug.trim().toLowerCase()]
     );
 
+      await pool.query(
+        `
+        INSERT INTO menu_data (id, restaurant_id, menu)
+        VALUES (
+          (SELECT COALESCE(MAX(id), 0) + 1 FROM menu_data),
+          $1,
+          $2
+        )
+        `,
+        [result.rows[0].id, {}]
+      );
+
     res.status(201).json({
       ok: true,
       restaurant: result.rows[0]
@@ -456,6 +515,63 @@ app.post('/api/owner/restaurants', requireOwner, async (req, res) => {
 
 
 
+app.get('/api/setup-amare-menu', async (req, res) => {
+  try {
+    const restaurantResult = await pool.query(
+      `
+      SELECT id, name, slug
+      FROM restaurants
+      WHERE slug = 'amare-cafe'
+      `
+    );
+
+    if (restaurantResult.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Amare Cafe not found.'
+      });
+    }
+
+    const restaurant = restaurantResult.rows[0];
+
+    const nextIdResult = await pool.query(
+      `
+      SELECT COALESCE(MAX(id), 0) + 1 AS next_id
+      FROM menu_data
+      `
+    );
+
+    const nextId = nextIdResult.rows[0].next_id;
+
+    const menuResult = await pool.query(
+      `
+      INSERT INTO menu_data (id, restaurant_id, menu)
+      VALUES ($1, $2, $3)
+      `,
+      [nextId, restaurant.id, {}]
+    );
+
+    res.json({
+      ok: true,
+      restaurant,
+      menu_data_id: nextId,
+      created: menuResult.rowCount === 1
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      ok: false,
+      message: error.message
+    });
+  }
+});
+
+
+
+
+
 
 // Fallback for unmatched API routes
 app.use((req, res, next) => {
@@ -466,7 +582,59 @@ app.use((req, res, next) => {
   next();
 });
 
+
+app.get('/api/setup-amare-menu', async (req, res) => {
+  try {
+    const restaurantResult = await pool.query(
+      `
+      SELECT id, name, slug
+      FROM restaurants
+      WHERE slug = 'amare-cafe'
+      `
+    );
+
+    if (restaurantResult.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Amare Cafe not found.'
+      });
+    }
+
+    const restaurant = restaurantResult.rows[0];
+
+    const menuResult = await pool.query(
+  `
+  SELECT id, restaurant_id
+  FROM menu_data
+  ORDER BY id
+  `
+);
+
+    res.json({
+      ok: true,
+      restaurant,
+      menus: menuResult.rows
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      ok: false,
+      message: error.message
+    });
+  }
+});
+
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+
+
+
+
+
+

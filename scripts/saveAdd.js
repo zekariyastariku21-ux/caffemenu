@@ -8,7 +8,15 @@ let isAdminLoggedIn = false;
 
 const API_BASE = (location.port && location.port !== '3000') ? `${location.protocol}//${location.hostname}:3000` : '';
 
-const CAFE_SLUG = localStorage.getItem('adminRestaurantSlug') || 'etete-coffee';
+
+
+const urlRestaurant = new URLSearchParams(window.location.search).get('restaurant');
+
+const CAFE_SLUG =
+  urlRestaurant ||
+  localStorage.getItem('selectedRestaurantSlug') ||
+  localStorage.getItem('adminRestaurantSlug') ||
+  'etete-coffee';
 
 
 
@@ -173,18 +181,18 @@ async function loadMenuFromServer() {
 function renderCategoryButtons() {
 
   const container = document.getElementById('categoryButtons');
-
   if (!container) return;
 
   container.innerHTML = '';
 
   const allBtn = document.createElement('button');
-
   allBtn.textContent = 'all item';
 
   if (currentCategory === 'all') allBtn.classList.add('active');
 
-  allBtn.onclick = () => { showCatagories('all'); };
+  allBtn.onclick = () => {
+    showCatagories('all');
+  };
 
   container.appendChild(allBtn);
 
@@ -197,24 +205,39 @@ function renderCategoryButtons() {
     'tortas'
   ];
 
+  // Show ordered categories first
   categoryOrder.forEach(cat => {
-
     if (!foods[cat]) return;
 
     const btn = document.createElement('button');
-
     btn.textContent = cat;
 
     if (currentCategory === cat) btn.classList.add('active');
 
-    btn.onclick = () => { showCatagories(cat); };
+    btn.onclick = () => {
+      showCatagories(cat);
+    };
 
     container.appendChild(btn);
-
   });
 
-}
+  // Show any new categories not in categoryOrder
+  Object.keys(foods).forEach(cat => {
 
+    if (categoryOrder.includes(cat)) return;
+
+    const btn = document.createElement('button');
+    btn.textContent = cat;
+
+    if (currentCategory === cat) btn.classList.add('active');
+
+    btn.onclick = () => {
+      showCatagories(cat);
+    };
+
+    container.appendChild(btn);
+  });
+}
 
 
 
@@ -785,39 +808,55 @@ function deleteSelectedItem() {
 
 async function saveMenuToServer() {
   showToast('Saving menu to server...', 'loading');
+
   try {
     const menuToSave = {};
+
     Object.keys(foods).forEach(k => {
       if (Array.isArray(foods[k]) && foods[k].length > 0) {
         menuToSave[k] = foods[k];
       }
     });
 
+    const token = localStorage.getItem('adminToken');
+
     const res = await fetch(API_BASE + `/api/admin/menu/${CAFE_SLUG}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({ menu: menuToSave })
     });
 
-    
     const text = await res.text();
     let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch (e) { throw new Error('Invalid server response: ' + text); }
+
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch (e) {
+      throw new Error('Invalid server response: ' + text);
+    }
+
     if (!res.ok) throw new Error((data && data.message) || `Server returned ${res.status}`);
     if (!data || !data.ok) throw new Error((data && data.message) || 'Save failed');
 
     Object.keys(foods).forEach(k => {
       if (!Array.isArray(foods[k]) || foods[k].length === 0) delete foods[k];
     });
+
     renderItems();
     renderCategoryButtons();
     updateAdminCategoryOptions();
     refreshExistingItemsSelect();
+
     showToast('Menu saved successfully to server!', 'success');
+
   } catch (err) {
     showToast('Save error: ' + (err.message || err), 'error');
   }
 }
+
 
 
 function openOwnerDashboard() {
@@ -873,7 +912,11 @@ async function loadOwnerCafes() {
       ">
         <strong>${cafe.name}</strong><br>
         Slug: ${cafe.slug}<br>
-        Status: ${cafe.status}
+        Status: ${cafe.status}<br><br>
+
+        <button onclick="manageOwnerCafeMenu('${cafe.slug}')">
+          Manage Menu
+        </button>
       </div>
     `).join('');
 
@@ -937,4 +980,11 @@ async function createOwnerCafe() {
     message.style.color = '#a00';
     message.textContent = error.message;
   }
+}
+
+
+function manageOwnerCafeMenu(slug) {
+  localStorage.setItem('selectedRestaurantSlug', slug);
+
+  window.location.href = '/save.html?restaurant=' + encodeURIComponent(slug);
 }
