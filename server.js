@@ -167,13 +167,13 @@ app.post('/api/admin/login', async (req, res) => {
       });
     }
 
-  
+
     const result = await pool.query(
   `
-  SELECT
-    users.*,
-    restaurants.slug AS restaurant_slug,
-    restaurants.name AS restaurant_name
+  SELECT users.*,
+       restaurants.slug AS restaurant_slug,
+       restaurants.name AS restaurant_name,
+       restaurants.status AS restaurant_status
   FROM users
   LEFT JOIN restaurants
     ON users.restaurant_id = restaurants.id
@@ -202,6 +202,16 @@ app.post('/api/admin/login', async (req, res) => {
       });
     }
 
+    if (
+  user.role === 'cafe_admin' &&
+  user.restaurant_status !== 'active'
+) {
+  return res.status(403).json({
+    ok: false,
+    message: 'This restaurant is currently disabled.'
+  });
+}
+
 
     const token = jwt.sign(
         {
@@ -215,7 +225,7 @@ app.post('/api/admin/login', async (req, res) => {
         }
       );
 
-    
+
     res.json({
       ok: true,
       token,
@@ -266,7 +276,7 @@ app.get('/api/menu/:slug', async (req, res) => {
     if (restaurant.status !== 'active') {
       return res.status(403).json({
         ok: false,
-        message: 'Restaurant is not active.'
+        message: `${restaurant.name} is temporarily unavailable. Please check back later.`
       });
     }
 
@@ -382,7 +392,7 @@ app.post('/api/admin/menu/:slug', requireRestaurantAdmin, async (req, res) => {
     }
 
     // Save this menu only for this restaurant
-    
+
 
     const menuResult = await pool.query(
   `
@@ -427,13 +437,6 @@ if (menuResult.rowCount === 0) {
 
 
 
-// Debug endpoint
-app.all('/api/debug', (req, res) => {
-  console.log('[api-debug] method=%s path=%s headers=%o body=%o', req.method, req.path, req.headers, req.body);
-  res.json({ ok: true, method: req.method, path: req.path, headers: req.headers, body: req.body });
-});
-
-
 
 // OWNER: Get all restaurants
 app.get('/api/owner/restaurants', requireOwner, async (req, res) => {
@@ -466,41 +469,90 @@ app.get('/api/owner/restaurants', requireOwner, async (req, res) => {
 
 
 // OWNER: Create a new restaurant
+// OWNER: Create a new restaurant + cafe admin
 app.post('/api/owner/restaurants', requireOwner, async (req, res) => {
   try {
-    const { name, slug } = req.body;
+    const { name, slug, adminEmail, adminPassword } = req.body;
 
-    if (!name || !slug) {
+    if (!name || !slug || !adminEmail || !adminPassword) {
       return res.status(400).json({
         ok: false,
-        message: 'Restaurant name and slug are required.'
+        message: 'Restaurant name, slug, admin email, and admin password are required.'
       });
     }
 
+    const cleanName = name.trim();
+    const cleanSlug = slug.trim().toLowerCase();
+    const cleanEmail = adminEmail.trim().toLowerCase();
+
+    // Check whether the slug already exists
+    const slugCheck = await pool.query(
+      `SELECT id FROM restaurants WHERE slug = $1`,
+      [cleanSlug]
+    );
+
+    if (slugCheck.rows.length > 0) {
+      return res.status(400).json({
+        ok: false,
+        message: 'A restaurant with this slug already exists.'
+      });
+    }
+
+    // Check whether the email already exists
+    const emailCheck = await pool.query(
+      `SELECT id FROM users WHERE email = $1`,
+      [cleanEmail]
+    );
+
+    if (emailCheck.rows.length > 0) {
+      return res.status(400).json({
+        ok: false,
+        message: 'This admin email is already in use.'
+      });
+    }
+
+    // Create restaurant
     const result = await pool.query(
       `
       INSERT INTO restaurants (name, slug, status)
       VALUES ($1, $2, 'active')
       RETURNING id, name, slug, status
       `,
-      [name.trim(), slug.trim().toLowerCase()]
+      [cleanName, cleanSlug]
     );
 
-      await pool.query(
-        `
-        INSERT INTO menu_data (id, restaurant_id, menu)
-        VALUES (
-          (SELECT COALESCE(MAX(id), 0) + 1 FROM menu_data),
-          $1,
-          $2
-        )
-        `,
-        [result.rows[0].id, {}]
-      );
+    const restaurant = result.rows[0];
+
+    // Create empty menu for the restaurant
+    await pool.query(
+      `
+      INSERT INTO menu_data (id, restaurant_id, menu)
+      VALUES (
+        (SELECT COALESCE(MAX(id), 0) + 1 FROM menu_data),
+        $1,
+        $2
+      )
+      `,
+      [restaurant.id, {}]
+    );
+
+    // Create cafe admin account
+    await pool.query(
+      `
+      INSERT INTO users (email, password, role, restaurant_id)
+      VALUES ($1, $2, 'cafe_admin', $3)
+      `,
+      [cleanEmail, adminPassword, restaurant.id]
+    );
 
     res.status(201).json({
       ok: true,
-      restaurant: result.rows[0]
+      restaurant,
+      admin: {
+        email: cleanEmail,
+        role: 'cafe_admin',
+        restaurant_id: restaurant.id
+      }
     });
 
   } catch (error) {
@@ -515,58 +567,324 @@ app.post('/api/owner/restaurants', requireOwner, async (req, res) => {
 
 
 
-app.get('/api/setup-amare-menu', async (req, res) => {
+// OWNER: Update restaurant name and slug
+app.put('/api/owner/restaurants/:id', requireOwner, async (req, res) => {
   try {
-    const restaurantResult = await pool.query(
+    const restaurantId = Number(req.params.id);
+    const { name, slug } = req.body;
+
+    if (!restaurantId || !name || !slug) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Restaurant ID, name, and slug are required.'
+      });
+    }
+
+    const cleanName = name.trim();
+    const cleanSlug = slug.trim().toLowerCase();
+
+    // Check whether another restaurant already uses this slug
+    const slugCheck = await pool.query(
       `
-      SELECT id, name, slug
+      SELECT id
       FROM restaurants
-      WHERE slug = 'amare-cafe'
+      WHERE slug = $1 AND id <> $2
+      `,
+      [cleanSlug, restaurantId]
+    );
+
+    if (slugCheck.rows.length > 0) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Another restaurant already uses this slug.'
+      });
+    }
+
+    const result = await pool.query(
       `
+      UPDATE restaurants
+      SET name = $1,
+          slug = $2
+      WHERE id = $3
+      RETURNING id, name, slug, status
+      `,
+      [cleanName, cleanSlug, restaurantId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Restaurant not found.'
+      });
+    }
+
+    res.json({
+      ok: true,
+      restaurant: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error updating restaurant:', error.message);
+
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to update restaurant.'
+    });
+  }
+});
+
+
+// OWNER: Update restaurant admin email and/or password
+app.put('/api/owner/restaurants/:id/admin', requireOwner, async (req, res) => {
+  try {
+    const restaurantId = Number(req.params.id);
+    const { email, password } = req.body;
+
+    if (!restaurantId) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Restaurant ID is required.'
+      });
+    }
+
+    if (!email && !password) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Enter an email or password to update.'
+      });
+    }
+
+    const userResult = await pool.query(
+      `
+      SELECT id, email, password
+      FROM users
+      WHERE restaurant_id = $1
+        AND role = 'cafe_admin'
+      LIMIT 1
+      `,
+      [restaurantId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Cafe admin account not found.'
+      });
+    }
+
+    const admin = userResult.rows[0];
+
+    if (email) {
+      const cleanEmail = email.trim().toLowerCase();
+
+      if (!cleanEmail) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Admin email cannot be empty.'
+        });
+      }
+
+      const emailCheck = await pool.query(
+        `
+        SELECT id
+        FROM users
+        WHERE email = $1
+          AND id <> $2
+        `,
+        [cleanEmail, admin.id]
+      );
+
+      if (emailCheck.rows.length > 0) {
+        return res.status(400).json({
+          ok: false,
+          message: 'This email is already in use.'
+        });
+      }
+
+      await pool.query(
+        `
+        UPDATE users
+        SET email = $1
+        WHERE id = $2
+        `,
+        [cleanEmail, admin.id]
+      );
+    }
+
+    if (password) {
+      await pool.query(
+        `
+        UPDATE users
+        SET password = $1
+        WHERE id = $2
+        `,
+        [password, admin.id]
+      );
+    }
+
+    const updatedResult = await pool.query(
+      `
+      SELECT id, email, role, restaurant_id
+      FROM users
+      WHERE id = $1
+      `,
+      [admin.id]
+    );
+
+    res.json({
+      ok: true,
+      admin: updatedResult.rows[0],
+      message: 'Admin account updated successfully.'
+    });
+
+  } catch (error) {
+    console.error('Error updating restaurant admin:', error.message);
+
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to update admin account.'
+    });
+  }
+});
+
+
+
+// OWNER: Enable or disable a restaurant
+app.put('/api/owner/restaurants/:id/status', requireOwner, async (req, res) => {
+  try {
+    const restaurantId = Number(req.params.id);
+    const { status } = req.body;
+
+    if (!restaurantId) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Restaurant ID is required.'
+      });
+    }
+
+    if (!['active', 'disabled'].includes(status)) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Status must be active or disabled.'
+      });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE restaurants
+      SET status = $1
+      WHERE id = $2
+      RETURNING id, name, slug, status
+      `,
+      [status, restaurantId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Restaurant not found.'
+      });
+    }
+
+    res.json({
+      ok: true,
+      restaurant: result.rows[0],
+      message:
+        status === 'active'
+          ? 'Restaurant enabled successfully.'
+          : 'Restaurant disabled successfully.'
+    });
+
+  } catch (error) {
+    console.error('Error changing restaurant status:', error.message);
+
+    res.status(500).json({
+      ok: false,
+      message: 'Failed to change restaurant status.'
+    });
+  }
+});
+
+
+app.delete('/api/owner/restaurants/:id', requireOwner, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const restaurantId = Number(req.params.id);
+
+    if (!restaurantId) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Invalid restaurant ID.'
+      });
+    }
+
+    await client.query('BEGIN');
+
+    // Make sure the restaurant exists
+    const restaurantResult = await client.query(
+      `SELECT id, name, slug
+       FROM restaurants
+       WHERE id = $1`,
+      [restaurantId]
     );
 
     if (restaurantResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+
       return res.status(404).json({
         ok: false,
-        message: 'Amare Cafe not found.'
+        message: 'Restaurant not found.'
       });
     }
 
     const restaurant = restaurantResult.rows[0];
 
-    const nextIdResult = await pool.query(
-      `
-      SELECT COALESCE(MAX(id), 0) + 1 AS next_id
-      FROM menu_data
-      `
+    // Delete café admin account
+    await client.query(
+      `DELETE FROM users
+       WHERE restaurant_id = $1
+         AND role = 'cafe_admin'`,
+      [restaurantId]
     );
 
-    const nextId = nextIdResult.rows[0].next_id;
-
-    const menuResult = await pool.query(
-      `
-      INSERT INTO menu_data (id, restaurant_id, menu)
-      VALUES ($1, $2, $3)
-      `,
-      [nextId, restaurant.id, {}]
+    // Delete restaurant menu
+    await client.query(
+      `DELETE FROM menu_data
+       WHERE restaurant_id = $1`,
+      [restaurantId]
     );
+
+    // Delete restaurant
+    await client.query(
+      `DELETE FROM restaurants
+       WHERE id = $1`,
+      [restaurantId]
+    );
+
+    await client.query('COMMIT');
 
     res.json({
       ok: true,
-      restaurant,
-      menu_data_id: nextId,
-      created: menuResult.rowCount === 1
+      message: `${restaurant.name} deleted successfully.`
     });
 
   } catch (error) {
-    console.error(error);
+    await client.query('ROLLBACK');
+
+    console.error('Error deleting restaurant:', error.message);
 
     res.status(500).json({
       ok: false,
-      message: error.message
+      message: 'Failed to delete restaurant.'
     });
+
+  } finally {
+    client.release();
   }
 });
+
+
 
 
 
@@ -582,48 +900,6 @@ app.use((req, res, next) => {
   next();
 });
 
-
-app.get('/api/setup-amare-menu', async (req, res) => {
-  try {
-    const restaurantResult = await pool.query(
-      `
-      SELECT id, name, slug
-      FROM restaurants
-      WHERE slug = 'amare-cafe'
-      `
-    );
-
-    if (restaurantResult.rows.length === 0) {
-      return res.status(404).json({
-        ok: false,
-        message: 'Amare Cafe not found.'
-      });
-    }
-
-    const restaurant = restaurantResult.rows[0];
-
-    const menuResult = await pool.query(
-  `
-  SELECT id, restaurant_id
-  FROM menu_data
-  ORDER BY id
-  `
-);
-
-    res.json({
-      ok: true,
-      restaurant,
-      menus: menuResult.rows
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      ok: false,
-      message: error.message
-    });
-  }
-});
 
 
 

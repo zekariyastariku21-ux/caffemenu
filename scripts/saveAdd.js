@@ -20,73 +20,7 @@ const CAFE_SLUG =
 
 
 
-let foods = {
-  breakfast: [{
-    image: 'image/fouls.jpeg',
-    ingridient: 'Freshly baked pita, rich beans, eggs, and a touch of spice.',
-    name: 'SPECIAL FOUL',
-    price: 750,
-    id: 1
-  },{
-    image: 'image/qus.jpeg',
-    ingridient: 'Honey glaze, soft tortilla, cheese, and fresh vegetables.',
-    name: 'HONEY QUSSADILA',
-    price: 150,
-    id: 2
-  }],
-  lunch: [{
-    image: 'image/wrap.jpeg',
-    ingridient: 'Grilled chicken, lettuce, tomato, and creamy sauce wrapped in soft bread.',
-    name: 'CHICKEN WRAP',
-    price: 350,
-    id: 1
-  },{
-    image: 'image/salad.jpeg',
-    ingridient: 'Tender steak slices, greens, crunchy toppings, and creamy dressing.',
-    name: 'CREAMY STEAK SALAD',
-    price: 150,
-    id: 2
-  }],
-  dessert: [{
-    image: 'image/choc.jpeg',
-    ingridient: 'Chocolate sponge, creamy frosting, and a rich cocoa finish.',
-    name: 'CHOCOLATE SLICE CAKE',
-    price: 250,
-    id: 1
-  },{
-    image: 'image/caramel.jpeg',
-    ingridient: 'Soft caramel layers, vanilla cream, and buttery cake.',
-    name: 'CARAMEL CREAM CAKE',
-    price: 230,
-    id: 2
-  }],
-  hotdrinks: [{
-    image: 'image/latte.jpeg',
-    ingridient: 'Espresso, steamed milk, and a smooth creamy texture.',
-    name: 'CAFFE LATTE',
-    price: 450,
-    id: 2
-  },{
-    image: 'image/macchiato.jpeg',
-    ingridient: 'Bold espresso with a light layer of frothy milk.',
-    name: 'MACCHIATO',
-    price: 290,
-    id: 2
-  }],
-  mocktail: [{
-    image: 'image/classicmojito.jpeg',
-    ingridient: 'Mint, lime, soda, and a refreshing citrus blend.',
-    name: 'MOCKTAIL',
-    price: 350,
-    id: 2
-  },{
-    image: 'image/orgreat.jpeg',
-    ingridient: 'Orange zest, mint, lime, and sparkling fruit flavor.',
-    name: 'ORGREAT MOJITO',
-    price: 450,
-    id: 2
-  }]
-};
+let foods = {};
 
 /**
  * Centered Toast Notification System
@@ -96,7 +30,7 @@ let foods = {
  */
 function showToast(message, type = 'success', duration = 3000) {
   let toastContainer = document.getElementById('toast-container');
-  
+
   if (!toastContainer) {
     toastContainer = document.createElement('div');
     toastContainer.id = 'toast-container';
@@ -148,7 +82,7 @@ async function loadMenuFromServer() {
       throw new Error((data && data.message) || 'Failed to fetch menu');
     }
 
-    
+
     if (data && data.menu && typeof data.menu === 'object') {
   foods = data.menu;
 
@@ -170,8 +104,19 @@ async function loadMenuFromServer() {
 
 
   } catch (err) {
-    console.warn('Could not load menu from server, using local menu.', err);
+  console.error('Could not load menu from server:', err);
+
+  foods = {};
+
+  const cafeName = document.getElementById('cafeName');
+
+  if (cafeName) {
+    cafeName.textContent = err.message;
   }
+
+  renderItems();
+  renderCategoryButtons();
+}
 }
 
 
@@ -290,7 +235,7 @@ function renderItems() {
         <div class="info2">
           <p><strong>${food.price} ETB</strong></p>
           ${
-            isAvailable 
+            isAvailable
               ? `<button type="button" class="addbutton" data-name="${food.name}">+add</button>`
               : `<button type="button" class="addbutton" disabled style="background:#ccc;cursor:not-allowed;">Unavailable</button>`
           }
@@ -566,7 +511,7 @@ async function adminLogin() {
     localStorage.setItem('adminRestaurantId', data.restaurant_id || '');
     localStorage.setItem('adminRestaurantSlug', data.restaurant_slug || '');
     closeAdminLogin();
-    
+
 
     if (data.role === 'super_admin') {
       openOwnerDashboard();
@@ -618,7 +563,7 @@ function refreshExistingItemsSelect() {
     opt.textContent = `${it.name} — ${it.price} ${it.isAvailable === false ? '(Unavailable)' : ''}`;
     itemSel.appendChild(opt);
   });
-  
+
   if (prevItem !== undefined && prevItem !== null && prevItem !== '' && Array.from(itemSel.options).some(o => o.value === prevItem)) {
     itemSel.value = prevItem;
   }
@@ -641,9 +586,9 @@ function populateSelectedItemFields() {
   document.getElementById('newItemName').value = it.name || '';
   document.getElementById('newItemPrice').value = it.price || '';
   document.getElementById('newItemIngredient').value = it.ingridient || '';
-  
+
   document.getElementById('newItemAvailable').checked = it.isAvailable !== false;
-  
+
   const imgInput = document.getElementById('newItemImage');
   if (imgInput && imgInput.type === 'file') {
     imgInput.value = '';
@@ -654,14 +599,14 @@ function addCategoryFromUI() {
   const nameEl = document.getElementById('newCategoryName');
   const raw = nameEl && nameEl.value;
   const name = raw ? raw.trim() : '';
-  if (!name) { 
-    showToast('Please provide a category name.', 'error'); 
-    return; 
+  if (!name) {
+    showToast('Please provide a category name.', 'error');
+    return;
   }
   const exists = Object.keys(foods).some(k => k.toLowerCase() === name.toLowerCase());
-  if (exists) { 
-    showToast('Category already exists.', 'error'); 
-    return; 
+  if (exists) {
+    showToast('Category already exists.', 'error');
+    return;
   }
   foods[name] = [];
   updateAdminCategoryOptions();
@@ -677,15 +622,15 @@ function addItemFromUI() {
   const category = (document.getElementById('newItemCategory')||{}).value;
   const isAvailable = document.getElementById('newItemAvailable').checked;
 
-  if (!name || !priceRaw || !category) { 
-    showToast('Please fill in name, price, and category.', 'error'); 
-    return; 
+  if (!name || !priceRaw || !category) {
+    showToast('Please fill in name, price, and category.', 'error');
+    return;
   }
 
   const price = Number(priceRaw);
-  if (Number.isNaN(price)) { 
-    showToast('Price must be a valid number.', 'error'); 
-    return; 
+  if (Number.isNaN(price)) {
+    showToast('Price must be a valid number.', 'error');
+    return;
   }
 
   const file = imageInput && imageInput.files ? imageInput.files[0] : null;
@@ -695,13 +640,13 @@ function addItemFromUI() {
   const saveItem = (imageData) => {
     const id = Date.now();
     if (!foods[category]) foods[category] = [];
-    foods[category].push({ 
-      name: name.trim(), 
-      price, 
-      image: imageData, 
-      ingridient: ingredient.trim() || '', 
+    foods[category].push({
+      name: name.trim(),
+      price,
+      image: imageData,
+      ingridient: ingredient.trim() || '',
       isAvailable,
-      id 
+      id
     });
 
     renderItems();
@@ -724,18 +669,18 @@ function updateSelectedItem() {
   const cat = (document.getElementById('newItemCategory')||{}).value;
   const itemSel = document.getElementById('existingItemSelect');
   const itemIdx = itemSel ? itemSel.value : '';
-  
-  if (!cat || itemIdx === '') { 
-    showToast('Please select a category and an item to update.', 'error'); 
-    return; 
+
+  if (!cat || itemIdx === '') {
+    showToast('Please select a category and an item to update.', 'error');
+    return;
   }
   const list = foods[cat] || [];
   const idx = Number(itemIdx);
-  if (!Number.isInteger(idx) || !list[idx]) { 
-    showToast('Invalid item selected.', 'error'); 
-    return; 
+  if (!Number.isInteger(idx) || !list[idx]) {
+    showToast('Invalid item selected.', 'error');
+    return;
   }
-  
+
   const it = list[idx];
   const name = (document.getElementById('newItemName')||{}).value;
   const priceRaw = (document.getElementById('newItemPrice')||{}).value;
@@ -750,7 +695,7 @@ function updateSelectedItem() {
       const p = Number(priceRaw);
       if (!Number.isNaN(p)) it.price = p;
     }
-    
+
     if (imageData !== null) {
       it.image = imageData;
     }
@@ -763,7 +708,7 @@ function updateSelectedItem() {
     updateAdminCategoryOptions();
     renderCategoryButtons();
     refreshExistingItemsSelect();
-    
+
     if (itemSel && Array.from(itemSel.options).some(o => o.value === String(idx))) {
       itemSel.value = String(idx);
       populateSelectedItemFields();
@@ -784,20 +729,20 @@ function updateSelectedItem() {
 function deleteSelectedItem() {
   const cat = (document.getElementById('newItemCategory')||{}).value;
   const itemIdx = (document.getElementById('existingItemSelect')||{}).value;
-  
-  if (!cat || itemIdx === '') { 
-    showToast('Please select a category and an item to delete.', 'error'); 
-    return; 
+
+  if (!cat || itemIdx === '') {
+    showToast('Please select a category and an item to delete.', 'error');
+    return;
   }
-  
+
   const list = foods[cat] || [];
   const idx = Number(itemIdx);
-  
-  if (!Number.isInteger(idx) || !list[idx]) { 
-    showToast('Invalid item selected.', 'error'); 
-    return; 
+
+  if (!Number.isInteger(idx) || !list[idx]) {
+    showToast('Invalid item selected.', 'error');
+    return;
   }
-  
+
   const deletedName = list[idx].name;
   list.splice(idx, 1);
   renderItems();
@@ -876,6 +821,7 @@ function closeOwnerDashboard() {
   }
 }
 
+
 async function loadOwnerCafes() {
   const container = document.getElementById('ownerCafeList');
 
@@ -906,9 +852,9 @@ async function loadOwnerCafes() {
     container.innerHTML = data.restaurants.map(cafe => `
       <div style="
         border:1px solid #ddd;
-        padding:10px;
-        margin:8px 0;
-        border-radius:6px;
+        padding:15px;
+        margin:10px 0;
+        border-radius:8px;
       ">
         <strong>${cafe.name}</strong><br>
         Slug: ${cafe.slug}<br>
@@ -916,6 +862,23 @@ async function loadOwnerCafes() {
 
         <button onclick="manageOwnerCafeMenu('${cafe.slug}')">
           Manage Menu
+        </button>
+
+        <button onclick="editOwnerCafe(${cafe.id}, '${cafe.name}', '${cafe.slug}')">
+          Edit Restaurant
+        </button>
+
+        <button onclick="editOwnerCafeAdmin(${cafe.id}, '${cafe.name}')">
+          Admin Account
+        </button>
+        <button onclick="toggleOwnerCafeStatus(${cafe.id}, '${cafe.name}', '${cafe.status}')">
+          ${cafe.status === 'active' ? 'Disable' : 'Enable'}
+        </button>
+        <button
+          onclick="deleteOwnerCafe(${cafe.id}, '${cafe.name}')"
+          style="margin-left:8px; color:#a00;"
+        >
+          Delete
         </button>
       </div>
     `).join('');
@@ -931,17 +894,233 @@ async function loadOwnerCafes() {
   }
 }
 
+
+
+async function editOwnerCafeAdmin(id, cafeName) {
+  const email = prompt(
+    `Admin email for ${cafeName}:`
+  );
+
+  if (email === null) return;
+
+  const password = prompt(
+    `New admin password for ${cafeName}:\n\nLeave empty to keep the current password.`
+  );
+
+  if (password === null) return;
+
+  if (!email.trim() && !password.trim()) {
+    alert('Enter an email or a new password.');
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('adminToken');
+
+    const response = await fetch(
+      API_BASE + `/api/owner/restaurants/${id}/admin`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || 'Failed to update admin account.'
+      );
+    }
+
+    alert('Admin account updated successfully.');
+
+    await loadOwnerCafes();
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+}
+
+
+
+
+async function editOwnerCafe(id, currentName, currentSlug) {
+  const name = prompt('Restaurant name:', currentName);
+
+  if (name === null) return;
+
+  const slug = prompt('Restaurant slug:', currentSlug);
+
+  if (slug === null) return;
+
+  if (!name.trim() || !slug.trim()) {
+    alert('Restaurant name and slug are required.');
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('adminToken');
+
+    const response = await fetch(
+      API_BASE + `/api/owner/restaurants/${id}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          slug: slug.trim().toLowerCase()
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to update restaurant.');
+    }
+
+    alert('Restaurant updated successfully.');
+
+    await loadOwnerCafes();
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+}
+
+
+async function toggleOwnerCafeStatus(id, cafeName, currentStatus) {
+  const newStatus = currentStatus === 'active'
+    ? 'disabled'
+    : 'active';
+
+  const action = newStatus === 'disabled'
+    ? 'disable'
+    : 'enable';
+
+  const confirmed = confirm(
+    `Are you sure you want to ${action} ${cafeName}?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const token = localStorage.getItem('adminToken');
+
+    const response = await fetch(
+      API_BASE + `/api/owner/restaurants/${id}/status`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          status: newStatus
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || 'Failed to change restaurant status.'
+      );
+    }
+
+    alert(data.message);
+
+    await loadOwnerCafes();
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+}
+
+
+
+async function deleteOwnerCafe(id, cafeName) {
+  const confirmed = confirm(
+    `WARNING!\n\nAre you sure you want to permanently delete "${cafeName}"?\n\nThis will delete:\n- The restaurant\n- Its menu\n- Its café admin account\n\nThis action cannot be undone.`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  const doubleConfirmed = confirm(
+    `Final confirmation:\n\nPermanently delete "${cafeName}"?`
+  );
+
+  if (!doubleConfirmed) {
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('adminToken');
+
+    const response = await fetch(
+      API_BASE + `/api/owner/restaurants/${id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || 'Failed to delete restaurant.'
+      );
+    }
+
+    alert(data.message || 'Restaurant deleted successfully.');
+
+    await loadOwnerCafes();
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+}
+
+
+
+
 async function createOwnerCafe() {
   const nameInput = document.getElementById('newCafeName');
   const slugInput = document.getElementById('newCafeSlug');
+  const emailInput = document.getElementById('newCafeAdminEmail');
+  const passwordInput = document.getElementById('newCafeAdminPassword');
   const message = document.getElementById('ownerDashboardMessage');
 
   const name = nameInput.value.trim();
   const slug = slugInput.value.trim().toLowerCase();
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
 
-  if (!name || !slug) {
+  if (!name || !slug || !email || !password) {
     message.style.color = '#a00';
-    message.textContent = 'Please enter both café name and slug.';
+    message.textContent =
+      'Please enter café name, slug, admin email, and admin password.';
     return;
   }
 
@@ -955,8 +1134,10 @@ async function createOwnerCafe() {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        name: name,
-        slug: slug
+        name,
+        slug,
+        adminEmail: email,
+        adminPassword: password
       })
     });
 
@@ -967,10 +1148,13 @@ async function createOwnerCafe() {
     }
 
     message.style.color = 'green';
-    message.textContent = `Café "${data.restaurant.name}" created successfully.`;
+    message.textContent =
+      `Café "${data.restaurant.name}" created successfully. Admin account created.`;
 
     nameInput.value = '';
     slugInput.value = '';
+    emailInput.value = '';
+    passwordInput.value = '';
 
     await loadOwnerCafes();
 
@@ -981,6 +1165,8 @@ async function createOwnerCafe() {
     message.textContent = error.message;
   }
 }
+
+
 
 
 function manageOwnerCafeMenu(slug) {
