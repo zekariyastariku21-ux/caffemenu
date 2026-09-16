@@ -6,6 +6,51 @@
   <link rel="stylesheet" href="stylesheets/save.css">
 </head>
 <body>
+
+  <!-- PROFESSIONAL SUPER ADMIN NOTIFICATION -->
+<div id="ownerTopNotification" class="owner-top-notification">
+  <div class="owner-notification-content">
+    <div id="ownerNotificationIcon" class="owner-notification-icon">✓</div>
+
+    <div class="owner-notification-text">
+      <div id="ownerNotificationTitle" class="owner-notification-title">
+        Success
+      </div>
+
+      <div id="ownerNotificationMessage" class="owner-notification-message">
+      </div>
+    </div>
+
+    <button
+      class="owner-notification-close"
+      onclick="closeOwnerNotification()"
+    >
+      ✕
+    </button>
+  </div>
+</div>
+
+
+<!-- PROFESSIONAL SUPER ADMIN ACTION PANEL -->
+<div id="ownerActionPanel" class="owner-action-panel">
+
+  <div class="owner-action-header">
+    <h3 id="ownerActionTitle">Restaurant Action</h3>
+
+    <button
+      class="owner-action-close"
+      onclick="closeOwnerActionPanel()"
+    >
+      ✕
+    </button>
+  </div>
+
+  <div id="ownerActionContent"></div>
+
+</div>
+
+
+
   <div id="imageViewer" class="image-viewer">
     <button class="close-image" onclick="closeImage()">✕</button>
     <img id="bigImage">
@@ -35,48 +80,92 @@
       style="position:absolute;right:8px;top:8px;"
     >✕</button>
 
-    <h3>Owner Dashboard</h3>
+    <div class="dashboard-header">
 
-    <p>
-      Manage all cafés from this dashboard.
-    </p>
+      <button
+       id="ownerRefreshBtn"
+        onclick="refreshOwnerDashboard()"
+        title="Refresh"
+      >
+        ↻ Refresh
+      </button>
 
-    <div id="ownerCafeList">
-      Loading cafés...
+      <div>
+        <h3>Super Admin Dashboard</h3>
+        <p>Manage all restaurants and café administrators.</p>
+      </div>
+
+      <button
+        class="create-cafe-dashboard-btn"
+        onclick="openCreateCafePanel()"
+      >
+        <span>＋</span>
+        Create Café
+      </button>
+
     </div>
 
+<!-- RESTAURANT STATISTICS -->
 
-    <div style="margin-top:16px;">
-      <h4>Create New Café</h4>
 
-      <input
-        id="newCafeName"
-        type="text"
-        placeholder="Café name"
-        style="width:100%;margin-bottom:8px;"
-      >
+<div class="restaurant-stats">
 
-      <input
-        id="newCafeSlug"
-        type="text"
-        placeholder="cafe-slug"
-        style="width:100%;margin-bottom:8px;"
-      >
+  <button
+    type="button"
+    class="stat-card stat-filter active-filter"
+    onclick="filterOwnerRestaurants('all')"
+  >
+    <div class="stat-icon">🏪</div>
 
-      <input
-        id="newCafeAdminEmail"
-        type="email"
-        placeholder="Admin Email"
-      >
-
-      <input
-        id="newCafeAdminPassword"
-        type="password"
-        placeholder="Admin Password"
-      >
-
-      <button onclick="createOwnerCafe()">Create Café</button>
+    <div>
+      <div class="stat-label">Total Restaurants</div>
+      <div id="totalRestaurants" class="stat-number">0</div>
     </div>
+  </button>
+
+
+  <button
+    type="button"
+    class="stat-card stat-filter active-stat"
+    onclick="filterOwnerRestaurants('active')"
+  >
+    <div class="stat-icon">✓</div>
+
+    <div>
+      <div class="stat-label">Active Restaurants</div>
+      <div id="activeRestaurants" class="stat-number">0</div>
+    </div>
+  </button>
+
+
+  <button
+    type="button"
+    class="stat-card stat-filter disabled-stat"
+    onclick="filterOwnerRestaurants('disabled')"
+  >
+    <div class="stat-icon">⏸</div>
+
+    <div>
+      <div class="stat-label">Disabled Restaurants</div>
+      <div id="disabledRestaurants" class="stat-number">0</div>
+    </div>
+  </button>
+
+</div>
+
+
+
+
+<div class="dashboard-section-title">
+  <h4>Restaurant Management</h4>
+  <span>Manage your restaurants below</span>
+</div>
+
+<div id="ownerCafeList" class="owner-cafe-list">
+  Loading cafés...
+</div>
+
+
 
     <div style="margin-top:12px;">
       <button onclick="loadOwnerCafes()">Refresh</button>
@@ -99,6 +188,11 @@
       <button class="close-image" onclick="closeAdminPanel()" style="position:absolute;right:8px;top:8px;">✕</button>
       <h3>Admin Panel</h3>
       <p>Use the controls below to add, update or remove categories and items. Click Save to persist changes.</p>
+
+      <button id="adminRefreshBtn" onclick="refreshAdminMenu()" class="admin-refresh-btn">
+        ↻ Refresh
+      </button>
+
       <div id="adminEditorContainer">
         <div style="margin-top:8px;border-top:1px solid #e6e6e6;padding-top:10px;">
         <h4 style="margin:6px 0 8px 0;">Quick Add / Update</h4>

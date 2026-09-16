@@ -68,13 +68,24 @@
 .auth-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(20, 15, 10, 0.72);
+
   display: none;
   align-items: center;
   justify-content: center;
+
   z-index: 3000;
-  padding: 20px;
+
+  padding: 25px 15px;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  box-sizing: border-box;
 }
+
+
+
+
 .auth-overlay.show {
   display: flex;
 }
@@ -596,4 +607,903 @@
 
 @keyframes toastSpin {
   to { transform: rotate(360deg); }
+}
+
+
+/* =========================================================
+   PROFESSIONAL ADMIN / SUPER ADMIN DASHBOARDS
+   ========================================================= */
+
+/* Make the entire modal scrollable */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 15, 10, 0.72);
+
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+
+  z-index: 3000;
+
+  padding: 25px 15px;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  box-sizing: border-box;
+}
+
+.auth-overlay.show {
+  display: flex;
+}
+
+/* ---------------------------------------------------------
+   ADMIN PANELS
+   --------------------------------------------------------- */
+
+.admin-panel {
+  position: relative;
+
+  width: min(100%, 950px);
+
+  margin: 20px auto;
+  padding: 28px;
+
+  background: #fffdf9;
+  border-radius: 20px;
+
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.25);
+
+  border: 1px solid #eadbc8;
+
+  box-sizing: border-box;
+
+  /* Important for scrolling */
+  max-height: none;
+}
+
+/* Make the panel itself scrollable on smaller screens */
+#ownerDashboardModal .admin-panel,
+#adminPanelModal .admin-panel {
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar */
+#ownerDashboardModal .admin-panel::-webkit-scrollbar,
+#adminPanelModal .admin-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+#ownerDashboardModal .admin-panel::-webkit-scrollbar-track,
+#adminPanelModal .admin-panel::-webkit-scrollbar-track {
+  background: #f4eee6;
+  border-radius: 10px;
+}
+
+#ownerDashboardModal .admin-panel::-webkit-scrollbar-thumb,
+#adminPanelModal .admin-panel::-webkit-scrollbar-thumb {
+  background: #b8895b;
+  border-radius: 10px;
+}
+
+#ownerDashboardModal .admin-panel::-webkit-scrollbar-thumb:hover,
+#adminPanelModal .admin-panel::-webkit-scrollbar-thumb:hover {
+  background: #743a01;
+}
+
+/* ---------------------------------------------------------
+   DASHBOARD HEADER
+   --------------------------------------------------------- */
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+
+  border-bottom: 1px solid #eadbc8;
+}
+
+.dashboard-header h3 {
+  margin: 0;
+  color: #3b2414;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.dashboard-header p {
+  margin: 6px 0 0;
+  color: #806b58;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ---------------------------------------------------------
+   RESTAURANT STATISTICS
+   --------------------------------------------------------- */
+
+.restaurant-stats {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 16px;
+
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  min-height: 105px;
+
+  padding: 18px;
+
+  background: linear-gradient(
+    135deg,
+    #fffaf3,
+    #f6eadb
+  );
+
+  border: 1px solid #ead7c0;
+  border-radius: 16px;
+
+  box-shadow:
+    0 6px 18px rgba(80, 45, 15, 0.08);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 10px 25px rgba(80, 45, 15, 0.13);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 14px;
+
+  background: #743a01;
+  color: white;
+
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.stat-label {
+  color: #806b58;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  margin-bottom: 5px;
+}
+
+.stat-number {
+  color: #3b2414;
+
+  font-size: 30px;
+  font-weight: 800;
+
+  line-height: 1;
+}
+
+/* Active restaurant */
+.active-stat .stat-icon {
+  background: #287a3e;
+}
+
+/* Disabled restaurant */
+.disabled-stat .stat-icon {
+  background: #9b3d32;
+}
+
+/* ---------------------------------------------------------
+   RESTAURANT MANAGEMENT TITLE
+   --------------------------------------------------------- */
+
+.dashboard-section-title {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  margin-bottom: 14px;
+
+  border-bottom: 1px solid #eadbc8;
+  padding-bottom: 10px;
+}
+
+.dashboard-section-title h4 {
+  margin: 0;
+
+  color: #3b2414;
+
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.dashboard-section-title span {
+  color: #8c7967;
+
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------
+   RESTAURANT CARDS
+   --------------------------------------------------------- */
+
+.owner-cafe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  margin-bottom: 24px;
+}
+
+.owner-cafe-list > div {
+  position: relative;
+
+  background: #ffffff;
+
+  border: 1px solid #eadbc8 !important;
+  border-radius: 14px !important;
+
+  padding: 18px !important;
+  margin: 0 !important;
+
+  box-shadow:
+    0 4px 12px rgba(80, 45, 15, 0.06);
+
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.owner-cafe-list > div:hover {
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 8px 20px rgba(80, 45, 15, 0.10);
+}
+
+/* Restaurant name */
+.owner-cafe-list strong {
+  display: inline-block;
+
+  color: #3b2414;
+
+  font-size: 18px;
+
+  margin-bottom: 5px;
+}
+
+/* Buttons inside restaurant cards */
+.owner-cafe-list button {
+  width: auto !important;
+
+  margin-top: 10px !important;
+  margin-right: 6px;
+
+  padding: 8px 13px !important;
+
+  border-radius: 8px !important;
+
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------
+   CREATE RESTAURANT SECTION
+   --------------------------------------------------------- */
+
+#ownerDashboardModal .admin-panel > div[style*="margin-top:16px"] {
+  margin-top: 24px !important;
+
+  padding: 20px;
+
+  background: #faf3e7;
+
+  border: 1px solid #eadbc8;
+  border-radius: 14px;
+}
+
+#ownerDashboardModal .admin-panel h4 {
+  color: #3b2414;
+  font-size: 18px;
+  margin-top: 0;
+}
+
+/* Form inputs */
+#ownerDashboardModal input,
+#adminPanelModal input,
+#adminPanelModal select,
+#adminPanelModal textarea {
+  box-sizing: border-box;
+
+  background: #fff;
+
+  border: 1px solid #d9c4aa;
+
+  color: #3b2414;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#ownerDashboardModal input:focus,
+#adminPanelModal input:focus,
+#adminPanelModal select:focus,
+#adminPanelModal textarea:focus {
+  border-color: #743a01;
+
+  box-shadow:
+    0 0 0 3px rgba(116, 58, 1, 0.10);
+}
+
+/* Dashboard buttons */
+#ownerDashboardModal button:not(.close-image),
+#adminPanelModal button:not(.close-image) {
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
+}
+
+#ownerDashboardModal button:not(.close-image):hover,
+#adminPanelModal button:not(.close-image):hover {
+  transform: translateY(-1px);
+}
+
+#ownerDashboardModal button:not(.close-image):active,
+#adminPanelModal button:not(.close-image):active {
+  transform: translateY(0);
+}
+
+/* ---------------------------------------------------------
+   ADMIN EDITOR
+   --------------------------------------------------------- */
+
+#adminPanelModal .admin-panel {
+  width: min(100%, 1000px);
+}
+
+#adminPanelModal #adminEditorContainer {
+  margin-top: 18px;
+}
+
+#adminPanelModal #adminEditorContainer > div {
+  background: #faf7f2;
+  border: 1px solid #eadbc8 !important;
+  border-radius: 14px;
+  padding: 16px !important;
+}
+
+/* ---------------------------------------------------------
+   CLOSE BUTTON
+   --------------------------------------------------------- */
+
+#ownerDashboardModal .close-image,
+#adminPanelModal .close-image {
+  position: sticky !important;
+
+  float: right;
+
+  top: 0;
+  right: 0;
+
+  width: 36px !important;
+  height: 36px !important;
+
+  z-index: 20;
+
+  background: #f4eee6;
+  color: #743a01;
+
+  font-size: 20px;
+}
+
+/* ---------------------------------------------------------
+   MOBILE
+   --------------------------------------------------------- */
+
+@media (max-width: 700px) {
+
+  .auth-overlay {
+    padding: 10px;
+  }
+
+  .admin-panel {
+    width: 100%;
+
+    margin: 10px auto;
+
+    padding: 18px;
+
+    border-radius: 16px;
+  }
+
+  #ownerDashboardModal .admin-panel,
+  #adminPanelModal .admin-panel {
+    max-height: calc(100vh - 20px);
+  }
+
+  .dashboard-header h3 {
+    font-size: 22px;
+  }
+
+  .restaurant-stats {
+    grid-template-columns: 1fr;
+
+    gap: 10px;
+  }
+
+  .stat-card {
+    min-height: 82px;
+
+    padding: 14px;
+  }
+
+  .stat-number {
+    font-size: 26px;
+  }
+
+  .dashboard-section-title {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .owner-cafe-list button {
+    width: 100% !important;
+
+    margin-right: 0;
+  }
+}
+
+/* ---------------------------------------------------------
+   VERY SMALL PHONES
+   --------------------------------------------------------- */
+
+@media (max-width: 420px) {
+
+  .admin-panel {
+    padding: 14px;
+  }
+
+  .dashboard-header h3 {
+    font-size: 20px;
+  }
+
+  .stat-card {
+    min-height: 75px;
+  }
+
+  .stat-icon {
+    width: 42px;
+    height: 42px;
+
+    font-size: 18px;
+  }
+
+  .stat-number {
+    font-size: 24px;
+  }
+}
+
+
+/* =========================================================
+   SUPER ADMIN - PROFESSIONAL NOTIFICATIONS / FORMS
+   ========================================================= */
+
+/* Top notification area */
+.owner-top-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  width: min(92%, 620px);
+  padding: 15px 20px;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 12px 35px rgba(0,0,0,0.20);
+  border: 1px solid #e6e6e6;
+  z-index: 10000;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s ease;
+}
+
+.owner-top-notification.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.owner-top-notification.success {
+  border-left: 5px solid #198754;
+}
+
+.owner-top-notification.error {
+  border-left: 5px solid #dc3545;
+}
+
+.owner-top-notification.warning {
+  border-left: 5px solid #d39e00;
+}
+
+.owner-top-notification.info {
+  border-left: 5px solid #743a01;
+}
+
+.owner-notification-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.owner-notification-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.owner-notification-text {
+  flex: 1;
+}
+
+.owner-notification-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 3px;
+}
+
+.owner-notification-message {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.owner-notification-close {
+  background: none !important;
+  color: #777 !important;
+  border: none !important;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 4px !important;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   TOP ACTION FORM
+   ========================================================= */
+
+.owner-action-panel {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-25px);
+  width: min(94%, 650px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.25);
+  border: 1px solid #e5e5e5;
+
+  padding: 24px;
+  z-index: 9999;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s ease;
+}
+
+.owner-action-panel.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.owner-action-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.owner-action-header h3 {
+  margin: 0;
+  color: #3b2108;
+  font-size: 20px;
+}
+
+.owner-action-close {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 5px 9px !important;
+  background: #f3f3f3 !important;
+  color: #555 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+}
+
+.owner-action-close:hover {
+  background: #e7e7e7 !important;
+}
+
+.owner-action-panel label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  margin: 12px 0 6px;
+  color: #444;
+}
+
+.owner-action-panel input,
+.owner-action-panel select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1px solid #d7d7d7;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+}
+
+.owner-action-panel input:focus,
+.owner-action-panel select:focus {
+  border-color: #743a01;
+  box-shadow: 0 0 0 3px rgba(116,58,1,0.10);
+}
+
+.owner-action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.owner-action-buttons button {
+  flex: 1;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 11px 16px !important;
+  border-radius: 10px !important;
+}
+
+.owner-primary-btn {
+  background: #743a01 !important;
+  color: white !important;
+  border: none !important;
+}
+
+.owner-secondary-btn {
+  background: #f1f1f1 !important;
+  color: #444 !important;
+  border: none !important;
+}
+
+.owner-danger-btn {
+  background: #b42318 !important;
+  color: white !important;
+  border: none !important;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .owner-top-notification {
+    top: 10px;
+    width: calc(100% - 20px);
+  }
+
+  .owner-action-panel {
+    top: 10px;
+    width: calc(100% - 20px);
+    padding: 18px;
+    max-height: calc(100vh - 20px);
+  }
+
+  .owner-action-buttons {
+    flex-direction: column;
+  }
+
+  .owner-action-buttons button {
+    width: 100% !important;
+  }
+}
+
+/* =========================================================
+   CLICKABLE RESTAURANT STAT FILTERS
+   ========================================================= */
+
+.stat-filter {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  border: 2px solid transparent;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.stat-filter:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+}
+
+.stat-filter:active {
+  transform: translateY(-1px);
+}
+
+.stat-filter.selected {
+  border-color: #743a01;
+  box-shadow:
+    0 0 0 3px rgba(116,58,1,0.12),
+    0 12px 28px rgba(0,0,0,0.12);
+}
+
+.owner-empty-state {
+  padding: 35px 20px;
+  text-align: center;
+  color: #777;
+  background: #fafafa;
+  border: 1px dashed #d8d8d8;
+  border-radius: 14px;
+  font-size: 15px;
+}
+
+
+/* Restaurant status */
+
+.owner-cafe-status {
+  display: inline-block;
+  margin-top: 7px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.owner-cafe-status.active {
+  background: #e8f7ee;
+  color: #147a3d;
+}
+
+.owner-cafe-status.disabled {
+  background: #fceaea;
+  color: #a61b1b;
+}
+
+
+
+/* =========================================================
+   CREATE CAFE DASHBOARD BUTTON
+   ========================================================= */
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content:center;
+  gap: 20px;
+}
+
+.create-cafe-dashboard-btn {
+  width: auto !important;
+  margin-left: 10px;
+  padding: 11px 18px !important;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  border: none !important;
+  border-radius: 10px !important;
+
+  background: #743a01 !important;
+  color: #fff !important;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 5px 14px rgba(116,58,1,0.22);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.create-cafe-dashboard-btn span {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.create-cafe-dashboard-btn:hover {
+  background: #5d2e00 !important;
+
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 8px 20px rgba(116,58,1,0.28);
+}
+
+.create-cafe-dashboard-btn:active {
+  transform: translateY(0);
+}
+
+
+/* Mobile */
+@media (max-width: 600px) {
+
+  .dashboard-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .create-cafe-dashboard-btn {
+    width: 100% !important;
+  }
+}
+
+
+/* Small refresh buttons */
+.admin-refresh-btn,
+#ownerRefreshBtn {
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 6px 10px !important;
+  font-size: 13px !important;
+  line-height: 1.2;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.admin-refresh-btn:disabled,
+#ownerRefreshBtn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+
+/* Center Admin Login lower on the screen */
+#adminLoginModal .auth-card {
+  margin-top: 150px;
 }

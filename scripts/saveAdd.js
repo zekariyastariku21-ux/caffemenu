@@ -197,54 +197,86 @@ function loadFromLocalStorage() {
   }
 }
 
+
 function saveToLocalStorage() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
+  const smallCart = cart.map(item => ({
+    id: item.id,
+    name: item.name,
+    price: item.price,
+    ingridient: item.ingridient || '',
+    quantity: item.quantity
+  }));
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(smallCart));
 }
+
+
 
 function renderItems() {
   const Container = document.querySelector('.container');
   if (!Container) return;
 
-  Container.innerHTML = '';
-
-  const items = (currentCategory === 'all')
+  const items = currentCategory === 'all'
     ? Object.values(foods).flat()
     : (foods[currentCategory] || []);
 
+  const search = searchTerm.toLowerCase();
+
   const filteredItems = items.filter(food => {
     const text = `${food.name} ${food.ingridient || ''}`.toLowerCase();
-    return text.includes(searchTerm.toLowerCase());
+    return text.includes(search);
   });
 
   if (!filteredItems.length) {
-    Container.innerHTML = '<div class="empty-state">No items match your search.</div>';
+    Container.innerHTML =
+      '<div class="empty-state">No items match your search.</div>';
     return;
   }
 
-  filteredItems.forEach((food) => {
+  // Build everything first, then update the DOM only once
+  Container.innerHTML = filteredItems.map(food => {
     const isAvailable = food.isAvailable !== false;
 
-    Container.innerHTML += `
-    <div class="foodd ${!isAvailable ? 'unavailable' : ''}">
-      <div class="divimage">
-        <img class="image" src="${food.image}" alt="${food.image}" onclick="zoomImage(this.src)">
-      </div>
-      <div class="divinfo">
-        <p>${food.name}</p>
-        <p class="ingredient">${food.ingridient}</p>
-        <div class="info2">
-          <p><strong>${food.price} ETB</strong></p>
-          ${
-            isAvailable
-              ? `<button type="button" class="addbutton" data-name="${food.name}">+add</button>`
-              : `<button type="button" class="addbutton" disabled style="background:#ccc;cursor:not-allowed;">Unavailable</button>`
-          }
+    return `
+      <div class="foodd ${!isAvailable ? 'unavailable' : ''}">
+        <div class="divimage">
+          <img
+            class="image"
+            src="${food.image}"
+            alt="${food.name}"
+            loading="lazy"
+            onclick="zoomImage(this.src)"
+          >
+        </div>
+
+        <div class="divinfo">
+          <p>${food.name}</p>
+          <p class="ingredient">${food.ingridient || ''}</p>
+
+          <div class="info2">
+            <p><strong>${food.price} ETB</strong></p>
+
+            ${
+              isAvailable
+                ? `<button
+                    type="button"
+                    class="addbutton"
+                    data-name="${food.name}"
+                  >+add</button>`
+                : `<button
+                    type="button"
+                    class="addbutton"
+                    disabled
+                    style="background:#ccc;cursor:not-allowed;"
+                  >Unavailable</button>`
+            }
+          </div>
         </div>
       </div>
-    </div>
     `;
-  });
+  }).join('');
 
+  // Attach click handlers
   Container.querySelectorAll('.addbutton:not([disabled])').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -253,6 +285,9 @@ function renderItems() {
     });
   });
 }
+
+
+
 
 function showCatagories(catagory) {
   currentCategory = catagory;
@@ -269,11 +304,9 @@ async function saveCart() {
   saveToLocalStorage();
 }
 
+
 function addToCart(event, button) {
   const name = button.dataset.name;
-  const containerEl = document.querySelector('.container');
-  const prevScroll = containerEl ? containerEl.scrollTop : 0;
-  const prevCategory = currentCategory;
 
   const food = Object.values(foods)
     .flat()
@@ -286,14 +319,34 @@ function addToCart(event, button) {
   if (matchingItem) {
     matchingItem.quantity += 1;
   } else {
-    cart.push({ ...food, quantity: 1 });
+    cart.push({
+      id: food.id,
+      name: food.name,
+      price: food.price,
+      ingridient: food.ingridient || '',
+      quantity: 1
+    });
   }
+
+  // Save cart
   saveCart();
+
+  // Update cart display only
   renderCart();
 
-  showCatagories(prevCategory);
-  if (containerEl) containerEl.scrollTop = prevScroll;
+  // Small visual feedback
+  const originalText = button.textContent;
+  button.textContent = '✓ Added';
+  button.disabled = true;
+
+  setTimeout(() => {
+    button.textContent = originalText;
+    button.disabled = false;
+  }, 250);
 }
+
+
+
 
 function renderCart() {
   const cartBody = document.getElementById('cart-body');
@@ -465,14 +518,26 @@ function setupSearch() {
   }
 }
 
+
+
 window.onload = async function() {
+
   setupSearch();
   setupPayment();
+
   await loadMenuFromServer();
+
   renderItems();
   renderCategoryButtons();
+
   loadCart();
+
+  // Restore admin login after refresh
+  await restoreAdminSession();
 };
+
+
+
 
 // Admin UI functions
 function openAdminLogin() {
@@ -486,6 +551,221 @@ function closeAdminLogin() {
 function closeAdminPanel() {
   document.getElementById('adminPanelModal').classList.remove('show');
 }
+
+function openCreateCafePanel() {
+
+  openOwnerActionPanel(
+    'Create New Café',
+    `
+      <div style="
+        margin-bottom:18px;
+        color:#666;
+        font-size:14px;
+        line-height:1.5;
+      ">
+        Create a new restaurant and its café administrator.
+        The restaurant will be active after creation.
+      </div>
+
+      <label>Restaurant Name</label>
+
+      <input
+        id="newCafeName"
+        type="text"
+        placeholder="Example: Zekariyas Coffee"
+        autocomplete="off"
+      >
+
+      <label>Restaurant Slug</label>
+
+      <input
+        id="newCafeSlug"
+        type="text"
+        placeholder="Example: zekariyas-coffee"
+        autocomplete="off"
+      >
+
+      <div style="
+        margin-top:5px;
+        font-size:12px;
+        color:#777;
+      ">
+        The slug is used in the restaurant's public URL.
+      </div>
+
+      <label>Admin Email</label>
+
+      <input
+        id="newCafeAdminEmail"
+        type="email"
+        placeholder="admin@example.com"
+        autocomplete="off"
+      >
+
+      <label>Admin Password</label>
+
+      <input
+        id="newCafeAdminPassword"
+        type="password"
+        placeholder="Create admin password"
+        autocomplete="new-password"
+      >
+
+      <div class="owner-action-buttons">
+
+        <button
+          class="owner-secondary-btn"
+          onclick="closeOwnerActionPanel()"
+        >
+          Cancel
+        </button>
+
+        <button
+          class="owner-primary-btn"
+          onclick="submitCreateOwnerCafe()"
+        >
+          Create Café
+        </button>
+
+      </div>
+    `
+  );
+}
+
+
+async function submitCreateOwnerCafe() {
+
+  const nameInput =
+    document.getElementById('newCafeName');
+
+  const slugInput =
+    document.getElementById('newCafeSlug');
+
+  const emailInput =
+    document.getElementById('newCafeAdminEmail');
+
+  const passwordInput =
+    document.getElementById('newCafeAdminPassword');
+
+  if (
+    !nameInput ||
+    !slugInput ||
+    !emailInput ||
+    !passwordInput
+  ) {
+    return;
+  }
+
+  const name = nameInput.value.trim();
+
+  const slug =
+    slugInput.value.trim().toLowerCase();
+
+  const adminEmail =
+    emailInput.value.trim().toLowerCase();
+
+  const adminPassword =
+    passwordInput.value.trim();
+
+
+  if (!name || !slug || !adminEmail || !adminPassword) {
+
+    showOwnerNotification(
+      'Please complete all café and administrator fields.',
+      'warning',
+      'Missing Information'
+    );
+
+    return;
+  }
+
+
+  try {
+
+    const token =
+      localStorage.getItem('adminToken');
+
+    const response = await fetch(
+      API_BASE + '/api/owner/restaurants',
+      {
+        method: 'POST',
+
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+
+        body: JSON.stringify({
+          name,
+          slug,
+          adminEmail,
+          adminPassword
+        })
+      }
+    );
+
+
+    const data = await response.json();
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        data.message ||
+        'Failed to create café.'
+      );
+
+    }
+
+
+    closeOwnerActionPanel();
+
+
+    showOwnerNotification(
+      `${name} has been created successfully.`,
+      'success',
+      'Café Created'
+    );
+
+
+    await loadOwnerCafes();
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    showOwnerNotification(
+      error.message,
+      'error',
+      'Creation Failed'
+    );
+
+  }
+}
+
+
+async function restoreAdminSession() {
+
+  const token = localStorage.getItem('adminToken');
+  const role = localStorage.getItem('adminRole');
+
+  // No saved login
+  if (!token || !role) {
+    return;
+  }
+
+  console.log('Admin session restored:', role);
+
+  // Keep the login/session information,
+  // but DO NOT automatically open the admin window.
+
+  isAdminLoggedIn = true;
+
+  return;
+}
+
+
 
 async function adminLogin() {
   const email = document.getElementById('adminEmail').value;
@@ -820,6 +1100,152 @@ function closeOwnerDashboard() {
     modal.style.display = 'none';
   }
 }
+let ownerRestaurantFilter = 'all';
+let ownerRestaurantsData = [];
+
+
+function filterOwnerRestaurants(filter) {
+
+  ownerRestaurantFilter = filter;
+
+  renderOwnerRestaurantList();
+
+  // Highlight selected filter
+  document
+    .querySelectorAll('.stat-filter')
+    .forEach(button => {
+      button.classList.remove('selected');
+    });
+
+  const buttons = document.querySelectorAll('.stat-filter');
+
+  if (filter === 'all' && buttons[0]) {
+    buttons[0].classList.add('selected');
+  }
+
+  if (filter === 'active' && buttons[1]) {
+    buttons[1].classList.add('selected');
+  }
+
+  if (filter === 'disabled' && buttons[2]) {
+    buttons[2].classList.add('selected');
+  }
+}
+
+
+function renderOwnerRestaurantList() {
+
+  const container =
+    document.getElementById('ownerCafeList');
+
+  if (!container) return;
+
+  let restaurants = ownerRestaurantsData;
+
+  if (ownerRestaurantFilter === 'active') {
+
+    restaurants = ownerRestaurantsData.filter(
+      cafe => cafe.status === 'active'
+    );
+
+  } else if (ownerRestaurantFilter === 'disabled') {
+
+    restaurants = ownerRestaurantsData.filter(
+      cafe => cafe.status === 'disabled'
+    );
+  }
+
+  if (restaurants.length === 0) {
+
+    const message =
+      ownerRestaurantFilter === 'active'
+        ? 'No active restaurants found.'
+        : ownerRestaurantFilter === 'disabled'
+          ? 'No disabled restaurants found.'
+          : 'No restaurants found.';
+
+    container.innerHTML = `
+      <div class="owner-empty-state">
+        ${message}
+      </div>
+    `;
+
+    return;
+  }
+
+  container.innerHTML = restaurants.map(cafe => `
+    <div class="owner-cafe-card">
+
+      <div class="owner-cafe-info">
+
+        <div class="owner-cafe-name">
+          ${cafe.name}
+        </div>
+
+        <div class="owner-cafe-details">
+          Slug: ${cafe.slug}
+        </div>
+
+        <div class="owner-cafe-status ${cafe.status}">
+          ${cafe.status}
+        </div>
+
+      </div>
+
+      <div class="owner-cafe-actions">
+
+        <button
+          onclick="manageOwnerCafeMenu('${cafe.slug}')"
+        >
+          Manage Menu
+        </button>
+
+        <button
+          onclick="editOwnerCafe(
+            ${cafe.id},
+            '${cafe.name}',
+            '${cafe.slug}'
+          )"
+        >
+          Edit Restaurant
+        </button>
+
+        <button
+          onclick="editOwnerCafeAdmin(
+            ${cafe.id},
+            '${cafe.name}'
+          )"
+        >
+          Admin Account
+        </button>
+
+        <button
+          onclick="toggleOwnerCafeStatus(
+            ${cafe.id},
+            '${cafe.name}',
+            '${cafe.status}'
+          )"
+        >
+          ${cafe.status === 'active'
+            ? 'Disable'
+            : 'Enable'}
+        </button>
+
+        <button
+          onclick="deleteOwnerCafe(
+            ${cafe.id},
+            '${cafe.name}'
+          )"
+          class="owner-delete-button"
+        >
+          Delete
+        </button>
+
+      </div>
+
+    </div>
+  `).join('');
+}
 
 
 async function loadOwnerCafes() {
@@ -832,102 +1258,216 @@ async function loadOwnerCafes() {
   try {
     const token = localStorage.getItem('adminToken');
 
-    const response = await fetch(API_BASE + '/api/owner/restaurants', {
-      headers: {
-        'Authorization': `Bearer ${token}`
+    const response = await fetch(
+      API_BASE + '/api/owner/restaurants',
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       }
-    });
+    );
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || 'Failed to load cafés.');
+      throw new Error(
+        data.message || 'Failed to load cafés.'
+      );
     }
 
-    if (!data.restaurants || data.restaurants.length === 0) {
-      container.innerHTML = '<p>No cafés found.</p>';
-      return;
+    // Store restaurants for filtering
+    ownerRestaurantsData = data.restaurants || [];
+
+    // ================================
+    // UPDATE RESTAURANT STATISTICS
+    // ================================
+
+    const restaurants = ownerRestaurantsData;
+
+    const totalRestaurants = restaurants.length;
+
+    const activeRestaurants = restaurants.filter(
+      cafe => cafe.status === 'active'
+    ).length;
+
+    const disabledRestaurants = restaurants.filter(
+      cafe => cafe.status === 'disabled'
+    ).length;
+
+    const totalEl =
+      document.getElementById('totalRestaurants');
+
+    const activeEl =
+      document.getElementById('activeRestaurants');
+
+    const disabledEl =
+      document.getElementById('disabledRestaurants');
+
+    if (totalEl) {
+      totalEl.textContent = totalRestaurants;
     }
 
-    container.innerHTML = data.restaurants.map(cafe => `
-      <div style="
-        border:1px solid #ddd;
-        padding:15px;
-        margin:10px 0;
-        border-radius:8px;
-      ">
-        <strong>${cafe.name}</strong><br>
-        Slug: ${cafe.slug}<br>
-        Status: ${cafe.status}<br><br>
+    if (activeEl) {
+      activeEl.textContent = activeRestaurants;
+    }
 
-        <button onclick="manageOwnerCafeMenu('${cafe.slug}')">
-          Manage Menu
-        </button>
+    if (disabledEl) {
+      disabledEl.textContent = disabledRestaurants;
+    }
 
-        <button onclick="editOwnerCafe(${cafe.id}, '${cafe.name}', '${cafe.slug}')">
-          Edit Restaurant
-        </button>
+    // ================================
+    // DISPLAY RESTAURANTS
+    // ================================
 
-        <button onclick="editOwnerCafeAdmin(${cafe.id}, '${cafe.name}')">
-          Admin Account
-        </button>
-        <button onclick="toggleOwnerCafeStatus(${cafe.id}, '${cafe.name}', '${cafe.status}')">
-          ${cafe.status === 'active' ? 'Disable' : 'Enable'}
-        </button>
-        <button
-          onclick="deleteOwnerCafe(${cafe.id}, '${cafe.name}')"
-          style="margin-left:8px; color:#a00;"
-        >
-          Delete
-        </button>
-      </div>
-    `).join('');
+    renderOwnerRestaurantList();
 
   } catch (error) {
+
     console.error(error);
 
     container.innerHTML = `
-      <p style="color:#a00;">
-        ${error.message}
-      </p>
+      <div class="owner-empty-state">
+        <div style="
+          font-size:18px;
+          margin-bottom:6px;
+        ">
+          ⚠
+        </div>
+
+        <strong>
+          Failed to load restaurants
+        </strong>
+
+        <div style="
+          margin-top:5px;
+          color:#777;
+        ">
+          ${error.message}
+        </div>
+      </div>
     `;
   }
 }
 
 
+async function refreshOwnerDashboard() {
+  const button = document.getElementById('ownerRefreshBtn');
 
-async function editOwnerCafeAdmin(id, cafeName) {
-  const email = prompt(
-    `Admin email for ${cafeName}:`
+  if (button) {
+    button.textContent = '↻ Refreshing...';
+    button.disabled = true;
+  }
+
+  try {
+    await loadOwnerCafes();
+
+    if (button) {
+      button.textContent = '↻ Refresh';
+      button.disabled = false;
+    }
+
+  } catch (error) {
+    console.error('Owner refresh error:', error);
+
+    if (button) {
+      button.textContent = '↻ Refresh';
+      button.disabled = false;
+    }
+  }
+}
+
+
+function editOwnerCafeAdmin(id, cafeName) {
+
+  openOwnerActionPanel(
+    'Admin Account',
+    `
+      <div style="margin-bottom:14px;color:#666;font-size:14px;">
+        Update the administrator account for
+        <strong>${cafeName}</strong>.
+      </div>
+
+      <label>Admin Email</label>
+
+      <input
+        id="ownerAdminEmail"
+        type="email"
+        placeholder="admin@example.com"
+      >
+
+      <label>New Password</label>
+
+      <input
+        id="ownerAdminPassword"
+        type="password"
+        placeholder="Enter new password"
+      >
+
+      <div class="owner-action-buttons">
+
+        <button
+          class="owner-secondary-btn"
+          onclick="closeOwnerActionPanel()"
+        >
+          Cancel
+        </button>
+
+        <button
+          class="owner-primary-btn"
+          onclick="saveOwnerCafeAdmin(${id})"
+        >
+          Update Account
+        </button>
+
+      </div>
+    `
   );
+}
 
-  if (email === null) return;
 
-  const password = prompt(
-    `New admin password for ${cafeName}:\n\nLeave empty to keep the current password.`
-  );
+async function saveOwnerCafeAdmin(id) {
 
-  if (password === null) return;
+  const emailInput =
+    document.getElementById('ownerAdminEmail');
 
-  if (!email.trim() && !password.trim()) {
-    alert('Enter an email or a new password.');
+  const passwordInput =
+    document.getElementById('ownerAdminPassword');
+
+  if (!emailInput || !passwordInput) {
+    return;
+  }
+
+  const email = emailInput.value.trim().toLowerCase();
+  const password = passwordInput.value.trim();
+
+  if (!email || !password) {
+
+    showOwnerNotification(
+      'Admin email and password are required.',
+      'warning',
+      'Missing Information'
+    );
+
     return;
   }
 
   try {
+
     const token = localStorage.getItem('adminToken');
 
     const response = await fetch(
       API_BASE + `/api/owner/restaurants/${id}/admin`,
       {
         method: 'PUT',
+
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
+
         body: JSON.stringify({
-          email: email.trim(),
-          password: password
+          email,
+          password
         })
       }
     );
@@ -940,96 +1480,120 @@ async function editOwnerCafeAdmin(id, cafeName) {
       );
     }
 
-    alert('Admin account updated successfully.');
+    closeOwnerActionPanel();
+
+    showOwnerNotification(
+      'Administrator account updated successfully.',
+      'success',
+      'Admin Account Updated'
+    );
 
     await loadOwnerCafes();
 
   } catch (error) {
+
     console.error(error);
-    alert(error.message);
+
+    showOwnerNotification(
+      error.message,
+      'error',
+      'Update Failed'
+    );
   }
 }
 
 
 
 
-async function editOwnerCafe(id, currentName, currentSlug) {
-  const name = prompt('Restaurant name:', currentName);
+function editOwnerCafe(id, currentName, currentSlug) {
 
-  if (name === null) return;
+  openOwnerActionPanel(
+    'Edit Restaurant',
+    `
+      <div style="margin-bottom:14px;color:#666;font-size:14px;">
+        Update the restaurant name and public URL slug.
+      </div>
 
-  const slug = prompt('Restaurant slug:', currentSlug);
+      <label>Restaurant Name</label>
 
-  if (slug === null) return;
+      <input
+        id="ownerEditName"
+        type="text"
+        value="${currentName}"
+        placeholder="Restaurant name"
+      >
 
-  if (!name.trim() || !slug.trim()) {
-    alert('Restaurant name and slug are required.');
+      <label>Restaurant Slug</label>
+
+      <input
+        id="ownerEditSlug"
+        type="text"
+        value="${currentSlug}"
+        placeholder="restaurant-slug"
+      >
+
+      <div class="owner-action-buttons">
+
+        <button
+          class="owner-secondary-btn"
+          onclick="closeOwnerActionPanel()"
+        >
+          Cancel
+        </button>
+
+        <button
+          class="owner-primary-btn"
+          onclick="saveOwnerCafeEdit(${id})"
+        >
+          Save Changes
+        </button>
+
+      </div>
+    `
+  );
+}
+
+
+async function saveOwnerCafeEdit(id) {
+
+  const nameInput = document.getElementById('ownerEditName');
+  const slugInput = document.getElementById('ownerEditSlug');
+
+  if (!nameInput || !slugInput) {
+    return;
+  }
+
+  const name = nameInput.value.trim();
+  const slug = slugInput.value.trim().toLowerCase();
+
+  if (!name || !slug) {
+
+    showOwnerNotification(
+      'Restaurant name and slug are required.',
+      'warning',
+      'Missing Information'
+    );
+
     return;
   }
 
   try {
+
     const token = localStorage.getItem('adminToken');
 
     const response = await fetch(
       API_BASE + `/api/owner/restaurants/${id}`,
       {
         method: 'PUT',
+
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
+
         body: JSON.stringify({
-          name: name.trim(),
-          slug: slug.trim().toLowerCase()
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to update restaurant.');
-    }
-
-    alert('Restaurant updated successfully.');
-
-    await loadOwnerCafes();
-
-  } catch (error) {
-    console.error(error);
-    alert(error.message);
-  }
-}
-
-
-async function toggleOwnerCafeStatus(id, cafeName, currentStatus) {
-  const newStatus = currentStatus === 'active'
-    ? 'disabled'
-    : 'active';
-
-  const action = newStatus === 'disabled'
-    ? 'disable'
-    : 'enable';
-
-  const confirmed = confirm(
-    `Are you sure you want to ${action} ${cafeName}?`
-  );
-
-  if (!confirmed) return;
-
-  try {
-    const token = localStorage.getItem('adminToken');
-
-    const response = await fetch(
-      API_BASE + `/api/owner/restaurants/${id}/status`,
-      {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          status: newStatus
+          name: name,
+          slug: slug
         })
       }
     );
@@ -1038,46 +1602,298 @@ async function toggleOwnerCafeStatus(id, cafeName, currentStatus) {
 
     if (!response.ok) {
       throw new Error(
-        data.message || 'Failed to change restaurant status.'
+        data.message || 'Failed to update restaurant.'
       );
     }
 
-    alert(data.message);
+    closeOwnerActionPanel();
+
+    showOwnerNotification(
+      'Restaurant information has been updated successfully.',
+      'success',
+      'Restaurant Updated'
+    );
 
     await loadOwnerCafes();
 
   } catch (error) {
+
     console.error(error);
-    alert(error.message);
+
+    showOwnerNotification(
+      error.message,
+      'error',
+      'Update Failed'
+    );
+  }
+}
+
+
+function toggleOwnerCafeStatus(
+  id,
+  cafeName,
+  currentStatus
+) {
+
+  const isActive = currentStatus === 'active';
+
+  const action = isActive
+    ? 'Disable Restaurant'
+    : 'Enable Restaurant';
+
+  const description = isActive
+    ? `
+      Disabling <strong>${cafeName}</strong> will temporarily
+      hide its public menu.
+    `
+    : `
+      Enabling <strong>${cafeName}</strong> will make its
+      public menu available again.
+    `;
+
+  const buttonText = isActive
+    ? 'Disable Restaurant'
+    : 'Enable Restaurant';
+
+  const buttonClass = isActive
+    ? 'owner-danger-btn'
+    : 'owner-primary-btn';
+
+  openOwnerActionPanel(
+    action,
+    `
+      <div style="
+        background:${isActive ? '#fff5f5' : '#f4fbf6'};
+        border:1px solid ${isActive ? '#f1caca' : '#c9e8d2'};
+        border-radius:12px;
+        padding:15px;
+        margin-bottom:16px;
+        line-height:1.5;
+      ">
+        ${description}
+      </div>
+
+      <div style="
+        font-size:14px;
+        color:#666;
+        margin-bottom:5px;
+      ">
+        Restaurant
+      </div>
+
+      <div style="
+        font-size:18px;
+        font-weight:700;
+        color:#3b2108;
+      ">
+        ${cafeName}
+      </div>
+
+      <div class="owner-action-buttons">
+
+        <button
+          class="owner-secondary-btn"
+          onclick="closeOwnerActionPanel()"
+        >
+          Cancel
+        </button>
+
+        <button
+          class="${buttonClass}"
+          onclick="saveOwnerCafeStatus(${id}, '${isActive ? 'disabled' : 'active'}')"
+        >
+          ${buttonText}
+        </button>
+
+      </div>
+    `
+  );
+}
+
+
+async function saveOwnerCafeStatus(id, status) {
+
+  try {
+
+    const token = localStorage.getItem('adminToken');
+
+    const response = await fetch(
+      API_BASE + `/api/owner/restaurants/${id}/status`,
+      {
+        method: 'PUT',
+
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+
+        body: JSON.stringify({
+          status
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || 'Failed to update restaurant status.'
+      );
+    }
+
+    closeOwnerActionPanel();
+
+    showOwnerNotification(
+      data.message ||
+        (status === 'active'
+          ? 'Restaurant enabled successfully.'
+          : 'Restaurant disabled successfully.'),
+      'success',
+      status === 'active'
+        ? 'Restaurant Enabled'
+        : 'Restaurant Disabled'
+    );
+
+    await loadOwnerCafes();
+
+  } catch (error) {
+
+    console.error(error);
+
+    showOwnerNotification(
+      error.message,
+      'error',
+      'Status Update Failed'
+    );
   }
 }
 
 
 
-async function deleteOwnerCafe(id, cafeName) {
-  const confirmed = confirm(
-    `WARNING!\n\nAre you sure you want to permanently delete "${cafeName}"?\n\nThis will delete:\n- The restaurant\n- Its menu\n- Its café admin account\n\nThis action cannot be undone.`
-  );
+function deleteOwnerCafe(id, cafeName) {
 
-  if (!confirmed) {
+  openOwnerActionPanel(
+    'Delete Restaurant',
+    `
+      <div style="
+        background:#fff5f5;
+        border:1px solid #f0caca;
+        border-radius:12px;
+        padding:18px;
+        margin-bottom:18px;
+      ">
+
+        <div style="
+          font-size:18px;
+          font-weight:700;
+          color:#a61b1b;
+          margin-bottom:8px;
+        ">
+          ⚠ Permanent Deletion
+        </div>
+
+        <div style="
+          color:#555;
+          line-height:1.6;
+        ">
+          You are about to permanently delete:
+        </div>
+
+        <div style="
+          font-size:19px;
+          font-weight:700;
+          margin:8px 0;
+          color:#3b2108;
+        ">
+          ${cafeName}
+        </div>
+
+        <div style="
+          color:#555;
+          line-height:1.6;
+        ">
+          This will delete:
+          <br>• Restaurant
+          <br>• Restaurant menu
+          <br>• Café admin account
+        </div>
+
+        <div style="
+          margin-top:12px;
+          font-weight:700;
+          color:#a61b1b;
+        ">
+          This action cannot be undone.
+        </div>
+
+      </div>
+
+      <label>
+        Type DELETE to confirm
+      </label>
+
+      <input
+        id="deleteRestaurantConfirmation"
+        type="text"
+        placeholder="Type DELETE"
+        autocomplete="off"
+      >
+
+      <div class="owner-action-buttons">
+
+        <button
+          class="owner-secondary-btn"
+          onclick="closeOwnerActionPanel()"
+        >
+          Cancel
+        </button>
+
+        <button
+          class="owner-danger-btn"
+          onclick="confirmDeleteOwnerCafe(${id})"
+        >
+          Permanently Delete
+        </button>
+
+      </div>
+    `
+  );
+}
+
+
+async function confirmDeleteOwnerCafe(id) {
+
+  const input =
+    document.getElementById(
+      'deleteRestaurantConfirmation'
+    );
+
+  if (!input) {
     return;
   }
 
-  const doubleConfirmed = confirm(
-    `Final confirmation:\n\nPermanently delete "${cafeName}"?`
-  );
+  if (input.value.trim().toUpperCase() !== 'DELETE') {
 
-  if (!doubleConfirmed) {
+    showOwnerNotification(
+      'Please type DELETE to confirm permanent deletion.',
+      'warning',
+      'Confirmation Required'
+    );
+
+    input.focus();
+
     return;
   }
 
   try {
+
     const token = localStorage.getItem('adminToken');
 
     const response = await fetch(
       API_BASE + `/api/owner/restaurants/${id}`,
       {
         method: 'DELETE',
+
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -1092,79 +1908,32 @@ async function deleteOwnerCafe(id, cafeName) {
       );
     }
 
-    alert(data.message || 'Restaurant deleted successfully.');
+    closeOwnerActionPanel();
+
+    showOwnerNotification(
+      data.message || 'Restaurant deleted successfully.',
+      'success',
+      'Restaurant Deleted'
+    );
 
     await loadOwnerCafes();
 
   } catch (error) {
+
     console.error(error);
-    alert(error.message);
+
+    showOwnerNotification(
+      error.message,
+      'error',
+      'Delete Failed'
+    );
   }
 }
 
 
 
 
-async function createOwnerCafe() {
-  const nameInput = document.getElementById('newCafeName');
-  const slugInput = document.getElementById('newCafeSlug');
-  const emailInput = document.getElementById('newCafeAdminEmail');
-  const passwordInput = document.getElementById('newCafeAdminPassword');
-  const message = document.getElementById('ownerDashboardMessage');
 
-  const name = nameInput.value.trim();
-  const slug = slugInput.value.trim().toLowerCase();
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-
-  if (!name || !slug || !email || !password) {
-    message.style.color = '#a00';
-    message.textContent =
-      'Please enter café name, slug, admin email, and admin password.';
-    return;
-  }
-
-  try {
-    const token = localStorage.getItem('adminToken');
-
-    const response = await fetch(API_BASE + '/api/owner/restaurants', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        name,
-        slug,
-        adminEmail: email,
-        adminPassword: password
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to create café.');
-    }
-
-    message.style.color = 'green';
-    message.textContent =
-      `Café "${data.restaurant.name}" created successfully. Admin account created.`;
-
-    nameInput.value = '';
-    slugInput.value = '';
-    emailInput.value = '';
-    passwordInput.value = '';
-
-    await loadOwnerCafes();
-
-  } catch (error) {
-    console.error(error);
-
-    message.style.color = '#a00';
-    message.textContent = error.message;
-  }
-}
 
 
 
@@ -1173,4 +1942,133 @@ function manageOwnerCafeMenu(slug) {
   localStorage.setItem('selectedRestaurantSlug', slug);
 
   window.location.href = '/save.html?restaurant=' + encodeURIComponent(slug);
+}
+
+
+/* =========================================================
+   SUPER ADMIN PROFESSIONAL NOTIFICATIONS
+   ========================================================= */
+
+let ownerNotificationTimer = null;
+
+
+function showOwnerNotification(
+  message,
+  type = 'success',
+  title = ''
+) {
+  const box = document.getElementById('ownerTopNotification');
+  const icon = document.getElementById('ownerNotificationIcon');
+  const titleEl = document.getElementById('ownerNotificationTitle');
+  const messageEl = document.getElementById('ownerNotificationMessage');
+
+  if (!box || !messageEl) return;
+
+  clearTimeout(ownerNotificationTimer);
+
+  box.className = 'owner-top-notification show ' + type;
+
+  const settings = {
+    success: {
+      icon: '✓',
+      title: title || 'Success'
+    },
+    error: {
+      icon: '✕',
+      title: title || 'Something went wrong'
+    },
+    warning: {
+      icon: '⚠',
+      title: title || 'Warning'
+    },
+    info: {
+      icon: 'ⓘ',
+      title: title || 'Information'
+    }
+  };
+
+  const setting = settings[type] || settings.info;
+
+  icon.textContent = setting.icon;
+  titleEl.textContent = setting.title;
+  messageEl.textContent = message;
+
+  ownerNotificationTimer = setTimeout(() => {
+    closeOwnerNotification();
+  }, 5000);
+}
+
+
+function closeOwnerNotification() {
+  const box = document.getElementById('ownerTopNotification');
+
+  if (!box) return;
+
+  box.classList.remove('show');
+}
+
+
+function openOwnerActionPanel(title, html) {
+  const panel = document.getElementById('ownerActionPanel');
+  const titleEl = document.getElementById('ownerActionTitle');
+  const content = document.getElementById('ownerActionContent');
+
+  if (!panel || !content) return;
+
+  titleEl.textContent = title;
+  content.innerHTML = html;
+
+  panel.classList.add('show');
+}
+
+
+function closeOwnerActionPanel() {
+  const panel = document.getElementById('ownerActionPanel');
+
+  if (!panel) return;
+
+  panel.classList.remove('show');
+
+  const content = document.getElementById('ownerActionContent');
+
+  if (content) {
+    content.innerHTML = '';
+  }
+}
+
+async function refreshAdminMenu() {
+  const button = document.getElementById('adminRefreshBtn');
+
+  if (button) {
+    button.textContent = '↻ Refreshing...';
+    button.disabled = true;
+  }
+
+  try {
+    await loadMenuFromServer();
+
+    // Menu finished loading, so immediately restore the button
+    if (button) {
+      button.textContent = '↻ Refresh';
+      button.disabled = false;
+    }
+
+    updateAdminCategoryOptions();
+    refreshExistingItemsSelect();
+
+    showToast('Menu refreshed', 'success');
+
+  } catch (error) {
+    console.error('Refresh error:', error);
+
+    if (button) {
+      button.textContent = '↻ Refresh';
+      button.disabled = false;
+    }
+
+    showToast(
+      'Refresh failed: ' + (error.message || error),
+      'error'
+    );
+  }
 }

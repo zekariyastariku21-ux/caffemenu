@@ -81,10 +81,21 @@ function requireRestaurantAdmin(req, res, next) {
 
 const app = express();
 
+
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 15000,
+  query_timeout: 30000
 });
+
+
+
+// Cache restaurant menus in server memory
+const menuCache = new Map();
+
+
 
 pool.query('SELECT NOW()')
   .then(() => console.log('PostgreSQL connected'))
@@ -255,6 +266,17 @@ app.get('/api/menu/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
 
+        // Return cached menu if available
+    if (menuCache.has(slug)) {
+  console.log(`[cache] HIT ${slug}`);
+  const cached = menuCache.get(slug);
+  return res.json(cached);
+}
+
+console.log(`[cache] MISS ${slug}`);
+
+    console.time('restaurant-query');
+
     const restaurantResult = await pool.query(
       `
       SELECT id, name, slug, status
@@ -263,6 +285,8 @@ app.get('/api/menu/:slug', async (req, res) => {
       `,
       [slug]
     );
+
+    console.timeEnd('restaurant-query');
 
     if (restaurantResult.rows.length === 0) {
       return res.status(404).json({
@@ -280,6 +304,8 @@ app.get('/api/menu/:slug', async (req, res) => {
       });
     }
 
+    console.time('menu-query');
+
     const menuResult = await pool.query(
       `
       SELECT menu
@@ -289,6 +315,8 @@ app.get('/api/menu/:slug', async (req, res) => {
       [restaurant.id]
     );
 
+    console.timeEnd('menu-query');
+
     if (menuResult.rows.length === 0) {
       return res.status(404).json({
         ok: false,
@@ -296,15 +324,22 @@ app.get('/api/menu/:slug', async (req, res) => {
       });
     }
 
-    res.json({
-      ok: true,
-      restaurant: {
-        id: restaurant.id,
-        name: restaurant.name,
-        slug: restaurant.slug
-      },
-      menu: menuResult.rows[0].menu
-    });
+    
+    const responseData = {
+  ok: true,
+  restaurant: {
+    id: restaurant.id,
+    name: restaurant.name,
+    slug: restaurant.slug
+  },
+  menu: menuResult.rows[0].menu
+};
+
+// Save menu in memory cache
+menuCache.set(slug, responseData);
+
+res.json(responseData);
+
 
   } catch (error) {
     console.error('Error loading restaurant menu:', error.message);
@@ -405,6 +440,9 @@ app.post('/api/admin/menu/:slug', requireRestaurantAdmin, async (req, res) => {
   [menu, restaurant.id]
 );
 
+// Clear cached menu so the next customer gets the updated menu
+menuCache.delete(slug);
+
 if (menuResult.rowCount === 0) {
   return res.status(404).json({
     ok: false,
@@ -434,6 +472,88 @@ if (menuResult.rowCount === 0) {
 
 
 
+app.get('/api/admin/session', async (req, res) => {
+
+  try {
+
+    const authHeader = req.headers.authorization || '';
+
+    if (!authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        ok: false,
+        message: 'Not logged in.'
+      });
+    }
+
+    const token = authHeader.substring(7);
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    const result = await pool.query(
+      `
+      SELECT
+        u.id,
+        u.email,
+        u.role,
+        u.restaurant_id,
+        r.name AS restaurant_name,
+        r.slug AS restaurant_slug,
+        r.status AS restaurant_status
+      FROM users u
+      LEFT JOIN restaurants r
+        ON r.id = u.restaurant_id
+      WHERE u.id = $1
+      `,
+      [decoded.user_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        ok: false,
+        message: 'Account not found.'
+      });
+    }
+
+    const user = result.rows[0];
+
+    if (
+      user.role === 'cafe_admin' &&
+      user.restaurant_status !== 'active'
+    ) {
+      return res.status(403).json({
+        ok: false,
+        message: 'This restaurant is currently disabled.'
+      });
+    }
+
+    res.json({
+      ok: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        restaurant_id: user.restaurant_id,
+        restaurant_name: user.restaurant_name,
+        restaurant_slug: user.restaurant_slug
+      }
+    });
+
+  } catch (error) {
+
+    console.error(
+      'Admin session check error:',
+      error.message
+    );
+
+    return res.status(401).json({
+      ok: false,
+      message: 'Session expired.'
+    });
+  }
+});
 
 
 
