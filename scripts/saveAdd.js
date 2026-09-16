@@ -10,17 +10,13 @@ const API_BASE = (location.port && location.port !== '3000') ? `${location.proto
 
 
 
-const urlRestaurant = new URLSearchParams(window.location.search).get('restaurant');
-
-// Support both:
-// /save.html?restaurant=etete-coffee
+// Get restaurant slug from the clean URL:
 // /etete-coffee
 const pathSlug = window.location.pathname
   .split('/')
   .filter(Boolean)[0];
 
 const CAFE_SLUG =
-  urlRestaurant ||
   (pathSlug && pathSlug !== 'save.html' ? pathSlug : null) ||
   localStorage.getItem('selectedRestaurantSlug') ||
   localStorage.getItem('adminRestaurantSlug') ||
@@ -1949,7 +1945,7 @@ async function confirmDeleteOwnerCafe(id) {
 function manageOwnerCafeMenu(slug) {
   localStorage.setItem('selectedRestaurantSlug', slug);
 
-  window.location.href = '/save.html?restaurant=' + encodeURIComponent(slug);
+  window.location.href = '/' + encodeURIComponent(slug);
 }
 
 
