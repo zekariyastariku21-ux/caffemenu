@@ -126,8 +126,23 @@ app.use((req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-  res.redirect('/save.html');
+  res.sendFile(path.join(__dirname, 'company.html'));
 });
+
+
+
+app.get('/:slug', (req, res, next) => {
+  const { slug } = req.params;
+
+  // Don't treat API routes as restaurant slugs
+  if (slug === 'api') {
+    return next();
+  }
+
+  res.sendFile(path.join(__dirname, 'save.html'));
+});
+
+
 
 const CART_FILE = './cart.json';
 const MENU_FILE = './menu.json';
