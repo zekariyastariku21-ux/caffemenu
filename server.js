@@ -104,6 +104,11 @@ pool.query('SELECT NOW()')
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Block direct access to the internal menu page
+app.get('/save.html', (req, res) => {
+  res.status(404).send('Not Found');
+});
+
 // Serve static files from root and image directories
 app.use(express.static(__dirname));
 app.use('/image', express.static(path.join(__dirname, 'image')));
