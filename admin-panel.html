@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+name="viewport"
+content="width=device-width, initial-scale=1.0"
+
+>
+
+<title>Restaurant Admin Panel</title>
+
+<link
+    rel="stylesheet"
+    href="stylesheets/save.css"
+>
+
+<style>
+
+    body {
+        margin: 0;
+        background: #f5efe6;
+        font-family: Arial, sans-serif;
+        color: #3b2a20;
+    }
+
+    #pageLoading {
+        position: fixed;
+        inset: 0;
+        background: #f5efe6;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+
+    .dashboard-page {
+        width: 95%;
+        max-width: 1200px;
+        margin: 25px auto;
+    }
+
+    .admin-panel-box {
+        background: #fff;
+        border-radius: 14px;
+        padding: 25px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+
+    .admin-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+    }
+
+    .admin-top h1 {
+        margin: 0;
+    }
+
+    .restaurant-name {
+        margin-top: 6px;
+        color: #777;
+    }
+
+    .logout-btn,
+    .refresh-btn,
+    .admin-btn {
+        border: none;
+        border-radius: 8px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .logout-btn {
+        background: #8f2f2f;
+        color: white;
+    }
+
+    .refresh-btn {
+        background: #4a2f22;
+        color: white;
+    }
+
+    .admin-btn {
+        background: #4a2f22;
+        color: white;
+        margin-right: 8px;
+        margin-top: 8px;
+    }
+
+    .danger-btn {
+        background: #a22;
+    }
+
+    .section {
+        border-top: 1px solid #eee;
+        padding-top: 20px;
+        margin-top: 20px;
+    }
+
+    .section h3 {
+        margin-top: 0;
+    }
+
+    .form-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    input,
+    select {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+    }
+
+    select:disabled {
+        background: #f2f2f2;
+        color: #999;
+        cursor: not-allowed;
+    }
+
+    .item-selection-box {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .selection-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .selection-field label {
+        font-weight: bold;
+        font-size: 14px;
+    }
+
+    .selection-field select {
+        width: 100%;
+        box-sizing: border-box;
+        min-height: 40px;
+    }
+
+    .edit-fields {
+        margin-top: 15px;
+    }
+
+    .menu-list {
+        margin-top: 20px;
+    }
+
+    .menu-category {
+        margin-bottom: 25px;
+    }
+
+    .menu-category h4 {
+        margin-bottom: 10px;
+        text-transform: capitalize;
+    }
+
+    .menu-item {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+
+    #message {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 7px;
+        display: none;
+    }
+
+    .success {
+        display: block !important;
+        background: #e5f4e5;
+        color: #236b23;
+    }
+
+    .error {
+        display: block !important;
+        background: #f8e0e0;
+        color: #9a2222;
+    }
+
+    @media (max-width: 700px) {
+
+        .item-selection-box {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-page {
+            width: 92%;
+        }
+
+        .admin-panel-box {
+            padding: 18px;
+        }
+
+        .form-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .form-row input,
+        .form-row select {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .admin-btn {
+            width: 100%;
+            margin-right: 0;
+        }
+
+    }
+
+</style>
+
+</head>
+
+<body>
+
+<div id="pageLoading">
+    Checking login...
+</div>
+
+<div class="dashboard-page">
+
+<div class="admin-panel-box">
+
+
+<div class="admin-top">
+
+    <div>
+
+        <h1>
+            Restaurant Admin Panel
+        </h1>
+
+        <div
+            id="restaurantName"
+            class="restaurant-name"
+        >
+            Checking restaurant...
+        </div>
+
+    </div>
+
+    <div>
+
+        <button
+            id="adminRefreshBtn"
+            class="refresh-btn"
+            onclick="refreshAdminMenu()"
+        >
+            ↻ Refresh
+        </button>
+
+        <button
+            class="logout-btn"
+            onclick="logoutAdmin()"
+        >
+            Logout
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     ADD CATEGORY
+     ========================================================= -->
+
+<div class="section">
+
+    <h3>
+        Add Category
+    </h3>
+
+    <div class="form-row">
+
+        <input
+            id="newCategoryName"
+            placeholder="Category name"
+        >
+
+        <button
+            class="admin-btn"
+            onclick="addCategoryFromUI()"
+        >
+            Add Category
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     MANAGE CATEGORIES
+     ========================================================= -->
+
+<div class="section">
+
+    <h3>
+        Manage Categories
+    </h3>
+
+    <div class="form-row">
+
+        <select
+            id="existingCategorySelect"
+            onchange="populateSelectedCategory()"
+        >
+
+            <option value="">
+                Select category
+            </option>
+
+        </select>
+
+        <input
+            type="text"
+            id="editCategoryName"
+            placeholder="New category name"
+        >
+
+        <button
+            type="button"
+            class="admin-btn"
+            onclick="updateSelectedCategory()"
+        >
+            Update Category Name
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     ADD ITEM
+     ========================================================= -->
+
+<div class="section">
+
+    <h3>
+        Add Item
+    </h3>
+
+    <div class="form-row">
+
+        <input
+            id="newItemName"
+            placeholder="Item name"
+        >
+
+        <input
+            id="newItemPrice"
+            placeholder="Price"
+            type="number"
+            step="0.01"
+        >
+
+        <input
+            id="newItemImage"
+            type="file"
+            accept="image/*"
+        >
+
+        <input
+            id="newItemIngredient"
+            placeholder="Ingredient"
+        >
+
+        <label>
+
+            <input
+                id="newItemAvailable"
+                type="checkbox"
+                checked
+            >
+
+            Available
+
+        </label>
+
+        <select
+            id="newItemCategory"
+        >
+
+            <option value="">
+                Select category
+            </option>
+
+        </select>
+
+    </div>
+
+    <button
+        class="admin-btn"
+        onclick="addItemFromUI()"
+    >
+        Add Item
+    </button>
+
+</div>
+
+
+<!-- =========================================================
+     UPDATE / DELETE ITEM
+     ========================================================= -->
+
+<div class="section">
+
+    <h3>
+        Update / Delete Item
+    </h3>
+
+    <div class="item-selection-box">
+
+        <div class="selection-field">
+
+            <label for="existingItemCategorySelect">
+                1. Choose Category
+            </label>
+
+            <select
+                id="existingItemCategorySelect"
+                onchange="updateExistingItemsByCategory()"
+            >
+
+                <option value="">
+                    Select category
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <div class="selection-field">
+
+            <label for="existingItemSelect">
+                2. Choose Item
+            </label>
+
+            <select
+                id="existingItemSelect"
+                onchange="populateSelectedItemFields()"
+                disabled
+            >
+
+                <option value="">
+                    Select category first
+                </option>
+
+            </select>
+
+        </div>
+
+    </div>
+
+
+    <div
+        class="form-row edit-fields"
+    >
+
+        <input
+            id="editItemName"
+            placeholder="Item name"
+        >
+
+        <input
+            id="editItemPrice"
+            placeholder="Price"
+            type="number"
+            step="0.01"
+        >
+
+        <input
+            id="editItemIngredient"
+            placeholder="Ingredient"
+        >
+
+        <select
+            id="editItemCategory"
+        >
+
+            <option value="">
+                Select category
+            </option>
+
+        </select>
+
+        <label>
+
+            <input
+                id="editItemAvailable"
+                type="checkbox"
+            >
+
+            Available
+
+        </label>
+
+    </div>
+
+
+    <button
+        class="admin-btn"
+        onclick="updateSelectedItem()"
+    >
+        Update Item
+    </button>
+
+    <button
+        class="admin-btn danger-btn"
+        onclick="deleteSelectedItem()"
+    >
+        Delete Item
+    </button>
+
+</div>
+
+
+<!-- =========================================================
+     SAVE
+     ========================================================= -->
+
+<div class="section">
+
+    <button
+        class="admin-btn"
+        onclick="saveMenuToServer()"
+    >
+        Save Menu
+    </button>
+
+</div>
+
+
+<!-- =========================================================
+     MESSAGE
+     ========================================================= -->
+
+<div id="message"></div>
+
+
+<!-- =========================================================
+     CURRENT MENU
+     ========================================================= -->
+
+<div class="section">
+
+    <h3>
+        Current Menu
+    </h3>
+
+    <div
+        id="menuList"
+        class="menu-list"
+    >
+        Loading menu...
+    </div>
+
+</div>
+
+
+</div>
+
+</div>
+
+<script src="/scripts/admin.js"></script>
+
+</body>
+
+</html>

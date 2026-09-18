@@ -1,7 +1,97 @@
 
 
 
+/* ========================================
+   SUPER ADMIN PROFESSIONAL HEADER
+======================================== */
 
+.super-admin-header{
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+
+    height: 72px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 18px;
+
+    background: rgba(255,255,255,0.96);
+
+    backdrop-filter: blur(12px);
+
+    box-shadow: 0 4px 18px rgba(0,0,0,.08);
+
+    z-index: 9999;
+}
+
+.header-left,
+.header-right{
+    width: 80px;
+    display: flex;
+    align-items: center;
+}
+
+.header-left{
+    justify-content: flex-start;
+}
+
+.header-right{
+    justify-content: flex-end;
+}
+
+.header-center{
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.header-center h2{
+    margin: 0;
+
+    color: #4a2f22;
+
+    font-size: 1.4rem;
+    font-weight: 700;
+
+    letter-spacing: .5px;
+
+    white-space: nowrap;
+}
+
+.header-icon-btn{
+    width: 42px;
+    height: 42px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: #4a2f22;
+    color: white;
+
+    cursor: pointer;
+
+    font-size: 20px;
+    font-weight: bold;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transition: .25s ease;
+}
+
+.header-icon-btn:hover{
+    transform: translateY(-2px);
+    background: #5d3b2a;
+}
+
+.admin-panel{
+    padding-top: 90px !important;
+}
 
 .cartbutton{
   position: fixed;
@@ -1506,4 +1596,136 @@
 /* Center Admin Login lower on the screen */
 #adminLoginModal .auth-card {
   margin-top: 150px;
+}
+
+/* ==========================================
+   RESTAURANT SEARCH
+========================================== */
+
+.restaurant-search-bar{
+    position: sticky;
+    top: 85px;
+
+    z-index: 100;
+
+    background: #f5efe6;
+
+    padding: 10px 0;
+}
+
+.restaurant-search-bar input{
+    width: 100%;
+
+    padding: 12px 15px;
+
+    border: 1px solid #ddd;
+
+    border-radius: 10px;
+
+    font-size: 15px;
+
+    box-sizing: border-box;
+}
+
+/* ==========================================
+   TABLE HEADER
+========================================== */
+
+.restaurant-table-header{
+    position: sticky;
+    top: 145px;
+
+    z-index: 99;
+
+    display: grid;
+
+    grid-template-columns:
+        2fr
+        2fr
+        120px
+        100px;
+
+    align-items: center;
+
+    background: #4a2f22;
+
+    color: white;
+
+    font-weight: 700;
+
+    padding: 14px 18px;
+
+    border-radius: 12px;
+
+    margin-bottom: 10px;
+}
+
+/* ==========================================
+   RESTAURANT ROW
+========================================== */
+
+.owner-cafe-row{
+    display: grid;
+
+    grid-template-columns:
+        2fr
+        2fr
+        120px
+        100px;
+
+    align-items: center;
+
+    background: white;
+
+    padding: 14px 18px;
+
+    margin-bottom: 8px;
+
+    border-radius: 12px;
+
+    box-shadow: 0 2px 10px rgba(0,0,0,.05);
+}
+
+.owner-cafe-row:hover{
+    transform: translateY(-1px);
+
+    transition: .2s;
+}
+
+/* ==========================================
+   STATUS
+========================================== */
+
+.status-active{
+    color: #198754;
+    font-weight: 700;
+}
+
+.status-disabled{
+    color: #dc3545;
+    font-weight: 700;
+}
+
+/* ==========================================
+   OPEN BUTTON
+========================================== */
+
+.open-cafe-btn{
+    border: none;
+
+    background: #4a2f22;
+
+    color: white;
+
+    padding: 8px 14px;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    font-weight: 600;
+}
+
+.open-cafe-btn:hover{
+    background: #5f3b2a;
 }
