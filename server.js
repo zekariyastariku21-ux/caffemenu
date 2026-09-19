@@ -49,6 +49,53 @@ pool.on('error', (error) => {
 
 const menuCache = new Map();
 
+
+
+/*
+|--------------------------------------------------------------------------
+| RESTAURANT PROFILE TABLE
+|--------------------------------------------------------------------------
+*/
+
+async function ensureRestaurantProfilesTable() {
+
+  try {
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS restaurant_profiles (
+
+        id SERIAL PRIMARY KEY,
+
+        restaurant_id INTEGER NOT NULL UNIQUE
+          REFERENCES restaurants(id)
+          ON DELETE CASCADE,
+
+        phone_numbers JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+        addresses JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+
+      )
+    `);
+
+    console.log(
+      'Restaurant profiles table ready'
+    );
+
+  } catch (error) {
+
+    console.error(
+      'Restaurant profiles table error:',
+      error.message
+    );
+
+  }
+
+}
+
+ensureRestaurantProfilesTable();
+
 /*
 |--------------------------------------------------------------------------
 | DATABASE CONNECTION TEST
@@ -754,8 +801,424 @@ app.get('/api/admin/session', async (req, res) => {
 
 });
 
+
+
+
 /*
 |--------------------------------------------------------------------------
+| RESTAURANT PROFILE
+|--------------------------------------------------------------------------
+*/
+
+/*
+ * Check that the logged-in cafe admin
+ * owns the requested restaurant.
+ */
+
+async function getRestaurantForProfile(
+  req,
+  res,
+  slug
+) {
+
+  const result = await pool.query(
+    `
+    SELECT
+      id,
+      name,
+      slug,
+      status
+    FROM restaurants
+    WHERE slug = $1
+    `,
+    [slug]
+  );
+
+  if (result.rows.length === 0) {
+
+    res.status(404).json({
+      ok: false,
+      message: 'Restaurant not found.'
+    });
+
+    return null;
+
+  }
+
+  const restaurant =
+    result.rows[0];
+
+  /*
+   * Cafe admin can only manage
+   * their own restaurant.
+   */
+
+  if (
+    req.user.role === 'cafe_admin' &&
+    Number(req.user.restaurant_id) !==
+      Number(restaurant.id)
+  ) {
+
+    res.status(403).json({
+      ok: false,
+      message:
+        'You can only manage your own restaurant profile.'
+    });
+
+    return null;
+
+  }
+
+  /*
+   * Disabled restaurants cannot
+   * be edited.
+   */
+
+  if (
+    restaurant.status !== 'active'
+  ) {
+
+    res.status(403).json({
+      ok: false,
+      message:
+        'Restaurant is not active.'
+    });
+
+    return null;
+
+  }
+
+  return restaurant;
+
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| GET RESTAURANT PROFILE - ADMIN
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  '/api/admin/profile/:slug',
+  requireRestaurantAdmin,
+  async (req, res) => {
+
+    try {
+
+      const { slug } =
+        req.params;
+
+      const restaurant =
+        await getRestaurantForProfile(
+          req,
+          res,
+          slug
+        );
+
+      if (!restaurant) {
+        return;
+      }
+
+      /*
+       * Get profile.
+       */
+
+      const profileResult =
+        await pool.query(
+          `
+          SELECT
+            phone_numbers,
+            addresses,
+            updated_at
+          FROM restaurant_profiles
+          WHERE restaurant_id = $1
+          `,
+          [restaurant.id]
+        );
+
+      /*
+       * Create profile automatically
+       * if it does not exist.
+       */
+
+      if (
+        profileResult.rows.length === 0
+      ) {
+
+        await pool.query(
+          `
+          INSERT INTO restaurant_profiles
+            (
+              restaurant_id,
+              phone_numbers,
+              addresses
+            )
+          VALUES
+            (
+              $1,
+              '[]'::jsonb,
+              '[]'::jsonb
+            )
+          `,
+          [restaurant.id]
+        );
+
+        return res.json({
+
+          ok: true,
+
+          restaurant: {
+            id: restaurant.id,
+            name: restaurant.name,
+            slug: restaurant.slug
+          },
+
+          profile: {
+            phone_numbers: [],
+            addresses: []
+          }
+
+        });
+
+      }
+
+      const profile =
+        profileResult.rows[0];
+
+      res.json({
+
+        ok: true,
+
+        restaurant: {
+          id: restaurant.id,
+          name: restaurant.name,
+          slug: restaurant.slug
+        },
+
+        profile: {
+          phone_numbers:
+            Array.isArray(profile.phone_numbers)
+              ? profile.phone_numbers
+              : [],
+
+          addresses:
+            Array.isArray(profile.addresses)
+              ? profile.addresses
+              : []
+        }
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        'Error loading restaurant profile:',
+        error.message
+      );
+
+      res.status(500).json({
+        ok: false,
+        message:
+          'Failed to load restaurant profile.'
+      });
+
+    }
+
+  }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| SAVE RESTAURANT PROFILE - ADMIN
+|--------------------------------------------------------------------------
+*/
+
+app.put(
+  '/api/admin/profile/:slug',
+  requireRestaurantAdmin,
+  async (req, res) => {
+
+    try {
+
+      const { slug } =
+        req.params;
+
+      const restaurant =
+        await getRestaurantForProfile(
+          req,
+          res,
+          slug
+        );
+
+      if (!restaurant) {
+        return;
+      }
+
+      let {
+        phone_numbers,
+        addresses
+      } = req.body || {};
+
+      /*
+       * Validate arrays.
+       */
+
+      if (
+        !Array.isArray(phone_numbers)
+      ) {
+
+        phone_numbers = [];
+
+      }
+
+      if (
+        !Array.isArray(addresses)
+      ) {
+
+        addresses = [];
+
+      }
+
+      /*
+       * Clean phone numbers.
+       */
+
+      phone_numbers =
+        phone_numbers
+          .map(phone =>
+            String(phone || '').trim()
+          )
+          .filter(Boolean)
+          .slice(0, 10);
+
+      /*
+       * Clean addresses.
+       *
+       * Each address:
+       *
+       * {
+       *   name: "Bole Branch",
+       *   url: "https://maps.google.com/..."
+       * }
+       */
+
+      addresses =
+        addresses
+          .map(address => {
+
+            if (
+              !address ||
+              typeof address !== 'object'
+            ) {
+
+              return null;
+
+            }
+
+            return {
+
+              name:
+                String(
+                  address.name || ''
+                ).trim(),
+
+              url:
+                String(
+                  address.url || ''
+                ).trim()
+
+            };
+
+          })
+          .filter(address =>
+            address &&
+            address.name
+          )
+          .slice(0, 10);
+
+      /*
+       * Save profile.
+       */
+
+      await pool.query(
+        `
+        INSERT INTO restaurant_profiles
+          (
+            restaurant_id,
+            phone_numbers,
+            addresses,
+            updated_at
+          )
+        VALUES
+          (
+            $1,
+            $2::jsonb,
+            $3::jsonb,
+            NOW()
+          )
+
+        ON CONFLICT (restaurant_id)
+
+        DO UPDATE SET
+          phone_numbers = EXCLUDED.phone_numbers,
+          addresses = EXCLUDED.addresses,
+          updated_at = NOW()
+        `,
+        [
+          restaurant.id,
+          JSON.stringify(phone_numbers),
+          JSON.stringify(addresses)
+        ]
+      );
+
+      /*
+       * Clear customer cache.
+       */
+
+      menuCache.delete(
+        restaurant.slug
+      );
+
+      res.json({
+
+        ok: true,
+
+        profile: {
+          phone_numbers,
+          addresses
+        },
+
+        message:
+          'Restaurant profile saved successfully.'
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        'Error saving restaurant profile:',
+        error.message
+      );
+
+      res.status(500).json({
+        ok: false,
+        message:
+          'Failed to save restaurant profile.'
+      });
+
+    }
+
+  }
+);
+
+
+
+
+/*
+|
+--------------------------------------------------------------------------
 | GET RESTAURANT MENU
 |--------------------------------------------------------------------------
 */
@@ -874,23 +1337,61 @@ app.get('/api/menu/:slug', async (req, res) => {
     }
 
     /*
+ * Load restaurant profile
+ */
+
+const profileResult =
+  await pool.query(
+    `
+    SELECT
+      phone_numbers,
+      addresses
+    FROM restaurant_profiles
+    WHERE restaurant_id = $1
+    `,
+    [restaurant.id]
+  );
+
+const profile =
+  profileResult.rows.length > 0
+    ? profileResult.rows[0]
+    : {
+        phone_numbers: [],
+        addresses: []
+      };
+
+    /*
      * Response
      */
 
     const responseData = {
 
-      ok: true,
+  ok: true,
 
-      restaurant: {
-        id: restaurant.id,
-        name: restaurant.name,
-        slug: restaurant.slug
-      },
+  restaurant: {
+    id: restaurant.id,
+    name: restaurant.name,
+    slug: restaurant.slug
+  },
 
-      menu:
-        menuResult.rows[0].menu
+  profile: {
 
-    };
+    phone_numbers:
+      Array.isArray(profile.phone_numbers)
+        ? profile.phone_numbers
+        : [],
+
+    addresses:
+      Array.isArray(profile.addresses)
+        ? profile.addresses
+        : []
+
+  },
+
+  menu:
+    menuResult.rows[0].menu
+
+};
 
     /*
      * Cache
