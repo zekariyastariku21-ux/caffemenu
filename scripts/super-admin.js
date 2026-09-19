@@ -1,2691 +1,3874 @@
+/* ================================================================
+   CAFFE MENU — SUPER ADMIN DASHBOARD
+   ================================================================ */
+
 let ownerRestaurantFilter = 'all';
 let ownerRestaurantsData = [];
 let ownerOpenRestaurantId = null;
-
-
-/*
-|--------------------------------------------------------------------------
-| PROFESSIONAL LOADING SCREEN
-|--------------------------------------------------------------------------
-*/
-
 let ownerLoadingDepth = 0;
+let ownerNotificationTimer = null;
 
-function showOwnerLoading(
-    message = 'Please wait...'
-) {
+let priceManagementRestaurant = null;
+let priceManagementMenu = {};
+let priceManagementSearch = '';
+let priceManagementSelectedItems = new Set();
 
+let ownerPreviousFocus = null;
+
+/* ================================================================
+   BASIC HELPERS
+   ================================================================ */
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function createSlugFromName(name) {
+    return String(name || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
+function formatETB(value) {
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return 'ETB 0.00';
+    }
+
+    return `ETB ${number.toFixed(2)}`;
+}
+
+function getRestaurantById(id) {
+    return ownerRestaurantsData.find(
+        restaurant => Number(restaurant.id) === Number(id)
+    );
+}
+
+/* ================================================================
+   SUPER ADMIN ACCESS
+   ================================================================ */
+
+async function checkSuperAdminAccess() {
+    console.log('🟢 Super Admin page loaded');
+
+    showOwnerLoading('Checking administrator access...');
+
+    try {
+        const token = localStorage.getItem('adminToken');
+
+        console.log('🔑 Token exists:', !!token);
+
+        if (!token) {
+            console.log('❌ No token — redirecting to admin login');
+            window.location.href = '/admin.html';
+            return;
+        }
+
+        console.log('📡 Checking /api/admin/session...');
+
+        const response = await fetch('/api/admin/session', {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token}`
+            },
+            credentials: 'same-origin'
+        });
+
+        console.log('📡 Session status:', response.status);
+
+        const data = await response.json();
+
+        console.log('📦 Session response:', data);
+
+        if (!response.ok) {
+            console.log('❌ Session rejected');
+
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminRole');
+            localStorage.removeItem('adminRestaurantId');
+            localStorage.removeItem('adminRestaurantSlug');
+
+            window.location.href = '/admin.html';
+            return;
+        }
+
+        if (!data || !data.user) {
+            console.log('❌ No user object in session response');
+            window.location.href = '/admin.html';
+            return;
+        }
+
+        console.log('👤 User:', data.user);
+        console.log('👑 Role:', data.user.role);
+
+        if (data.user.role !== 'super_admin') {
+            console.log('❌ Not super admin — redirecting');
+            window.location.href = '/admin.html';
+            return;
+        }
+
+        console.log('✅ Super Admin verified');
+
+        localStorage.setItem('adminRole', data.user.role);
+
+        await loadOwnerCafes();
+
+        console.log('✅ Dashboard data loaded');
+
+    } catch (error) {
+        console.error('🔥 Super admin access error:', error);
+
+        showOwnerNotification(
+            'Connection Error',
+            'Unable to verify administrator access.',
+            'error'
+        );
+
+        setTimeout(() => {
+            window.location.href = '/admin.html';
+        }, 1200);
+
+    } finally {
+        hideOwnerLoading();
+    }
+}
+
+/* ================================================================
+   LOADING OVERLAY
+   ================================================================ */
+
+function showOwnerLoading(message = 'Please wait...') {
     ownerLoadingDepth++;
 
-    let overlay =
-        document.getElementById(
-            'ownerLoadingOverlay'
-        );
+    let overlay = document.getElementById('ownerLoadingOverlay');
 
     if (!overlay) {
-
-        overlay =
-            document.createElement(
-                'div'
-            );
-
-        overlay.id =
-            'ownerLoadingOverlay';
+        overlay = document.createElement('div');
+        overlay.id = 'ownerLoadingOverlay';
 
         overlay.innerHTML = `
-
-            <div class="owner-loading-box">
-
+            <div class="owner-loading-card">
                 <div class="owner-loading-spinner"></div>
-
-                <div
-                    id="ownerLoadingMessage"
-                    class="owner-loading-message"
-                >
-                    ${escapeHtml(message)}
-                </div>
-
-                <div class="owner-loading-submessage">
-                    Please wait...
-                </div>
-
+                <div class="owner-loading-title">Please wait</div>
+                <div class="owner-loading-message"></div>
             </div>
-
         `;
 
-        overlay.style.cssText = `
+        document.body.appendChild(overlay);
 
-            position: fixed;
-            inset: 0;
-            z-index: 999999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.48);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            cursor: wait;
+        if (!document.getElementById('ownerLoadingRuntimeStyles')) {
+            const style = document.createElement('style');
+            style.id = 'ownerLoadingRuntimeStyles';
 
-        `;
-
-        const style =
-            document.createElement(
-                'style'
-            );
-
-        style.textContent = `
-
-            .owner-loading-box {
-                width: min(90%, 360px);
-                background: #ffffff;
-                border-radius: 18px;
-                padding: 30px 25px;
-                text-align: center;
-                box-shadow:
-                    0 20px 60px rgba(0,0,0,0.25);
-            }
-
-            .owner-loading-spinner {
-                width: 48px;
-                height: 48px;
-                margin: 0 auto 18px;
-                border: 5px solid #eadfd4;
-                border-top-color: #4a2f22;
-                border-radius: 50%;
-                animation:
-                    ownerLoadingSpin
-                    0.8s linear infinite;
-            }
-
-            .owner-loading-message {
-                font-size: 19px;
-                font-weight: 700;
-                color: #3b2a20;
-                margin-bottom: 7px;
-            }
-
-            .owner-loading-submessage {
-                font-size: 14px;
-                color: #777;
-            }
-
-            @keyframes ownerLoadingSpin {
-
-                to {
-                    transform: rotate(360deg);
+            style.textContent = `
+                #ownerLoadingOverlay {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 12000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                    background: rgba(43, 27, 20, 0.42);
+                    backdrop-filter: blur(5px);
+                    -webkit-backdrop-filter: blur(5px);
                 }
 
-            }
+                .owner-loading-card {
+                    width: min(360px, calc(100vw - 40px));
+                    padding: 30px 26px;
+                    border: 1px solid rgba(255,255,255,.65);
+                    border-radius: 22px;
+                    background: rgba(255,255,255,.97);
+                    box-shadow: 0 28px 80px rgba(43,27,20,.28);
+                    text-align: center;
+                }
 
-            body.owner-loading-active {
-                overflow: hidden;
-            }
+                .owner-loading-spinner {
+                    width: 42px;
+                    height: 42px;
+                    margin: 0 auto 18px;
+                    border: 4px solid #eee6df;
+                    border-top-color: #8a5a3c;
+                    border-radius: 50%;
+                    animation: ownerLoadingSpin .75s linear infinite;
+                }
 
-            #ownerLoadingOverlay * {
-                pointer-events: none;
-            }
+                .owner-loading-title {
+                    color: #3a2419;
+                    font-size: 17px;
+                    font-weight: 800;
+                }
 
-        `;
+                .owner-loading-message {
+                    margin-top: 7px;
+                    color: #706861;
+                    font-size: 13px;
+                    line-height: 1.5;
+                }
 
-        document.head.appendChild(
-            style
-        );
+                @keyframes ownerLoadingSpin {
+                    to {
+                        transform: rotate(360deg);
+                    }
+                }
+            `;
 
-        document.body.appendChild(
-            overlay
-        );
-
+            document.head.appendChild(style);
+        }
     }
 
     const messageElement =
-        document.getElementById(
-            'ownerLoadingMessage'
-        );
+        overlay.querySelector('.owner-loading-message');
 
     if (messageElement) {
-
-        messageElement.textContent =
-            message;
-
+        messageElement.textContent = message;
     }
 
-    overlay.style.display =
-        'flex';
-
-    document.body.classList.add(
-        'owner-loading-active'
-    );
-
+    overlay.style.display = 'flex';
+    document.body.classList.add('owner-loading-open');
 }
-
 
 function hideOwnerLoading() {
+    ownerLoadingDepth = Math.max(0, ownerLoadingDepth - 1);
 
-    if (
-        ownerLoadingDepth > 0
-    ) {
-
-        ownerLoadingDepth--;
-
-    }
-
-    if (
-        ownerLoadingDepth > 0
-    ) {
-
+    if (ownerLoadingDepth > 0) {
         return;
-
     }
 
-    const overlay =
-        document.getElementById(
-            'ownerLoadingOverlay'
-        );
+    const overlay = document.getElementById('ownerLoadingOverlay');
 
     if (overlay) {
-
-        overlay.style.display =
-            'none';
-
+        overlay.style.display = 'none';
     }
 
-    document.body.classList.remove(
-        'owner-loading-active'
+    document.body.classList.remove('owner-loading-open');
+}
+
+/* ================================================================
+   RESTAURANT LOADING / FILTERING
+   ================================================================ */
+
+function filterOwnerRestaurants(filter) {
+    ownerRestaurantFilter = filter;
+
+    document.querySelectorAll('.stat-filter').forEach(button => {
+        button.classList.remove('active-filter');
+    });
+
+    const activeButton = document.querySelector(
+        `.stat-filter[onclick*="'${filter}'"]`
     );
 
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| HTML ESCAPE
-|--------------------------------------------------------------------------
-*/
-
-function escapeHtml(value) {
-
-    return String(
-        value ?? ''
-    )
-        .replace(
-            /&/g,
-            '&amp;'
-        )
-        .replace(
-            /</g,
-            '&lt;'
-        )
-        .replace(
-            />/g,
-            '&gt;'
-        )
-        .replace(
-            /"/g,
-            '&quot;'
-        )
-        .replace(
-            /'/g,
-            '&#039;'
-        );
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| CHECK SUPER ADMIN LOGIN
-|--------------------------------------------------------------------------
-*/
-
-async function checkSuperAdminAccess() {
-
-    showOwnerLoading(
-        'Checking login...'
-    );
-
-    try {
-
-        const response =
-            await fetch(
-                '/api/admin/session',
-                {
-                    method: 'GET',
-                    credentials: 'same-origin',
-                    cache: 'no-store'
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
-
-            window.location.replace(
-                '/admin.html'
-            );
-
-            return;
-
-        }
-
-        if (
-            !data.user ||
-            data.user.role !==
-            'super_admin'
-        ) {
-
-            window.location.replace(
-                '/admin.html'
-            );
-
-            return;
-
-        }
-
-        await loadOwnerCafes();
-
-    } catch (error) {
-
-        console.error(
-            'Super admin access error:',
-            error
-        );
-
-        window.location.replace(
-            '/admin.html'
-        );
-
-    } finally {
-
-        hideOwnerLoading();
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| FILTER RESTAURANTS
-|--------------------------------------------------------------------------
-*/
-
-function filterOwnerRestaurants(
-    filter
-) {
-
-    ownerRestaurantFilter =
-        filter;
-
-    ownerOpenRestaurantId =
-        null;
-
-    renderOwnerRestaurantList();
-
-    document
-        .querySelectorAll(
-            '.stat-filter'
-        )
-        .forEach(
-            button => {
-
-                button.classList.remove(
-                    'selected'
-                );
-
-            }
-        );
-
-    const buttons =
-        document.querySelectorAll(
-            '.stat-filter'
-        );
-
-    if (
-        filter === 'all' &&
-        buttons[0]
-    ) {
-
-        buttons[0].classList.add(
-            'selected'
-        );
-
-    }
-
-    if (
-        filter === 'active' &&
-        buttons[1]
-    ) {
-
-        buttons[1].classList.add(
-            'selected'
-        );
-
-    }
-
-    if (
-        filter === 'disabled' &&
-        buttons[2]
-    ) {
-
-        buttons[2].classList.add(
-            'selected'
-        );
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| OPEN / CLOSE RESTAURANT ACTIONS
-|--------------------------------------------------------------------------
-*/
-
-function toggleOwnerRestaurantActions(
-    restaurantId
-) {
-
-    const normalizedId =
-        String(
-            restaurantId
-        );
-
-    if (
-        ownerOpenRestaurantId ===
-        normalizedId
-    ) {
-
-        ownerOpenRestaurantId =
-            null;
-
-    } else {
-
-        ownerOpenRestaurantId =
-            normalizedId;
-
+    if (activeButton) {
+        activeButton.classList.add('active-filter');
     }
 
     renderOwnerRestaurantList();
-
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| RENDER RESTAURANT LIST
-|--------------------------------------------------------------------------
-*/
-
-function renderOwnerRestaurantList() {
-
-    const container =
-        document.getElementById(
-            'ownerCafeList'
-        );
-
-    if (!container) {
-        return;
-    }
-
-    let restaurants =
-        ownerRestaurantsData;
-
-    if (
-        ownerRestaurantFilter ===
-        'active'
-    ) {
-
-        restaurants =
-            ownerRestaurantsData.filter(
-                cafe =>
-                    cafe.status ===
-                    'active'
-            );
-
-    }
-
-    if (
-        ownerRestaurantFilter ===
-        'disabled'
-    ) {
-
-        restaurants =
-            ownerRestaurantsData.filter(
-                cafe =>
-                    cafe.status ===
-                    'disabled'
-            );
-
-    }
-
-    if (!restaurants.length) {
-
-        const message =
-            ownerRestaurantFilter ===
-            'active'
-                ? 'No active restaurants found.'
-                : ownerRestaurantFilter ===
-                  'disabled'
-                    ? 'No disabled restaurants found.'
-                    : 'No restaurants found.';
-
-        container.innerHTML = `
-
-            <div class="owner-empty-state">
-                ${escapeHtml(message)}
-            </div>
-
-        `;
-
-        return;
-
-    }
-
-    /*
-     * Build list
-     */
-
-    container.innerHTML = '';
-
-    restaurants.forEach(
-        (cafe, index) => {
-
-            const cafeId =
-                String(
-                    cafe.id
-                );
-
-            const isOpen =
-                ownerOpenRestaurantId ===
-                cafeId;
-
-            /*
-             * Main restaurant row
-             */
-
-            const card =
-                document.createElement(
-                    'div'
-                );
-
-            card.className =
-                'owner-cafe-card';
-
-            if (isOpen) {
-
-                card.classList.add(
-                    'open'
-                );
-
-            }
-
-            /*
-             * Restaurant main row
-             */
-
-            const row =
-                document.createElement(
-                    'div'
-                );
-
-            row.className =
-                'owner-cafe-row';
-
-            /*
-             * Number
-             */
-
-            const number =
-                document.createElement(
-                    'div'
-                );
-
-            number.className =
-                'owner-cafe-number';
-
-            number.textContent =
-                index + 1;
-
-            /*
-             * Restaurant information
-             */
-
-            const info =
-                document.createElement(
-                    'div'
-                );
-
-            info.className =
-                'owner-cafe-info';
-
-            const name =
-                document.createElement(
-                    'div'
-                );
-
-            name.className =
-                'owner-cafe-name';
-
-            name.textContent =
-                cafe.name ||
-                'Restaurant';
-
-            const slug =
-                document.createElement(
-                    'div'
-                );
-
-            slug.className =
-                'owner-cafe-slug';
-
-            slug.textContent =
-                cafe.slug ||
-                '—';
-
-            info.appendChild(
-                name
-            );
-
-            info.appendChild(
-                slug
-            );
-
-            /*
-             * Status
-             */
-
-            const status =
-                document.createElement(
-                    'div'
-                );
-
-            status.className =
-                'owner-cafe-status';
-
-            const statusIsActive =
-                cafe.status ===
-                'active';
-
-            status.classList.add(
-                statusIsActive
-                    ? 'active'
-                    : 'disabled'
-            );
-
-            const statusDot =
-                document.createElement(
-                    'span'
-                );
-
-            statusDot.className =
-                'owner-status-dot';
-
-            const statusText =
-                document.createElement(
-                    'span'
-                );
-
-            statusText.textContent =
-                statusIsActive
-                    ? 'Active'
-                    : 'Disabled';
-
-            status.appendChild(
-                statusDot
-            );
-
-            status.appendChild(
-                statusText
-            );
-
-            /*
-             * Open button
-             */
-
-            const mainActions =
-                document.createElement(
-                    'div'
-                );
-
-            mainActions.className =
-                'owner-cafe-main-actions';
-
-            const openButton =
-                document.createElement(
-                    'button'
-                );
-
-            openButton.type =
-                'button';
-
-            openButton.className =
-                'open-cafe-btn';
-
-            openButton.textContent =
-                isOpen
-                    ? 'Close'
-                    : 'Open';
-
-            openButton.setAttribute(
-                'aria-expanded',
-                isOpen
-                    ? 'true'
-                    : 'false'
-            );
-
-            openButton.addEventListener(
-                'click',
-                () => {
-
-                    toggleOwnerRestaurantActions(
-                        cafe.id
-                    );
-
-                }
-            );
-
-            mainActions.appendChild(
-                openButton
-            );
-
-            /*
-             * Add main row pieces
-             */
-
-            row.appendChild(
-                number
-            );
-
-            row.appendChild(
-                info
-            );
-
-            row.appendChild(
-                status
-            );
-
-            row.appendChild(
-                mainActions
-            );
-
-            card.appendChild(
-                row
-            );
-
-            /*
-             * ACTION PANEL
-             */
-
-            if (isOpen) {
-
-                const actionPanel =
-                    document.createElement(
-                        'div'
-                    );
-
-                actionPanel.className =
-                    'owner-cafe-action-panel';
-
-                /*
-                 * Action title
-                 */
-
-                const actionHeader =
-                    document.createElement(
-                        'div'
-                    );
-
-                actionHeader.className =
-                    'owner-cafe-action-header';
-
-                actionHeader.innerHTML = `
-
-                    <div>
-                        <div class="owner-cafe-action-title">
-                            ${escapeHtml(
-                                cafe.name ||
-                                'Restaurant'
-                            )}
-                        </div>
-
-                        <div class="owner-cafe-action-subtitle">
-                            Restaurant management
-                        </div>
-                    </div>
-
-                `;
-
-                actionPanel.appendChild(
-                    actionHeader
-                );
-
-                /*
-                 * Action buttons
-                 */
-
-                const actionButtons =
-                    document.createElement(
-                        'div'
-                    );
-
-                actionButtons.className =
-                    'owner-cafe-action-buttons';
-
-                /*
-                 * Edit Restaurant
-                 */
-
-                const editButton =
-                    document.createElement(
-                        'button'
-                    );
-
-                editButton.type =
-                    'button';
-
-                editButton.className =
-                    'owner-cafe-action-btn';
-
-                editButton.innerHTML = `
-                    <span class="owner-action-icon">✎</span>
-                    <span>Edit Restaurant</span>
-                `;
-
-                editButton.addEventListener(
-                    'click',
-                    () => {
-
-                        editOwnerCafe(
-                            cafe.id,
-                            cafe.name,
-                            cafe.slug
-                        );
-
-                    }
-                );
-
-                /*
-                 * Admin Account
-                 */
-
-                const adminButton =
-                    document.createElement(
-                        'button'
-                    );
-
-                adminButton.type =
-                    'button';
-
-                adminButton.className =
-                    'owner-cafe-action-btn';
-
-                adminButton.innerHTML = `
-                    <span class="owner-action-icon">♙</span>
-                    <span>Admin Account</span>
-                `;
-
-                adminButton.addEventListener(
-                    'click',
-                    () => {
-
-                        editOwnerCafeAdmin(
-                            cafe.id,
-                            cafe.name
-                        );
-
-                    }
-                );
-
-                /*
-                 * Enable / Disable
-                 */
-
-                const statusButton =
-                    document.createElement(
-                        'button'
-                    );
-
-                statusButton.type =
-                    'button';
-
-                statusButton.className =
-                    statusIsActive
-                        ? 'owner-cafe-action-btn owner-disable-action'
-                        : 'owner-cafe-action-btn owner-enable-action';
-
-                statusButton.innerHTML =
-                    statusIsActive
-                        ? `
-                            <span class="owner-action-icon">◐</span>
-                            <span>Disable</span>
-                          `
-                        : `
-                            <span class="owner-action-icon">●</span>
-                            <span>Enable</span>
-                          `;
-
-                statusButton.addEventListener(
-                    'click',
-                    () => {
-
-                        toggleOwnerCafeStatus(
-                            cafe.id,
-                            cafe.name,
-                            cafe.status
-                        );
-
-                    }
-                );
-
-                /*
-                 * Delete
-                 */
-
-                const deleteButton =
-                    document.createElement(
-                        'button'
-                    );
-
-                deleteButton.type =
-                    'button';
-
-                deleteButton.className =
-                    'owner-cafe-action-btn owner-delete-action';
-
-                deleteButton.innerHTML = `
-                    <span class="owner-action-icon">⌫</span>
-                    <span>Delete</span>
-                `;
-
-                deleteButton.addEventListener(
-                    'click',
-                    () => {
-
-                        deleteOwnerCafe(
-                            cafe.id,
-                            cafe.name
-                        );
-
-                    }
-                );
-
-                actionButtons.appendChild(
-                    editButton
-                );
-
-                actionButtons.appendChild(
-                    adminButton
-                );
-
-                actionButtons.appendChild(
-                    statusButton
-                );
-
-                actionButtons.appendChild(
-                    deleteButton
-                );
-
-                actionPanel.appendChild(
-                    actionButtons
-                );
-
-                card.appendChild(
-                    actionPanel
-                );
-
-            }
-
-            container.appendChild(
-                card
-            );
-
-        }
-    );
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| LOAD RESTAURANTS
-|--------------------------------------------------------------------------
-*/
 
 async function loadOwnerCafes() {
+    const token = localStorage.getItem('adminToken');
 
-    const container =
-        document.getElementById(
-            'ownerCafeList'
-        );
-
-    if (!container) {
+    if (!token) {
+        window.location.href = '/admin.html';
         return;
     }
 
-    showOwnerLoading(
-        'Loading restaurants...'
-    );
-
-    container.innerHTML =
-        'Loading cafés...';
-
     try {
+        const response = await fetch('/api/owner/restaurants', {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token}`
+            },
+            credentials: 'same-origin'
+        });
 
-        const token =
-            localStorage.getItem(
-                'adminToken'
-            );
+        if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminRole');
+            localStorage.removeItem('adminRestaurantId');
+            localStorage.removeItem('adminRestaurantSlug');
 
-        if (!token) {
-
-            window.location.replace(
-                '/admin.html'
-            );
-
+            window.location.href = '/admin.html';
             return;
-
         }
 
-        const response =
-            await fetch(
-                '/api/owner/restaurants',
-                {
-                    method: 'GET',
-
-                    headers: {
-                        'Authorization':
-                            'Bearer ' +
-                            token
-                    },
-
-                    credentials:
-                        'same-origin',
-
-                    cache:
-                        'no-store'
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            response.status === 401 ||
-            response.status === 403
-        ) {
-
-            window.location.replace(
-                '/admin.html'
-            );
-
-            return;
-
-        }
+        const data = await response.json();
 
         if (!response.ok) {
-
             throw new Error(
-                data.message ||
-                'Failed to load cafés.'
+                data.message || 'Unable to load restaurants.'
             );
-
         }
 
         ownerRestaurantsData =
-            Array.isArray(
-                data.restaurants
-            )
+            Array.isArray(data.restaurants)
                 ? data.restaurants
-                : [];
+                : Array.isArray(data)
+                    ? data
+                    : [];
 
-        /*
-         * Keep currently opened restaurant only
-         * if it still exists.
-         */
-
-        if (
-            ownerOpenRestaurantId !== null
-        ) {
-
-            const exists =
-                ownerRestaurantsData.some(
-                    cafe =>
-                        String(cafe.id) ===
-                        String(
-                            ownerOpenRestaurantId
-                        )
-                );
-
-            if (!exists) {
-
-                ownerOpenRestaurantId =
-                    null;
-
-            }
-
-        }
-
-        /*
-         * Statistics
-         */
-
-        const total =
-            ownerRestaurantsData.length;
-
-        const active =
-            ownerRestaurantsData.filter(
-                cafe =>
-                    cafe.status ===
-                    'active'
-            ).length;
-
-        const disabled =
-            ownerRestaurantsData.filter(
-                cafe =>
-                    cafe.status ===
-                    'disabled'
-            ).length;
-
-        const totalEl =
-            document.getElementById(
-                'totalRestaurants'
-            );
-
-        const activeEl =
-            document.getElementById(
-                'activeRestaurants'
-            );
-
-        const disabledEl =
-            document.getElementById(
-                'disabledRestaurants'
-            );
-
-        if (totalEl) {
-
-            totalEl.textContent =
-                total;
-
-        }
-
-        if (activeEl) {
-
-            activeEl.textContent =
-                active;
-
-        }
-
-        if (disabledEl) {
-
-            disabledEl.textContent =
-                disabled;
-
-        }
-
+        updateOwnerRestaurantStats();
         renderOwnerRestaurantList();
 
     } catch (error) {
+        console.error('Load restaurants error:', error);
 
-        console.error(
-            'Load restaurants error:',
-            error
-        );
+        ownerRestaurantsData = [];
 
-        container.innerHTML = `
+        updateOwnerRestaurantStats();
 
-            <div class="owner-empty-state">
+        const list = document.getElementById('ownerCafeList');
 
-                <div style="
-                    font-size:18px;
-                    margin-bottom:6px;
-                ">
-                    ⚠
+        if (list) {
+            list.innerHTML = `
+                <div class="owner-empty-state owner-error-state">
+                    <div class="owner-empty-icon">!</div>
+                    <h3>Unable to load restaurants</h3>
+                    <p>${escapeHtml(error.message)}</p>
+                    <button type="button"
+                            class="owner-secondary-btn"
+                            onclick="loadOwnerCafes()">
+                        Try Again
+                    </button>
                 </div>
-
-                <strong>
-                    Failed to load restaurants
-                </strong>
-
-                <div style="
-                    margin-top:5px;
-                    color:#777;
-                ">
-                    ${escapeHtml(
-                        error.message
-                    )}
-                </div>
-
-            </div>
-
-        `;
-
-    } finally {
-
-        hideOwnerLoading();
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| REFRESH DASHBOARD
-|--------------------------------------------------------------------------
-*/
-
-async function refreshOwnerDashboard() {
-
-    const button =
-        document.getElementById(
-            'ownerRefreshBtn'
-        );
-
-    if (button) {
-
-        button.disabled =
-            true;
-
-        button.textContent =
-            '↻ Refreshing...';
-
-    }
-
-    showOwnerLoading(
-        'Refreshing dashboard...'
-    );
-
-    try {
-
-        await loadOwnerCafes();
-
-    } finally {
-
-        if (button) {
-
-            button.disabled =
-                false;
-
-            button.textContent =
-                '↻ Refresh';
-
+            `;
         }
 
-        hideOwnerLoading();
-
+        showOwnerNotification(
+            'Loading Failed',
+            error.message,
+            'error'
+        );
     }
-
 }
 
+function updateOwnerRestaurantStats() {
+    const total = ownerRestaurantsData.length;
 
-/*
-|--------------------------------------------------------------------------
-| CREATE CAFE
-|--------------------------------------------------------------------------
-*/
+    const active = ownerRestaurantsData.filter(
+        restaurant =>
+            restaurant.status === 'active' ||
+            restaurant.is_active === true
+    ).length;
+
+    const disabled = total - active;
+
+    const totalElement =
+        document.getElementById('totalRestaurants');
+
+    const activeElement =
+        document.getElementById('activeRestaurants');
+
+    const disabledElement =
+        document.getElementById('disabledRestaurants');
+
+    if (totalElement) {
+        totalElement.textContent = total;
+    }
+
+    if (activeElement) {
+        activeElement.textContent = active;
+    }
+
+    if (disabledElement) {
+        disabledElement.textContent = disabled;
+    }
+}
+
+function renderOwnerRestaurantList() {
+    const list = document.getElementById('ownerCafeList');
+
+    if (!list) {
+        return;
+    }
+
+    const searchInput =
+        document.getElementById('restaurantSearch');
+
+    const search =
+        String(searchInput?.value || '')
+            .trim()
+            .toLowerCase();
+
+    let restaurants = ownerRestaurantsData.filter(restaurant => {
+        const active =
+            restaurant.status === 'active' ||
+            restaurant.is_active === true;
+
+        if (ownerRestaurantFilter === 'active' && !active) {
+            return false;
+        }
+
+        if (ownerRestaurantFilter === 'disabled' && active) {
+            return false;
+        }
+
+        if (!search) {
+            return true;
+        }
+
+        const text = [
+            restaurant.name,
+            restaurant.slug,
+            restaurant.id
+        ]
+            .join(' ')
+            .toLowerCase();
+
+        return text.includes(search);
+    });
+
+    if (!restaurants.length) {
+        list.innerHTML = `
+            <div class="owner-empty-state">
+                <div class="owner-empty-icon">⌕</div>
+                <h3>No restaurants found</h3>
+                <p>
+                    ${
+                        search
+                            ? 'Try a different search.'
+                            : 'There are no restaurants in this view yet.'
+                    }
+                </p>
+            </div>
+        `;
+
+        return;
+    }
+
+    list.innerHTML = '';
+
+    restaurants.forEach((restaurant, index) => {
+        const row = document.createElement('div');
+
+        row.className = 'restaurant-row';
+
+        if (
+            Number(ownerOpenRestaurantId) ===
+            Number(restaurant.id)
+        ) {
+            row.classList.add('open');
+        }
+
+        const isActive =
+            restaurant.status === 'active' ||
+            restaurant.is_active === true;
+
+        const identity = document.createElement('div');
+        identity.className = 'restaurant-identity';
+
+        identity.innerHTML = `
+            <div class="restaurant-number">
+                ${String(index + 1).padStart(2, '0')}
+            </div>
+
+            <div class="restaurant-avatar">
+                ${escapeHtml(
+                    String(restaurant.name || 'C')
+                        .trim()
+                        .charAt(0)
+                        .toUpperCase()
+                )}
+            </div>
+
+            <div class="restaurant-name-block">
+                <strong>
+                    ${escapeHtml(
+                        restaurant.name || 'Unnamed Restaurant'
+                    )}
+                </strong>
+
+                <span>
+                    Restaurant ID #${escapeHtml(restaurant.id)}
+                </span>
+            </div>
+        `;
+
+        const slug = document.createElement('div');
+        slug.className = 'restaurant-slug';
+
+        slug.innerHTML = `
+            <span>/</span>${escapeHtml(
+                restaurant.slug || ''
+            )}
+        `;
+
+        const status = document.createElement('div');
+        status.className = 'restaurant-status';
+
+        status.innerHTML = `
+            <span class="status-dot ${isActive ? 'active' : 'disabled'}"></span>
+            <span class="status-pill ${isActive ? 'active' : 'disabled'}">
+                ${isActive ? 'Active' : 'Disabled'}
+            </span>
+        `;
+
+        const access = document.createElement('div');
+        access.className = 'restaurant-access';
+
+        access.innerHTML = `
+            <button type="button"
+                    class="restaurant-manage-btn"
+                    onclick="toggleOwnerRestaurantActions(${Number(restaurant.id)})">
+                Manage
+                <span class="manage-chevron">⌄</span>
+            </button>
+        `;
+
+        row.appendChild(identity);
+        row.appendChild(slug);
+        row.appendChild(status);
+        row.appendChild(access);
+
+        const actions = document.createElement('div');
+
+        actions.className = 'restaurant-actions';
+
+        actions.innerHTML = `
+            <button type="button"
+                    class="owner-action-btn"
+                    onclick="editOwnerCafe(${Number(restaurant.id)})">
+                <span>✎</span>
+                <strong>Edit Restaurant</strong>
+                <small>Change name or slug</small>
+            </button>
+
+            <button type="button"
+                    class="owner-action-btn"
+                    onclick="editOwnerCafeAdmin(${Number(restaurant.id)})">
+                <span>♙</span>
+                <strong>Admin Account</strong>
+                <small>Update email or password</small>
+            </button>
+
+            <button type="button"
+                    class="owner-action-btn"
+                    onclick="openDuplicateCafeFromRestaurant(${Number(restaurant.id)})">
+                <span>⧉</span>
+                <strong>Duplicate Café</strong>
+                <small>Create an independent copy</small>
+            </button>
+
+            ${
+                isActive
+                    ? `
+                        <button type="button"
+                                class="owner-action-btn"
+                                onclick="openPriceManagementForRestaurant(${Number(restaurant.id)})">
+                            <span>%</span>
+                            <strong>Price Management</strong>
+                            <small>Adjust menu prices</small>
+                        </button>
+                    `
+                    : ''
+            }
+
+            <button type="button"
+                    class="owner-action-btn"
+                    onclick="toggleOwnerCafeStatus(${Number(restaurant.id)})">
+                <span>${isActive ? '⏸' : '▶'}</span>
+                <strong>${isActive ? 'Disable Restaurant' : 'Enable Restaurant'}</strong>
+                <small>${isActive ? 'Temporarily hide menu' : 'Make menu active'}</small>
+            </button>
+
+            <button type="button"
+                    class="owner-action-btn danger"
+                    onclick="deleteOwnerCafe(${Number(restaurant.id)})">
+                <span>⌫</span>
+                <strong>Delete Restaurant</strong>
+                <small>Permanently remove restaurant</small>
+            </button>
+
+            <button type="button"
+                    class="owner-action-btn"
+                    onclick="manageOwnerCafeMenu('${escapeHtml(
+                        restaurant.slug || ''
+                    )}')">
+                <span>↗</span>
+                <strong>Open Customer Menu</strong>
+                <small>View public menu</small>
+            </button>
+        `;
+
+        actions.addEventListener('click', event => {
+            event.stopPropagation();
+        });
+
+        list.appendChild(row);
+        list.appendChild(actions);
+    });
+}
+
+/* ================================================================
+   RESTAURANT ACTION EXPANDER
+   ================================================================ */
+
+function toggleOwnerRestaurantActions(restaurantId) {
+    const numericId = Number(restaurantId);
+
+    if (ownerOpenRestaurantId === numericId) {
+        ownerOpenRestaurantId = null;
+    } else {
+        ownerOpenRestaurantId = numericId;
+    }
+
+    renderOwnerRestaurantList();
+}
+
+/* ================================================================
+   DASHBOARD REFRESH
+   ================================================================ */
+
+async function refreshOwnerDashboard() {
+    const button = document.getElementById('ownerRefreshBtn');
+
+    if (button) {
+        button.disabled = true;
+        button.classList.add('is-refreshing');
+    }
+
+    showOwnerLoading('Refreshing dashboard...');
+
+    try {
+        await loadOwnerCafes();
+
+        showOwnerNotification(
+            'Dashboard Updated',
+            'Restaurant information is up to date.',
+            'success'
+        );
+
+    } finally {
+        hideOwnerLoading();
+
+        if (button) {
+            button.disabled = false;
+            button.classList.remove('is-refreshing');
+        }
+    }
+}
+
+/* ================================================================
+   CREATE RESTAURANT
+   ================================================================ */
 
 function openCreateCafePanel() {
+    closeSuperAdminMenu();
 
     openOwnerActionPanel(
         'Create New Café',
         `
+            <div class="owner-form-shell">
+                <div class="owner-form-hero create-hero">
+                    <div class="owner-form-hero-icon">＋</div>
+                    <div>
+                        <span class="owner-form-eyebrow">NEW RESTAURANT</span>
+                        <h2>Create a new café</h2>
+                        <p>
+                            Create the restaurant and its café administrator
+                            in one step.
+                        </p>
+                    </div>
+                </div>
 
-        <div style="
-            margin-bottom:18px;
-            color:#666;
-            font-size:14px;
-            line-height:1.5;
-        ">
-            Create a new restaurant and its café administrator.
-            The restaurant will be active after creation.
-        </div>
+                <form id="createOwnerCafeForm"
+                      class="owner-form"
+                      onsubmit="submitCreateOwnerCafe(event)">
 
-        <label>
-            Restaurant Name
-        </label>
+                    <div class="owner-form-section">
+                        <div class="owner-form-section-title">
+                            Restaurant Information
+                        </div>
 
-        <input
-            id="newCafeName"
-            type="text"
-            placeholder="Example: Zekariyas Coffee"
-        >
+                        <div class="owner-field-grid">
+                            <label class="owner-field">
+                                <span>Café Name</span>
+                                <input id="createCafeName"
+                                       type="text"
+                                       maxlength="120"
+                                       required
+                                       placeholder="Example: Demis Coffee">
+                            </label>
 
-        <label>
-            Restaurant Slug
-        </label>
+                            <label class="owner-field">
+                                <span>Public Slug</span>
+                                <input id="createCafeSlug"
+                                       type="text"
+                                       maxlength="80"
+                                       required
+                                       placeholder="demis-coffee">
+                                <small>
+                                    Used in the public URL.
+                                </small>
+                            </label>
+                        </div>
+                    </div>
 
-        <input
-            id="newCafeSlug"
-            type="text"
-            placeholder="Example: zekariyas-coffee"
-        >
+                    <div class="owner-form-section">
+                        <div class="owner-form-section-title">
+                            Café Administrator
+                        </div>
 
-        <div style="
-            margin-top:5px;
-            font-size:12px;
-            color:#777;
-        ">
-            The slug is used in the public restaurant URL.
-        </div>
+                        <div class="owner-field-grid">
+                            <label class="owner-field">
+                                <span>Admin Email</span>
+                                <input id="createCafeEmail"
+                                       type="email"
+                                       maxlength="160"
+                                       required
+                                       placeholder="admin@example.com">
+                            </label>
 
-        <label>
-            Admin Email
-        </label>
+                            <label class="owner-field">
+                                <span>Password</span>
+                                <input id="createCafePassword"
+                                       type="password"
+                                       minlength="6"
+                                       maxlength="100"
+                                       required
+                                       placeholder="Minimum 6 characters">
+                            </label>
+                        </div>
+                    </div>
 
-        <input
-            id="newCafeAdminEmail"
-            type="email"
-            placeholder="admin@example.com"
-        >
+                    <div class="owner-info-box">
+                        <span class="owner-info-icon">✓</span>
+                        <div>
+                            <strong>Ready to launch</strong>
+                            <p>
+                                The café will be created as an active
+                                restaurant with its own administrator account.
+                            </p>
+                        </div>
+                    </div>
 
-        <label>
-            Admin Password
-        </label>
+                    <div class="owner-form-actions">
+                        <button type="button"
+                                class="owner-secondary-btn"
+                                onclick="closeOwnerActionPanel()">
+                            Cancel
+                        </button>
 
-        <input
-            id="newCafeAdminPassword"
-            type="password"
-            placeholder="Create admin password"
-        >
-
-        <div class="owner-action-buttons">
-
-            <button
-                class="owner-secondary-btn"
-                onclick="closeOwnerActionPanel()"
-            >
-                Cancel
-            </button>
-
-            <button
-                class="owner-primary-btn"
-                onclick="submitCreateOwnerCafe()"
-            >
-                Create Café
-            </button>
-
-        </div>
-
+                        <button type="submit"
+                                class="owner-primary-btn">
+                            Create Café
+                        </button>
+                    </div>
+                </form>
+            </div>
         `
     );
 
+    const nameInput =
+        document.getElementById('createCafeName');
+
+    const slugInput =
+        document.getElementById('createCafeSlug');
+
+    if (nameInput && slugInput) {
+        nameInput.addEventListener('input', () => {
+            if (!slugInput.dataset.manual) {
+                slugInput.value =
+                    createSlugFromName(nameInput.value);
+            }
+        });
+
+        slugInput.addEventListener('input', () => {
+            slugInput.dataset.manual = 'true';
+        });
+    }
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| CREATE CAFE REQUEST
-|--------------------------------------------------------------------------
-*/
-
-async function submitCreateOwnerCafe() {
+async function submitCreateOwnerCafe(event) {
+    event.preventDefault();
 
     const name =
-        document.getElementById(
-            'newCafeName'
-        )?.value.trim();
+        document.getElementById('createCafeName')?.value.trim();
 
     const slug =
-        document.getElementById(
-            'newCafeSlug'
-        )?.value.trim().toLowerCase();
+        document.getElementById('createCafeSlug')?.value.trim().toLowerCase();
 
     const adminEmail =
-        document.getElementById(
-            'newCafeAdminEmail'
-        )?.value.trim().toLowerCase();
+        document.getElementById('createCafeEmail')?.value.trim();
 
     const adminPassword =
-        document.getElementById(
-            'newCafeAdminPassword'
-        )?.value.trim();
+        document.getElementById('createCafePassword')?.value;
 
-    if (
-        !name ||
-        !slug ||
-        !adminEmail ||
-        !adminPassword
-    ) {
-
+    if (!name || !slug || !adminEmail || !adminPassword) {
         showOwnerNotification(
-            'Please complete all café and administrator fields.',
-            'warning',
-            'Missing Information'
+            'Missing Information',
+            'Please complete all required fields.',
+            'error'
         );
-
         return;
-
     }
 
-    showOwnerLoading(
-        'Creating café...'
-    );
+    if (adminPassword.length < 6) {
+        showOwnerNotification(
+            'Invalid Password',
+            'The administrator password must contain at least 6 characters.',
+            'error'
+        );
+        return;
+    }
+
+    const slugPattern =
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+    if (!slugPattern.test(slug)) {
+        showOwnerNotification(
+            'Invalid Slug',
+            'Use lowercase letters, numbers, and single hyphens only.',
+            'error'
+        );
+        return;
+    }
+
+    const token = localStorage.getItem('adminToken');
+
+    showOwnerLoading('Creating café...');
 
     try {
+        const response = await fetch('/api/owner/restaurants', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                name,
+                slug,
+                adminEmail,
+                adminPassword
+            })
+        });
 
-        const token =
-            localStorage.getItem(
-                'adminToken'
-            );
-
-        const response =
-            await fetch(
-                '/api/owner/restaurants',
-                {
-                    method: 'POST',
-
-                    headers: {
-                        'Content-Type':
-                            'application/json',
-
-                        'Authorization':
-                            'Bearer ' +
-                            token
-                    },
-
-                    credentials:
-                        'same-origin',
-
-                    body:
-                        JSON.stringify({
-                            name,
-                            slug,
-                            adminEmail,
-                            adminPassword
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            response.status === 401 ||
-            response.status === 403
-        ) {
-
-            window.location.replace(
-                '/admin.html'
-            );
-
-            return;
-
-        }
+        const data = await response.json();
 
         if (!response.ok) {
-
             throw new Error(
-                data.message ||
-                'Failed to create café.'
+                data.message || 'Unable to create café.'
             );
-
         }
 
         closeOwnerActionPanel();
 
-        showOwnerNotification(
-            `${name} has been created successfully.`,
-            'success',
-            'Café Created'
-        );
-
         await loadOwnerCafes();
 
-    } catch (error) {
-
-        console.error(
-            'Create café error:',
-            error
+        showOwnerNotification(
+            'Café Created',
+            `${name} has been created successfully.`,
+            'success'
         );
 
+    } catch (error) {
+        console.error('Create café error:', error);
+
         showOwnerNotification(
+            'Creation Failed',
             error.message,
-            'error',
-            'Creation Failed'
+            'error'
         );
 
     } finally {
-
         hideOwnerLoading();
-
     }
-
 }
 
+/* ================================================================
+   EDIT RESTAURANT
+   ================================================================ */
 
-/*
-|--------------------------------------------------------------------------
-| EDIT RESTAURANT
-|--------------------------------------------------------------------------
-*/
+function editOwnerCafe(restaurantId) {
+    const restaurant = getRestaurantById(restaurantId);
 
-function editOwnerCafe(
-    id,
-    currentName,
-    currentSlug
-) {
+    if (!restaurant) {
+        showOwnerNotification(
+            'Restaurant Not Found',
+            'The selected restaurant could not be found.',
+            'error'
+        );
+        return;
+    }
+
+    closeOwnerActionPanel();
 
     openOwnerActionPanel(
         'Edit Restaurant',
         `
+            <form class="owner-form"
+                  onsubmit="saveOwnerCafeEdit(event, ${Number(restaurant.id)})">
 
-        <div style="
-            margin-bottom:14px;
-            color:#666;
-            font-size:14px;
-        ">
-            Update the restaurant name and public URL slug.
-        </div>
+                <div class="owner-form-hero edit-hero">
+                    <div class="owner-form-hero-icon">✎</div>
+                    <div>
+                        <span class="owner-form-eyebrow">RESTAURANT SETTINGS</span>
+                        <h2>Edit restaurant</h2>
+                        <p>
+                            Update the public restaurant identity.
+                        </p>
+                    </div>
+                </div>
 
-        <label>
-            Restaurant Name
-        </label>
+                <div class="owner-form-section">
+                    <div class="owner-field-grid">
+                        <label class="owner-field">
+                            <span>Café Name</span>
+                            <input id="editCafeName"
+                                   type="text"
+                                   maxlength="120"
+                                   required
+                                   value="${escapeHtml(
+                                       restaurant.name || ''
+                                   )}">
+                        </label>
 
-        <input
-            id="ownerEditName"
-            type="text"
-            value="${escapeHtml(
-                currentName
-            )}"
-        >
+                        <label class="owner-field">
+                            <span>Public Slug</span>
+                            <input id="editCafeSlug"
+                                   type="text"
+                                   maxlength="80"
+                                   required
+                                   value="${escapeHtml(
+                                       restaurant.slug || ''
+                                   )}">
+                        </label>
+                    </div>
+                </div>
 
-        <label>
-            Restaurant Slug
-        </label>
+                <div class="owner-info-box">
+                    <span class="owner-info-icon">i</span>
+                    <div>
+                        <strong>Public URL</strong>
+                        <p>
+                            The customer menu will be available at
+                            <strong>/${escapeHtml(
+                                restaurant.slug || ''
+                            )}</strong>.
+                        </p>
+                    </div>
+                </div>
 
-        <input
-            id="ownerEditSlug"
-            type="text"
-            value="${escapeHtml(
-                currentSlug
-            )}"
-        >
+                <div class="owner-form-actions">
+                    <button type="button"
+                            class="owner-secondary-btn"
+                            onclick="closeOwnerActionPanel()">
+                        Cancel
+                    </button>
 
-        <div class="owner-action-buttons">
-
-            <button
-                class="owner-secondary-btn"
-                onclick="closeOwnerActionPanel()"
-            >
-                Cancel
-            </button>
-
-            <button
-                class="owner-primary-btn"
-                onclick="saveOwnerCafeEdit(${Number(id)})"
-            >
-                Save Changes
-            </button>
-
-        </div>
-
+                    <button type="submit"
+                            class="owner-primary-btn">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
         `
     );
-
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| SAVE RESTAURANT EDIT
-|--------------------------------------------------------------------------
-*/
-
-async function saveOwnerCafeEdit(
-    id
-) {
+async function saveOwnerCafeEdit(event, restaurantId) {
+    event.preventDefault();
 
     const name =
-        document.getElementById(
-            'ownerEditName'
-        )?.value.trim();
+        document.getElementById('editCafeName')?.value.trim();
 
     const slug =
-        document.getElementById(
-            'ownerEditSlug'
-        )?.value.trim().toLowerCase();
+        document.getElementById('editCafeSlug')?.value.trim().toLowerCase();
 
     if (!name || !slug) {
-
         showOwnerNotification(
+            'Missing Information',
             'Restaurant name and slug are required.',
-            'warning',
-            'Missing Information'
+            'error'
         );
-
         return;
-
     }
 
-    showOwnerLoading(
-        'Updating restaurant...'
-    );
+    const slugPattern =
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+    if (!slugPattern.test(slug)) {
+        showOwnerNotification(
+            'Invalid Slug',
+            'Use lowercase letters, numbers, and hyphens only.',
+            'error'
+        );
+        return;
+    }
+
+    const token = localStorage.getItem('adminToken');
+
+    showOwnerLoading('Saving restaurant changes...');
 
     try {
+        const response = await fetch(
+            `/api/owner/restaurants/${Number(restaurantId)}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    name,
+                    slug
+                })
+            }
+        );
 
-        const token =
-            localStorage.getItem(
-                'adminToken'
-            );
-
-        const response =
-            await fetch(
-                `/api/owner/restaurants/${id}`,
-                {
-                    method: 'PUT',
-
-                    headers: {
-                        'Content-Type':
-                            'application/json',
-
-                        'Authorization':
-                            'Bearer ' +
-                            token
-                    },
-
-                    credentials:
-                        'same-origin',
-
-                    body:
-                        JSON.stringify({
-                            name,
-                            slug
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            response.status === 401 ||
-            response.status === 403
-        ) {
-
-            window.location.replace(
-                '/admin.html'
-            );
-
-            return;
-
-        }
+        const data = await response.json();
 
         if (!response.ok) {
-
             throw new Error(
-                data.message ||
-                'Failed to update restaurant.'
+                data.message || 'Unable to update restaurant.'
             );
-
         }
 
         closeOwnerActionPanel();
 
-        showOwnerNotification(
-            'Restaurant information has been updated successfully.',
-            'success',
-            'Restaurant Updated'
-        );
-
         await loadOwnerCafes();
 
-    } catch (error) {
-
-        console.error(
-            'Update restaurant error:',
-            error
+        showOwnerNotification(
+            'Restaurant Updated',
+            'Restaurant information was updated successfully.',
+            'success'
         );
 
+    } catch (error) {
+        console.error('Edit restaurant error:', error);
+
         showOwnerNotification(
+            'Update Failed',
             error.message,
-            'error',
-            'Update Failed'
+            'error'
         );
 
     } finally {
-
         hideOwnerLoading();
-
     }
-
 }
 
+/* ================================================================
+   ADMIN ACCOUNT
+   ================================================================ */
 
-/*
-|--------------------------------------------------------------------------
-| EDIT CAFE ADMIN
-|--------------------------------------------------------------------------
-*/
+function editOwnerCafeAdmin(restaurantId) {
+    const restaurant = getRestaurantById(restaurantId);
 
-function editOwnerCafeAdmin(
-    id,
-    cafeName
-) {
+    if (!restaurant) {
+        return;
+    }
 
     openOwnerActionPanel(
         'Admin Account',
         `
+            <form class="owner-form"
+                  onsubmit="saveOwnerCafeAdmin(event, ${Number(restaurant.id)})">
 
-        <div style="
-            margin-bottom:14px;
-            color:#666;
-            font-size:14px;
-        ">
-            Update the administrator account for
-            <strong>
-                ${escapeHtml(
-                    cafeName
-                )}
-            </strong>.
-        </div>
+                <div class="owner-form-hero admin-hero">
+                    <div class="owner-form-hero-icon">♙</div>
+                    <div>
+                        <span class="owner-form-eyebrow">ACCESS CONTROL</span>
+                        <h2>Café administrator</h2>
+                        <p>
+                            Update the login credentials for
+                            ${escapeHtml(restaurant.name)}.
+                        </p>
+                    </div>
+                </div>
 
-        <label>
-            Admin Email
-        </label>
+                <div class="owner-form-section">
+                    <label class="owner-field">
+                        <span>Admin Email</span>
+                        <input id="ownerAdminEmail"
+                               type="email"
+                               maxlength="160"
+                               required
+                               value="${escapeHtml(
+                                   restaurant.admin_email ||
+                                   restaurant.email ||
+                                   ''
+                               )}">
+                    </label>
 
-        <input
-            id="ownerAdminEmail"
-            type="email"
-            placeholder="admin@example.com"
-        >
+                    <label class="owner-field">
+                        <span>New Password</span>
+                        <input id="ownerAdminPassword"
+                               type="password"
+                               minlength="6"
+                               maxlength="100"
+                               placeholder="Leave blank to keep current password">
+                        <small>
+                            Enter a new password only if you want to change it.
+                        </small>
+                    </label>
+                </div>
 
-        <label>
-            New Password
-        </label>
+                <div class="owner-info-box">
+                    <span class="owner-info-icon">🔐</span>
+                    <div>
+                        <strong>Administrator access</strong>
+                        <p>
+                            These credentials are used by the café owner
+                            to access their restaurant dashboard.
+                        </p>
+                    </div>
+                </div>
 
-        <input
-            id="ownerAdminPassword"
-            type="password"
-            placeholder="Enter new password"
-        >
+                <div class="owner-form-actions">
+                    <button type="button"
+                            class="owner-secondary-btn"
+                            onclick="closeOwnerActionPanel()">
+                        Cancel
+                    </button>
 
-        <div class="owner-action-buttons">
-
-            <button
-                class="owner-secondary-btn"
-                onclick="closeOwnerActionPanel()"
-            >
-                Cancel
-            </button>
-
-            <button
-                class="owner-primary-btn"
-                onclick="saveOwnerCafeAdmin(${Number(id)})"
-            >
-                Update Account
-            </button>
-
-        </div>
-
+                    <button type="submit"
+                            class="owner-primary-btn">
+                        Save Account
+                    </button>
+                </div>
+            </form>
         `
     );
-
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| SAVE CAFE ADMIN
-|--------------------------------------------------------------------------
-*/
-
-async function saveOwnerCafeAdmin(
-    id
-) {
+async function saveOwnerCafeAdmin(event, restaurantId) {
+    event.preventDefault();
 
     const email =
-        document.getElementById(
-            'ownerAdminEmail'
-        )?.value.trim().toLowerCase();
+        document.getElementById('ownerAdminEmail')?.value.trim();
 
     const password =
-        document.getElementById(
-            'ownerAdminPassword'
-        )?.value.trim();
+        document.getElementById('ownerAdminPassword')?.value;
 
-    if (!email || !password) {
-
+    if (!email) {
         showOwnerNotification(
-            'Admin email and password are required.',
-            'warning',
-            'Missing Information'
+            'Missing Email',
+            'Administrator email is required.',
+            'error'
         );
-
         return;
-
     }
 
-    showOwnerLoading(
-        'Updating admin account...'
-    );
+    if (password && password.length < 6) {
+        showOwnerNotification(
+            'Invalid Password',
+            'The password must contain at least 6 characters.',
+            'error'
+        );
+        return;
+    }
+
+    const token = localStorage.getItem('adminToken');
+
+    showOwnerLoading('Updating administrator account...');
 
     try {
+        const body = {
+            email
+        };
 
-        const token =
-            localStorage.getItem(
-                'adminToken'
-            );
-
-        const response =
-            await fetch(
-                `/api/owner/restaurants/${id}/admin`,
-                {
-                    method: 'PUT',
-
-                    headers: {
-                        'Content-Type':
-                            'application/json',
-
-                        'Authorization':
-                            'Bearer ' +
-                            token
-                    },
-
-                    credentials:
-                        'same-origin',
-
-                    body:
-                        JSON.stringify({
-                            email,
-                            password
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            response.status === 401 ||
-            response.status === 403
-        ) {
-
-            window.location.replace(
-                '/admin.html'
-            );
-
-            return;
-
+        if (password) {
+            body.password = password;
         }
 
+        const response = await fetch(
+            `/api/owner/restaurants/${Number(restaurantId)}/admin`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(body)
+            }
+        );
+
+        const data = await response.json();
+
         if (!response.ok) {
-
             throw new Error(
-                data.message ||
-                'Failed to update admin account.'
+                data.message || 'Unable to update administrator.'
             );
-
         }
 
         closeOwnerActionPanel();
 
-        showOwnerNotification(
-            'Administrator account updated successfully.',
-            'success',
-            'Admin Account Updated'
-        );
-
         await loadOwnerCafes();
 
-    } catch (error) {
-
-        console.error(
-            'Update admin error:',
-            error
+        showOwnerNotification(
+            'Account Updated',
+            'Administrator credentials were updated successfully.',
+            'success'
         );
 
+    } catch (error) {
+        console.error('Admin account error:', error);
+
         showOwnerNotification(
+            'Update Failed',
             error.message,
-            'error',
-            'Update Failed'
+            'error'
         );
 
     } finally {
-
         hideOwnerLoading();
+    }
+}
 
+/* ================================================================
+   STATUS
+   ================================================================ */
+
+function toggleOwnerCafeStatus(restaurantId) {
+    const restaurant = getRestaurantById(restaurantId);
+
+    if (!restaurant) {
+        return;
     }
 
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| ENABLE / DISABLE
-|--------------------------------------------------------------------------
-*/
-
-function toggleOwnerCafeStatus(
-    id,
-    cafeName,
-    currentStatus
-) {
-
-    const isActive =
-        currentStatus === 'active';
-
-    const title =
-        isActive
-            ? 'Disable Restaurant'
-            : 'Enable Restaurant';
-
-    const description =
-        isActive
-            ? `
-                Disabling
-                <strong>
-                    ${escapeHtml(cafeName)}
-                </strong>
-                will temporarily hide its public menu.
-              `
-            : `
-                Enabling
-                <strong>
-                    ${escapeHtml(cafeName)}
-                </strong>
-                will make its public menu available again.
-              `;
+    const active =
+        restaurant.status === 'active' ||
+        restaurant.is_active === true;
 
     openOwnerActionPanel(
-        title,
+        active
+            ? 'Disable Restaurant'
+            : 'Enable Restaurant',
         `
+            <div class="owner-confirmation">
+                <div class="owner-confirmation-icon ${active ? 'warning' : 'success'}">
+                    ${active ? '⏸' : '✓'}
+                </div>
 
-        <div style="
-            background:${isActive ? '#fff5f5' : '#f4fbf6'};
-            border:1px solid ${isActive ? '#f1caca' : '#c9e8d2'};
-            border-radius:12px;
-            padding:15px;
-            margin-bottom:16px;
-            line-height:1.5;
-        ">
-            ${description}
-        </div>
+                <span class="owner-form-eyebrow">
+                    RESTAURANT STATUS
+                </span>
 
-        <div style="
-            font-size:14px;
-            color:#666;
-            margin-bottom:5px;
-        ">
-            Restaurant
-        </div>
+                <h2>
+                    ${active ? 'Disable' : 'Enable'}
+                    ${escapeHtml(restaurant.name)}?
+                </h2>
 
-        <div style="
-            font-size:18px;
-            font-weight:700;
-            color:#3b2108;
-        ">
-            ${escapeHtml(cafeName)}
-        </div>
+                <p>
+                    ${
+                        active
+                            ? 'Customers will no longer be able to access this restaurant menu while it is disabled.'
+                            : 'Customers will be able to access this restaurant menu again.'
+                    }
+                </p>
 
-        <div class="owner-action-buttons">
+                <div class="owner-confirmation-actions">
+                    <button type="button"
+                            class="owner-secondary-btn"
+                            onclick="closeOwnerActionPanel()">
+                        Cancel
+                    </button>
 
-            <button
-                class="owner-secondary-btn"
-                onclick="closeOwnerActionPanel()"
-            >
-                Cancel
-            </button>
-
-            <button
-                class="${isActive ? 'owner-danger-btn' : 'owner-primary-btn'}"
-                onclick="saveOwnerCafeStatus(
-                    ${Number(id)},
-                    '${isActive ? 'disabled' : 'active'}'
-                )"
-            >
-                ${
-                    isActive
-                        ? 'Disable Restaurant'
-                        : 'Enable Restaurant'
-                }
-            </button>
-
-        </div>
-
+                    <button type="button"
+                            class="owner-primary-btn ${active ? 'danger-btn' : ''}"
+                            onclick="saveOwnerCafeStatus(${Number(restaurant.id)}, ${active ? 'false' : 'true'})">
+                        ${active ? 'Disable Restaurant' : 'Enable Restaurant'}
+                    </button>
+                </div>
+            </div>
         `
     );
-
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| SAVE STATUS
-|--------------------------------------------------------------------------
-*/
-
-async function saveOwnerCafeStatus(
-    id,
-    status
-) {
+async function saveOwnerCafeStatus(restaurantId, shouldBeActive) {
+    const token = localStorage.getItem('adminToken');
 
     showOwnerLoading(
-        status === 'active'
+        shouldBeActive
             ? 'Enabling restaurant...'
             : 'Disabling restaurant...'
     );
 
     try {
+        const response = await fetch(
+            `/api/owner/restaurants/${Number(restaurantId)}/status`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    active: shouldBeActive === true ||
+                           shouldBeActive === 'true'
+                })
+            }
+        );
 
-        const token =
-            localStorage.getItem(
-                'adminToken'
-            );
-
-        const response =
-            await fetch(
-                `/api/owner/restaurants/${id}/status`,
-                {
-                    method: 'PUT',
-
-                    headers: {
-                        'Content-Type':
-                            'application/json',
-
-                        'Authorization':
-                            'Bearer ' +
-                            token
-                    },
-
-                    credentials:
-                        'same-origin',
-
-                    body:
-                        JSON.stringify({
-                            status
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            response.status === 401 ||
-            response.status === 403
-        ) {
-
-            window.location.replace(
-                '/admin.html'
-            );
-
-            return;
-
-        }
+        const data = await response.json();
 
         if (!response.ok) {
-
             throw new Error(
-                data.message ||
-                'Failed to update restaurant status.'
+                data.message || 'Unable to update restaurant status.'
             );
-
         }
 
         closeOwnerActionPanel();
 
-        ownerOpenRestaurantId =
-            null;
-
-        showOwnerNotification(
-            data.message,
-            'success',
-            status === 'active'
-                ? 'Restaurant Enabled'
-                : 'Restaurant Disabled'
-        );
-
         await loadOwnerCafes();
 
-    } catch (error) {
-
-        console.error(
-            'Status update error:',
-            error
+        showOwnerNotification(
+            'Status Updated',
+            shouldBeActive === true || shouldBeActive === 'true'
+                ? 'Restaurant is now active.'
+                : 'Restaurant has been disabled.',
+            'success'
         );
 
+    } catch (error) {
+        console.error('Status update error:', error);
+
         showOwnerNotification(
+            'Status Update Failed',
             error.message,
-            'error',
-            'Status Update Failed'
+            'error'
         );
 
     } finally {
-
         hideOwnerLoading();
-
     }
-
 }
 
+/* ================================================================
+   DELETE
+   ================================================================ */
 
-/*
-|--------------------------------------------------------------------------
-| DELETE RESTAURANT
-|--------------------------------------------------------------------------
-*/
+function deleteOwnerCafe(restaurantId) {
+    const restaurant = getRestaurantById(restaurantId);
 
-function deleteOwnerCafe(
-    id,
-    cafeName
-) {
+    if (!restaurant) {
+        return;
+    }
 
     openOwnerActionPanel(
         'Delete Restaurant',
         `
+            <div class="owner-confirmation delete-confirmation">
+                <div class="owner-confirmation-icon danger">
+                    ⌫
+                </div>
 
-        <div style="
-            background:#fff5f5;
-            border:1px solid #f0caca;
-            border-radius:12px;
-            padding:18px;
-            margin-bottom:18px;
-        ">
+                <span class="owner-form-eyebrow danger-eyebrow">
+                    PERMANENT ACTION
+                </span>
 
-            <div style="
-                font-size:18px;
-                font-weight:700;
-                color:#a61b1b;
-                margin-bottom:8px;
-            ">
-                ⚠ Permanent Deletion
+                <h2>
+                    Delete ${escapeHtml(restaurant.name)}?
+                </h2>
+
+                <p>
+                    This action permanently removes the restaurant
+                    and its associated menu/profile data.
+                </p>
+
+                <div class="owner-danger-box">
+                    <strong>This cannot be undone.</strong>
+                    <span>
+                        Make sure you are deleting the correct restaurant.
+                    </span>
+                </div>
+
+                <div class="owner-confirmation-actions">
+                    <button type="button"
+                            class="owner-secondary-btn"
+                            onclick="closeOwnerActionPanel()">
+                        Cancel
+                    </button>
+
+                    <button type="button"
+                            class="owner-primary-btn danger-btn"
+                            onclick="confirmDeleteOwnerCafe(${Number(restaurant.id)})">
+                        Delete Permanently
+                    </button>
+                </div>
             </div>
+        `
+    );
+}
 
-            <div style="
-                color:#555;
-                line-height:1.6;
-            ">
-                You are about to permanently delete:
+async function confirmDeleteOwnerCafe(restaurantId) {
+    const token = localStorage.getItem('adminToken');
+
+    showOwnerLoading('Deleting restaurant...');
+
+    try {
+        const response = await fetch(
+            `/api/owner/restaurants/${Number(restaurantId)}`,
+            {
+                method: 'DELETE',
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
+                credentials: 'same-origin'
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || 'Unable to delete restaurant.'
+            );
+        }
+
+        ownerOpenRestaurantId = null;
+
+        closeOwnerActionPanel();
+
+        await loadOwnerCafes();
+
+        showOwnerNotification(
+            'Restaurant Deleted',
+            'The restaurant was permanently removed.',
+            'success'
+        );
+
+    } catch (error) {
+        console.error('Delete restaurant error:', error);
+
+        showOwnerNotification(
+            'Delete Failed',
+            error.message,
+            'error'
+        );
+
+    } finally {
+        hideOwnerLoading();
+    }
+}
+
+/* ================================================================
+   DUPLICATE CAFÉ
+   ================================================================ */
+
+function openDuplicateCafeFromRestaurant(restaurantId) {
+    closeOwnerActionPanel();
+    openDuplicateCafePanel(restaurantId);
+}
+
+function openDuplicateCafePanel(preselectedRestaurantId = '') {
+    closeSuperAdminMenu();
+
+    const activeRestaurants =
+        ownerRestaurantsData.filter(
+            restaurant =>
+                restaurant.status === 'active' ||
+                restaurant.is_active === true
+        );
+
+    if (!activeRestaurants.length) {
+        showOwnerNotification(
+            'No Active Cafés',
+            'Create or enable a restaurant before creating a duplicate.',
+            'error'
+        );
+        return;
+    }
+
+    const options = activeRestaurants.map(restaurant => `
+        <option value="${Number(restaurant.id)}"
+                ${Number(preselectedRestaurantId) === Number(restaurant.id) ? 'selected' : ''}>
+            ${escapeHtml(restaurant.name)}
+        </option>
+    `).join('');
+
+    openOwnerActionPanel(
+        'Duplicate Café',
+        `
+            <div class="duplicate-cafe-form">
+
+                <div class="duplicate-hero">
+                    <div class="duplicate-hero-icon">⧉</div>
+                    <div>
+                        <span class="owner-form-eyebrow">
+                            CLONE RESTAURANT
+                        </span>
+                        <h2>Create an independent café copy</h2>
+                        <p>
+                            Copy the selected café's menu and profile
+                            into a completely separate restaurant.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="duplicate-step">
+                    <div class="duplicate-step-heading">
+                        <span>01</span>
+                        <div>
+                            <strong>Source Café</strong>
+                            <small>Select the café to copy.</small>
+                        </div>
+                    </div>
+
+                    <label class="owner-field">
+                        <span>Copy From</span>
+                        <select id="duplicateSourceCafe"
+                                onchange="updateDuplicateCafeSourceInfo()"
+                                required>
+                            <option value="">Choose a café...</option>
+                            ${options}
+                        </select>
+                    </label>
+
+                    <div id="duplicateSourceInfo"
+                         class="duplicate-source-info">
+                        Select a café to see what will be copied.
+                    </div>
+                </div>
+
+                <div class="duplicate-step">
+                    <div class="duplicate-step-heading">
+                        <span>02</span>
+                        <div>
+                            <strong>New Café</strong>
+                            <small>Give the duplicate its own identity.</small>
+                        </div>
+                    </div>
+
+                    <div class="owner-field-grid">
+                        <label class="owner-field">
+                            <span>New Café Name</span>
+                            <input id="duplicateCafeName"
+                                   type="text"
+                                   maxlength="120"
+                                   required
+                                   placeholder="Example: New Branch Coffee">
+                        </label>
+
+                        <label class="owner-field">
+                            <span>New Public Slug</span>
+                            <input id="duplicateCafeSlug"
+                                   type="text"
+                                   maxlength="80"
+                                   required
+                                   placeholder="new-branch-coffee">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="duplicate-step">
+                    <div class="duplicate-step-heading">
+                        <span>03</span>
+                        <div>
+                            <strong>New Administrator</strong>
+                            <small>The duplicate needs its own login.</small>
+                        </div>
+                    </div>
+
+                    <div class="owner-field-grid">
+                        <label class="owner-field">
+                            <span>Admin Email</span>
+                            <input id="duplicateAdminEmail"
+                                   type="email"
+                                   maxlength="160"
+                                   required
+                                   placeholder="admin@example.com">
+                        </label>
+
+                        <label class="owner-field">
+                            <span>Admin Password</span>
+                            <input id="duplicateAdminPassword"
+                                   type="password"
+                                   minlength="6"
+                                   maxlength="100"
+                                   required
+                                   placeholder="Minimum 6 characters">
+                        </label>
+
+                        <label class="owner-field">
+                            <span>Confirm Password</span>
+                            <input id="duplicateAdminPasswordConfirm"
+                                   type="password"
+                                   minlength="6"
+                                   maxlength="100"
+                                   required
+                                   placeholder="Repeat password">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="duplicate-info-box">
+                    <div class="duplicate-info-icon">✓</div>
+                    <div>
+                        <strong>What will be copied?</strong>
+                        <ul>
+                            <li>Menu categories and menu items</li>
+                            <li>Current menu prices</li>
+                            <li>Restaurant logo/profile data</li>
+                            <li>Phone numbers and addresses</li>
+                        </ul>
+                        <p>
+                            The new café receives its own restaurant ID
+                            and admin account. Future changes are independent.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="owner-form-actions">
+                    <button type="button"
+                            class="owner-secondary-btn"
+                            onclick="closeOwnerActionPanel()">
+                        Cancel
+                    </button>
+
+                    <button type="button"
+                            class="owner-primary-btn"
+                            onclick="submitDuplicateCafe()">
+                        Create Duplicate
+                    </button>
+                </div>
             </div>
-
-            <div style="
-                font-size:19px;
-                font-weight:700;
-                margin:8px 0;
-                color:#3b2108;
-            ">
-                ${escapeHtml(cafeName)}
-            </div>
-
-            <div style="
-                color:#555;
-                line-height:1.6;
-            ">
-                This will delete:
-                <br>• Restaurant
-                <br>• Restaurant menu
-                <br>• Café admin account
-            </div>
-
-            <div style="
-                margin-top:12px;
-                font-weight:700;
-                color:#a61b1b;
-            ">
-                This action cannot be undone.
-            </div>
-
-        </div>
-
-        <label>
-            Type DELETE to confirm
-        </label>
-
-        <input
-            id="deleteRestaurantConfirmation"
-            type="text"
-            placeholder="Type DELETE"
-            autocomplete="off"
-        >
-
-        <div class="owner-action-buttons">
-
-            <button
-                class="owner-secondary-btn"
-                onclick="closeOwnerActionPanel()"
-            >
-                Cancel
-            </button>
-
-            <button
-                class="owner-danger-btn"
-                onclick="confirmDeleteOwnerCafe(${Number(id)})"
-            >
-                Permanently Delete
-            </button>
-
-        </div>
-
         `
     );
 
+    const nameInput =
+        document.getElementById('duplicateCafeName');
+
+    const slugInput =
+        document.getElementById('duplicateCafeSlug');
+
+    if (nameInput && slugInput) {
+        nameInput.addEventListener('input', () => {
+            if (!slugInput.dataset.manual) {
+                slugInput.value =
+                    createSlugFromName(nameInput.value);
+            }
+        });
+
+        slugInput.addEventListener('input', () => {
+            slugInput.dataset.manual = 'true';
+        });
+    }
+
+    updateDuplicateCafeSourceInfo();
 }
 
+function updateDuplicateCafeSourceInfo() {
+    const select =
+        document.getElementById('duplicateSourceCafe');
 
-/*
-|--------------------------------------------------------------------------
-| CONFIRM DELETE
-|--------------------------------------------------------------------------
-*/
+    const info =
+        document.getElementById('duplicateSourceInfo');
 
-async function confirmDeleteOwnerCafe(
-    id
-) {
+    if (!select || !info) {
+        return;
+    }
 
-    const input =
-        document.getElementById(
-            'deleteRestaurantConfirmation'
+    const restaurant =
+        getRestaurantById(select.value);
+
+    if (!restaurant) {
+        info.innerHTML =
+            'Select a café to see what will be copied.';
+        info.className =
+            'duplicate-source-info empty';
+        return;
+    }
+
+    info.className =
+        'duplicate-source-info selected';
+
+    info.innerHTML = `
+        <div class="duplicate-source-avatar">
+            ${escapeHtml(
+                String(restaurant.name || 'C')
+                    .charAt(0)
+                    .toUpperCase()
+            )}
+        </div>
+
+        <div>
+            <strong>${escapeHtml(restaurant.name)}</strong>
+            <span>
+                /${escapeHtml(restaurant.slug || '')}
+            </span>
+        </div>
+
+        <div class="duplicate-source-badge">
+            ACTIVE
+        </div>
+    `;
+}
+
+async function submitDuplicateCafe() {
+    const sourceId =
+        Number(
+            document.getElementById('duplicateSourceCafe')?.value
         );
+
+    const name =
+        document.getElementById('duplicateCafeName')?.value.trim();
+
+    const slug =
+        document.getElementById('duplicateCafeSlug')?.value.trim().toLowerCase();
+
+    const adminEmail =
+        document.getElementById('duplicateAdminEmail')?.value.trim();
+
+    const adminPassword =
+        document.getElementById('duplicateAdminPassword')?.value;
+
+    const confirmPassword =
+        document.getElementById('duplicateAdminPasswordConfirm')?.value;
+
+    const sourceRestaurant =
+        getRestaurantById(sourceId);
+
+    if (!sourceRestaurant) {
+        showOwnerNotification(
+            'Select a Café',
+            'Choose the source café first.',
+            'error'
+        );
+        return;
+    }
+
+    if (!name || !slug || !adminEmail || !adminPassword) {
+        showOwnerNotification(
+            'Missing Information',
+            'Please complete all required fields.',
+            'error'
+        );
+        return;
+    }
+
+    if (adminPassword.length < 6) {
+        showOwnerNotification(
+            'Invalid Password',
+            'The administrator password must contain at least 6 characters.',
+            'error'
+        );
+        return;
+    }
+
+    if (adminPassword !== confirmPassword) {
+        showOwnerNotification(
+            'Passwords Do Not Match',
+            'Please make sure both password fields are identical.',
+            'error'
+        );
+        return;
+    }
+
+    const slugPattern =
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+    if (!slugPattern.test(slug)) {
+        showOwnerNotification(
+            'Invalid Slug',
+            'Use lowercase letters, numbers, and hyphens only.',
+            'error'
+        );
+        return;
+    }
+
+    showOwnerActionPanel(
+        'Confirm Duplicate Café',
+        `
+            <div class="owner-confirmation">
+                <div class="owner-confirmation-icon success">
+                    ⧉
+                </div>
+
+                <span class="owner-form-eyebrow">
+                    FINAL CONFIRMATION
+                </span>
+
+                <h2>Create ${escapeHtml(name)}?</h2>
+
+                <p>
+                    A new independent restaurant will be created from
+                    ${escapeHtml(sourceRestaurant.name)}.
+                </p>
+
+                <div class="owner-confirmation-summary">
+                    <div>
+                        <span>Source</span>
+                        <strong>${escapeHtml(sourceRestaurant.name)}</strong>
+                    </div>
+
+                    <div>
+                        <span>New Café</span>
+                        <strong>${escapeHtml(name)}</strong>
+                    </div>
+
+                    <div>
+                        <span>Public URL</span>
+                        <strong>/${escapeHtml(slug)}</strong>
+                    </div>
+
+                    <div>
+                        <span>Admin</span>
+                        <strong>${escapeHtml(adminEmail)}</strong>
+                    </div>
+                </div>
+
+                <div class="owner-info-box">
+                    <span class="owner-info-icon">✓</span>
+                    <div>
+                        <strong>Independent copy</strong>
+                        <p>
+                            The copied café will have its own restaurant
+                            record and menu data.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="owner-confirmation-actions">
+                    <button type="button"
+                            class="owner-secondary-btn"
+                            onclick="openDuplicateCafePanel(${sourceId})">
+                        Go Back
+                    </button>
+
+                    <button type="button"
+                            class="owner-primary-btn"
+                            onclick="executeDuplicateCafe(
+                                ${sourceId},
+                                ${JSON.stringify(name)},
+                                ${JSON.stringify(slug)},
+                                ${JSON.stringify(adminEmail)},
+                                ${JSON.stringify(adminPassword)}
+                            )">
+                        Create Café
+                    </button>
+                </div>
+            </div>
+        `
+    );
+}
+
+async function executeDuplicateCafe(
+    sourceId,
+    name,
+    slug,
+    adminEmail,
+    adminPassword
+) {
+    const token = localStorage.getItem('adminToken');
+
+    showOwnerLoading('Creating independent café copy...');
+
+    try {
+        const response = await fetch(
+            `/api/owner/restaurants/${Number(sourceId)}/duplicate`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    name,
+                    slug,
+                    adminEmail,
+                    adminPassword
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || 'Unable to duplicate café.'
+            );
+        }
+
+        closeOwnerActionPanel();
+
+        await loadOwnerCafes();
+
+        showOwnerNotification(
+            'Café Duplicated',
+            `${name} was created as an independent café.`,
+            'success'
+        );
+
+    } catch (error) {
+        console.error('Duplicate café error:', error);
+
+        showOwnerNotification(
+            'Duplicate Failed',
+            error.message,
+            'error'
+        );
+
+    } finally {
+        hideOwnerLoading();
+    }
+}
+
+/* ================================================================
+   PRICE MANAGEMENT
+   ================================================================ */
+
+function openPriceManagementForRestaurant(restaurantId) {
+    closeOwnerActionPanel();
+    openPriceManagementPanel(restaurantId);
+}
+
+function openPriceManagementPanel(preselectedRestaurantId = '') {
+    closeSuperAdminMenu();
+
+    const activeRestaurants =
+        ownerRestaurantsData.filter(
+            restaurant =>
+                restaurant.status === 'active' ||
+                restaurant.is_active === true
+        );
+
+    if (!activeRestaurants.length) {
+        showOwnerNotification(
+            'No Active Cafés',
+            'Price management is available for active restaurants only.',
+            'error'
+        );
+        return;
+    }
+
+    priceManagementRestaurant = null;
+    priceManagementMenu = {};
+    priceManagementSearch = '';
+    priceManagementSelectedItems = new Set();
+
+    const options = activeRestaurants.map(restaurant => `
+        <option value="${Number(restaurant.id)}"
+                ${Number(preselectedRestaurantId) === Number(restaurant.id) ? 'selected' : ''}>
+            ${escapeHtml(restaurant.name)}
+        </option>
+    `).join('');
+
+    openOwnerActionPanel(
+        'Price Management',
+        `
+            <div class="price-management">
+
+                <div class="price-management-hero">
+                    <div class="price-management-icon">%</div>
+                    <div>
+                        <span class="price-management-eyebrow">
+                            MENU PRICING
+                        </span>
+                        <h2>Price Management</h2>
+                        <p>
+                            Adjust menu prices for one café without affecting
+                            any other restaurant.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="price-cafe-selector">
+                    <label class="owner-field">
+                        <span>01 · Choose Café</span>
+                        <select id="priceManagementCafe"
+                                onchange="openPriceEditorForCafe(this.value)">
+                            <option value="">Choose a café...</option>
+                            ${options}
+                        </select>
+                    </label>
+                </div>
+
+                <div id="priceManagementEditor">
+                    <div class="price-empty-editor">
+                        <div class="price-empty-icon">%</div>
+                        <strong>Select a café to continue</strong>
+                        <span>
+                            Price changes will apply only to the café you select.
+                        </span>
+                    </div>
+                </div>
+
+            </div>
+        `
+    );
+
+    if (preselectedRestaurantId) {
+        openPriceEditorForCafe(preselectedRestaurantId);
+    }
+}
+
+async function openPriceEditorForCafe(restaurantId) {
+    const restaurant =
+        getRestaurantById(restaurantId);
+
+    const editor =
+        document.getElementById('priceManagementEditor');
+
+    if (!restaurant || !editor) {
+        return;
+    }
+
+    const active =
+        restaurant.status === 'active' ||
+        restaurant.is_active === true;
+
+    if (!active) {
+        showOwnerNotification(
+            'Restaurant Disabled',
+            'Price management is available for active restaurants only.',
+            'error'
+        );
+        return;
+    }
+
+    priceManagementRestaurant = restaurant;
+    priceManagementMenu = {};
+    priceManagementSearch = '';
+    priceManagementSelectedItems = new Set();
+
+    editor.innerHTML = `
+        <div class="price-loading-editor">
+            <div class="owner-loading-spinner"></div>
+            <strong>Loading menu prices...</strong>
+            <span>
+                Preparing ${escapeHtml(restaurant.name)}.
+            </span>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(
+            `/api/menu/${encodeURIComponent(
+                restaurant.slug
+            )}?priceManagement=${Date.now()}`,
+            {
+                method: 'GET',
+                cache: 'no-store'
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || 'Unable to load restaurant menu.'
+            );
+        }
+
+        priceManagementMenu =
+            data.menu && typeof data.menu === 'object'
+                ? data.menu
+                : {};
+
+        renderPriceManagementForm();
+
+    } catch (error) {
+        console.error('Price menu loading error:', error);
+
+        editor.innerHTML = `
+            <div class="price-error-editor">
+                <div class="price-empty-icon">!</div>
+                <strong>Unable to load menu</strong>
+                <span>${escapeHtml(error.message)}</span>
+
+                <button type="button"
+                        class="owner-secondary-btn"
+                        onclick="openPriceEditorForCafe(${Number(restaurant.id)})">
+                    Try Again
+                </button>
+            </div>
+        `;
+    }
+}
+
+function renderPriceManagementForm() {
+    const editor =
+        document.getElementById('priceManagementEditor');
+
+    if (!editor || !priceManagementRestaurant) {
+        return;
+    }
+
+    const categories =
+        Object.keys(priceManagementMenu)
+            .filter(category =>
+                Array.isArray(priceManagementMenu[category])
+            );
+
+    const allItems = getAllPriceItems();
+
+    const categoryOptions = categories.map(category => `
+        <option value="${escapeHtml(category)}">
+            ${escapeHtml(formatPriceCategoryName(category))}
+        </option>
+    `).join('');
+
+    editor.innerHTML = `
+        <div class="price-management-editor">
+
+            <div class="price-selected-cafe">
+                <div class="price-selected-cafe-icon">
+                    ${escapeHtml(
+                        String(priceManagementRestaurant.name || 'C')
+                            .charAt(0)
+                            .toUpperCase()
+                    )}
+                </div>
+
+                <div>
+                    <span>Selected Café</span>
+                    <strong>
+                        ${escapeHtml(priceManagementRestaurant.name)}
+                    </strong>
+                </div>
+
+                <button type="button"
+                        class="price-change-cafe-btn"
+                        onclick="openPriceManagementPanel()">
+                    Change Café
+                </button>
+            </div>
+
+            <div class="price-summary-strip">
+                <div>
+                    <span>Categories</span>
+                    <strong>${categories.length}</strong>
+                </div>
+
+                <div>
+                    <span>Priced Items</span>
+                    <strong>${allItems.length}</strong>
+                </div>
+
+                <div>
+                    <span>Status</span>
+                    <strong class="price-status-ready">
+                        Ready
+                    </strong>
+                </div>
+            </div>
+
+            <section class="price-step">
+                <div class="price-section-heading">
+                    <div class="price-section-number">02</div>
+                    <div>
+                        <span>ADJUSTMENT</span>
+                        <h3>How should prices change?</h3>
+                    </div>
+                </div>
+
+                <div class="price-operation-toggle">
+                    <label class="price-operation-option selected"
+                           data-operation="increase">
+                        <input type="radio"
+                               name="priceOperation"
+                               value="increase"
+                               checked>
+
+                        <span class="price-operation-icon">↗</span>
+
+                        <span>
+                            <strong>Increase</strong>
+                            <small>Add to current prices</small>
+                        </span>
+                    </label>
+
+                    <label class="price-operation-option"
+                           data-operation="decrease">
+                        <input type="radio"
+                               name="priceOperation"
+                               value="decrease">
+
+                        <span class="price-operation-icon">↘</span>
+
+                        <span>
+                            <strong>Decrease</strong>
+                            <small>Reduce current prices</small>
+                        </span>
+                    </label>
+                </div>
+
+                <div class="price-percentage-row">
+                    <label class="owner-field percentage-field">
+                        <span>Percentage</span>
+
+                        <div class="percentage-input-wrap">
+                            <input id="pricePercentage"
+                                   type="number"
+                                   min="0.01"
+                                   max="1000"
+                                   step="0.01"
+                                   value="10"
+                                   inputmode="decimal">
+
+                            <span>%</span>
+                        </div>
+                    </label>
+
+                    <div class="percentage-example">
+                        <span>Example</span>
+                        <strong>100 ETB → 110 ETB</strong>
+                        <small>
+                            With a 10% increase
+                        </small>
+                    </div>
+                </div>
+            </section>
+
+            <section class="price-step">
+                <div class="price-section-heading">
+                    <div class="price-section-number">03</div>
+                    <div>
+                        <span>APPLY TO</span>
+                        <h3>Choose which menu items to change</h3>
+                    </div>
+                </div>
+
+                <div class="price-scope-grid">
+
+                    <label class="price-scope-option selected"
+                           data-scope="all">
+                        <input type="radio"
+                               name="priceScope"
+                               value="all"
+                               checked>
+
+                        <span class="price-scope-icon">◎</span>
+
+                        <span>
+                            <strong>All Menu Items</strong>
+                            <small>
+                                Update every priced item
+                            </small>
+                        </span>
+                    </label>
+
+                    <label class="price-scope-option"
+                           data-scope="category">
+                        <input type="radio"
+                               name="priceScope"
+                               value="category">
+
+                        <span class="price-scope-icon">▦</span>
+
+                        <span>
+                            <strong>Selected Category</strong>
+                            <small>
+                                Update one category
+                            </small>
+                        </span>
+                    </label>
+
+                    <label class="price-scope-option"
+                           data-scope="items">
+                        <input type="radio"
+                               name="priceScope"
+                               value="items">
+
+                        <span class="price-scope-icon">☷</span>
+
+                        <span>
+                            <strong>Selected Items</strong>
+                            <small>
+                                Choose individual items
+                            </small>
+                        </span>
+                    </label>
+
+                </div>
+
+                <div id="priceCategoryArea"
+                     class="price-hidden-area">
+
+                    <label class="owner-field">
+                        <span>Category</span>
+                        <select id="priceCategory">
+                            <option value="">
+                                Choose category...
+                            </option>
+                            ${categoryOptions}
+                        </select>
+                    </label>
+
+                </div>
+
+                <div id="priceItemsArea"
+                     class="price-hidden-area">
+
+                    <div class="price-items-toolbar">
+                        <div class="price-items-toolbar-title">
+                            <strong>Select menu items</strong>
+                            <span id="priceSelectedCount">
+                                0 selected
+                            </span>
+                        </div>
+
+                        <button type="button"
+                                id="priceSelectAllBtn"
+                                class="price-select-all-btn">
+                            Select Visible
+                        </button>
+                    </div>
+
+                    <div class="price-search-wrap">
+                        <span>⌕</span>
+
+                        <input id="priceItemSearch"
+                               type="search"
+                               placeholder="Search menu items..."
+                               autocomplete="off">
+
+                        <button type="button"
+                                id="priceItemSearchClear"
+                                aria-label="Clear search">
+                            ✕
+                        </button>
+                    </div>
+
+                    <div id="priceItemsList"
+                         class="price-items-list"></div>
+                </div>
+            </section>
+
+            <section class="price-step price-preview-step">
+                <div class="price-section-heading">
+                    <div class="price-section-number">04</div>
+                    <div>
+                        <span>PREVIEW</span>
+                        <h3>Review the price changes</h3>
+                    </div>
+                </div>
+
+                <div id="pricePreview"
+                     class="price-preview"></div>
+            </section>
+
+            <div class="price-warning-box">
+                <div class="price-warning-icon">!</div>
+                <div>
+                    <strong>Review before applying</strong>
+                    <p>
+                        The selected prices will be updated in the database.
+                        Make sure the café and adjustment are correct.
+                    </p>
+                </div>
+            </div>
+
+            <div class="price-form-actions">
+                <button type="button"
+                        class="owner-secondary-btn"
+                        onclick="openPriceManagementPanel()">
+                    Change Café
+                </button>
+
+                <button type="button"
+                        class="owner-primary-btn price-apply-btn"
+                        onclick="confirmPriceManagement()">
+                    Review & Apply
+                </button>
+            </div>
+
+        </div>
+    `;
+
+    setupPriceManagementEvents();
+    renderPriceItemsList();
+    updatePriceManagementUI();
+}
+
+function formatPriceCategoryName(category) {
+    return String(category || '')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+/* ================================================================
+   PRICE EVENTS
+   ================================================================ */
+
+function setupPriceManagementEvents() {
+    document
+        .querySelectorAll('input[name="priceOperation"]')
+        .forEach(input => {
+            input.addEventListener('change', updatePriceManagementUI);
+        });
+
+    document
+        .querySelectorAll('input[name="priceScope"]')
+        .forEach(input => {
+            input.addEventListener('change', updatePriceManagementUI);
+        });
+
+    const percentage =
+        document.getElementById('pricePercentage');
+
+    if (percentage) {
+        percentage.addEventListener(
+            'input',
+            updatePriceManagementUI
+        );
+    }
+
+    const category =
+        document.getElementById('priceCategory');
+
+    if (category) {
+        category.addEventListener(
+            'change',
+            updatePriceManagementUI
+        );
+    }
+
+    const search =
+        document.getElementById('priceItemSearch');
+
+    if (search) {
+        search.addEventListener('input', () => {
+            priceManagementSearch =
+                search.value.trim().toLowerCase();
+
+            renderPriceItemsList();
+        });
+    }
+
+    const clearSearch =
+        document.getElementById('priceItemSearchClear');
+
+    if (clearSearch) {
+        clearSearch.addEventListener('click', () => {
+            if (search) {
+                search.value = '';
+            }
+
+            priceManagementSearch = '';
+
+            renderPriceItemsList();
+        });
+    }
+
+    const selectAll =
+        document.getElementById('priceSelectAllBtn');
+
+    if (selectAll) {
+        selectAll.addEventListener(
+            'click',
+            toggleAllPriceItems
+        );
+    }
+}
+
+function updatePriceManagementUI() {
+    const operation =
+        document.querySelector(
+            'input[name="priceOperation"]:checked'
+        )?.value || 'increase';
+
+    const scope =
+        document.querySelector(
+            'input[name="priceScope"]:checked'
+        )?.value || 'all';
+
+    document
+        .querySelectorAll('.price-operation-option')
+        .forEach(option => {
+            option.classList.toggle(
+                'selected',
+                option.dataset.operation === operation
+            );
+        });
+
+    document
+        .querySelectorAll('.price-scope-option')
+        .forEach(option => {
+            option.classList.toggle(
+                'selected',
+                option.dataset.scope === scope
+            );
+        });
+
+    const categoryArea =
+        document.getElementById('priceCategoryArea');
+
+    const itemsArea =
+        document.getElementById('priceItemsArea');
+
+    if (categoryArea) {
+        categoryArea.classList.toggle(
+            'visible',
+            scope === 'category'
+        );
+    }
+
+    if (itemsArea) {
+        itemsArea.classList.toggle(
+            'visible',
+            scope === 'items'
+        );
+    }
+
+    updatePricePreview();
+}
+
+function getAllPriceItems() {
+    const items = [];
+
+    Object.keys(priceManagementMenu || {}).forEach(category => {
+        const categoryItems =
+            priceManagementMenu[category];
+
+        if (!Array.isArray(categoryItems)) {
+            return;
+        }
+
+        categoryItems.forEach((item, index) => {
+            if (!item || typeof item !== 'object') {
+                return;
+            }
+
+            const price = Number(item.price);
+
+            if (!Number.isFinite(price)) {
+                return;
+            }
+
+            items.push({
+                category,
+                index,
+                item
+            });
+        });
+    });
+
+    return items;
+}
+
+function getPriceItemName(item, fallback = 'Menu Item') {
+    return String(
+        item?.name ||
+        item?.title ||
+        fallback
+    );
+}
+
+function renderPriceItemsList() {
+    const list =
+        document.getElementById('priceItemsList');
+
+    if (!list) {
+        return;
+    }
+
+    const allItems = getAllPriceItems();
+
+    const filtered = allItems.filter(entry => {
+        if (!priceManagementSearch) {
+            return true;
+        }
+
+        const itemName =
+            getPriceItemName(entry.item).toLowerCase();
+
+        const category =
+            formatPriceCategoryName(entry.category)
+                .toLowerCase();
+
+        return (
+            itemName.includes(priceManagementSearch) ||
+            category.includes(priceManagementSearch)
+        );
+    });
+
+    if (!filtered.length) {
+        list.innerHTML = `
+            <div class="price-items-empty">
+                <span>⌕</span>
+                <strong>No matching items</strong>
+                <small>
+                    Try another search.
+                </small>
+            </div>
+        `;
+
+        updateSelectedPriceCount();
+        return;
+    }
+
+    list.innerHTML = '';
+
+    filtered.forEach(entry => {
+        const key =
+            `${entry.category}::${entry.index}`;
+
+        const checked =
+            priceManagementSelectedItems.has(key);
+
+        const itemName =
+            getPriceItemName(
+                entry.item,
+                `Item ${entry.index + 1}`
+            );
+
+        const price =
+            Number(entry.item.price);
+
+        const row =
+            document.createElement('label');
+
+        row.className =
+            `price-item-row ${checked ? 'selected' : ''}`;
+
+        row.innerHTML = `
+            <input class="price-item-checkbox"
+                   type="checkbox"
+                   data-price-item-key="${escapeHtml(key)}"
+                   ${checked ? 'checked' : ''}>
+
+            <span class="price-item-check">
+                ✓
+            </span>
+
+            <span class="price-item-info">
+                <strong>
+                    ${escapeHtml(itemName)}
+                </strong>
+
+                <small>
+                    ${escapeHtml(
+                        formatPriceCategoryName(entry.category)
+                    )}
+                </small>
+            </span>
+
+            <span class="price-item-current">
+                ${formatETB(price)}
+            </span>
+        `;
+
+        const checkbox =
+            row.querySelector('.price-item-checkbox');
+
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) {
+                priceManagementSelectedItems.add(key);
+                row.classList.add('selected');
+            } else {
+                priceManagementSelectedItems.delete(key);
+                row.classList.remove('selected');
+            }
+
+            updateSelectedPriceCount();
+            updatePricePreview();
+        });
+
+        list.appendChild(row);
+    });
+
+    updateSelectedPriceCount();
+}
+
+function updateSelectedPriceCount() {
+    const countElement =
+        document.getElementById('priceSelectedCount');
+
+    if (countElement) {
+        const count =
+            priceManagementSelectedItems.size;
+
+        countElement.textContent =
+            `${count} selected`;
+    }
+}
+
+function toggleAllPriceItems() {
+    const allItems = getAllPriceItems();
+
+    const visibleItems =
+        allItems.filter(entry => {
+            if (!priceManagementSearch) {
+                return true;
+            }
+
+            const itemName =
+                getPriceItemName(entry.item).toLowerCase();
+
+            const category =
+                formatPriceCategoryName(entry.category)
+                    .toLowerCase();
+
+            return (
+                itemName.includes(priceManagementSearch) ||
+                category.includes(priceManagementSearch)
+            );
+        });
+
+    if (!visibleItems.length) {
+        return;
+    }
+
+    const allVisibleSelected =
+        visibleItems.every(entry =>
+            priceManagementSelectedItems.has(
+                `${entry.category}::${entry.index}`
+            )
+        );
+
+    visibleItems.forEach(entry => {
+        const key =
+            `${entry.category}::${entry.index}`;
+
+        if (allVisibleSelected) {
+            priceManagementSelectedItems.delete(key);
+        } else {
+            priceManagementSelectedItems.add(key);
+        }
+    });
+
+    renderPriceItemsList();
+    updatePricePreview();
+}
+
+function getSelectedPriceItems() {
+    return getAllPriceItems().filter(entry =>
+        priceManagementSelectedItems.has(
+            `${entry.category}::${entry.index}`
+        )
+    );
+}
+
+/* ================================================================
+   PRICE CALCULATION
+   ================================================================ */
+
+function calculateNewPrice(price, mode, percentage) {
+    const original =
+        Number(price);
+
+    const percent =
+        Number(percentage);
+
+    if (
+        !Number.isFinite(original) ||
+        !Number.isFinite(percent)
+    ) {
+        return original;
+    }
+
+    const multiplier =
+        mode === 'decrease'
+            ? 1 - (percent / 100)
+            : 1 + (percent / 100);
+
+    return Math.round(
+        (original * multiplier + Number.EPSILON) * 100
+    ) / 100;
+}
+
+function updatePricePreview() {
+    const preview =
+        document.getElementById('pricePreview');
+
+    if (!preview) {
+        return;
+    }
+
+    const mode =
+        document.querySelector(
+            'input[name="priceOperation"]:checked'
+        )?.value || 'increase';
+
+    const percentage =
+        Number(
+            document.getElementById('pricePercentage')?.value
+        );
+
+    const scope =
+        document.querySelector(
+            'input[name="priceScope"]:checked'
+        )?.value || 'all';
+
+    if (
+        !Number.isFinite(percentage) ||
+        percentage <= 0
+    ) {
+        preview.innerHTML = `
+            <div class="price-preview-empty">
+                Enter a valid percentage to preview the changes.
+            </div>
+        `;
+        return;
+    }
+
+    let affectedItems = [];
+
+    if (scope === 'all') {
+        affectedItems = getAllPriceItems();
+
+    } else if (scope === 'category') {
+        const category =
+            document.getElementById('priceCategory')?.value;
+
+        if (category) {
+            affectedItems =
+                getAllPriceItems().filter(
+                    entry => entry.category === category
+                );
+        }
+
+    } else if (scope === 'items') {
+        affectedItems =
+            getSelectedPriceItems();
+    }
+
+    const previewItems =
+        affectedItems.slice(0, 8);
+
+    const skippedCount =
+        getAllPriceItems().length -
+        affectedItems.length;
+
+    const operationLabel =
+        mode === 'increase'
+            ? `+${percentage}%`
+            : `-${percentage}%`;
+
+    const scopeLabel =
+        scope === 'all'
+            ? 'All menu items'
+            : scope === 'category'
+                ? (
+                    document.getElementById('priceCategory')?.value
+                        ? formatPriceCategoryName(
+                            document.getElementById('priceCategory').value
+                        )
+                        : 'No category selected'
+                )
+                : `${affectedItems.length} selected items`;
+
+    let rows = '';
+
+    previewItems.forEach(entry => {
+        const name =
+            getPriceItemName(entry.item);
+
+        const oldPrice =
+            Number(entry.item.price);
+
+        const newPrice =
+            calculateNewPrice(
+                oldPrice,
+                mode,
+                percentage
+            );
+
+        rows += `
+            <div class="price-preview-row">
+                <div class="price-preview-item">
+                    <strong>
+                        ${escapeHtml(name)}
+                    </strong>
+                    <small>
+                        ${escapeHtml(
+                            formatPriceCategoryName(
+                                entry.category
+                            )
+                        )}
+                    </small>
+                </div>
+
+                <div class="price-preview-old">
+                    ${formatETB(oldPrice)}
+                </div>
+
+                <div class="price-preview-arrow">
+                    →
+                </div>
+
+                <div class="price-preview-new">
+                    ${formatETB(newPrice)}
+                </div>
+            </div>
+        `;
+    });
+
+    if (!previewItems.length) {
+        preview.innerHTML = `
+            <div class="price-preview-empty">
+                <span class="price-preview-empty-icon">◎</span>
+                <strong>No items selected yet</strong>
+                <small>
+                    ${
+                        scope === 'category'
+                            ? 'Choose a category to preview prices.'
+                            : scope === 'items'
+                                ? 'Select at least one menu item.'
+                                : 'No priced menu items were found.'
+                    }
+                </small>
+            </div>
+        `;
+
+        return;
+    }
+
+    preview.innerHTML = `
+        <div class="price-preview-summary">
+            <div>
+                <span>Adjustment</span>
+                <strong>${operationLabel}</strong>
+            </div>
+
+            <div>
+                <span>Scope</span>
+                <strong>${escapeHtml(scopeLabel)}</strong>
+            </div>
+
+            <div>
+                <span>Affected</span>
+                <strong>${affectedItems.length}</strong>
+            </div>
+        </div>
+
+        <div class="price-preview-list">
+            ${rows}
+        </div>
+
+        ${
+            affectedItems.length > previewItems.length
+                ? `
+                    <div class="price-preview-more">
+                        + ${affectedItems.length - previewItems.length}
+                        more item${
+                            affectedItems.length -
+                            previewItems.length === 1
+                                ? ''
+                                : 's'
+                        }
+                    </div>
+                `
+                : ''
+        }
+
+        ${
+            skippedCount > 0 && scope === 'all'
+                ? `
+                    <div class="price-preview-note">
+                        ${skippedCount} menu item${
+                            skippedCount === 1 ? '' : 's'
+                        } without a valid numeric price will not be changed.
+                    </div>
+                `
+                : ''
+        }
+    `;
+}
+
+/* ================================================================
+   PRICE CONFIRMATION
+   ================================================================ */
+
+function confirmPriceManagement() {
+    if (!priceManagementRestaurant) {
+        showOwnerNotification(
+            'Choose a Café',
+            'Select a restaurant before applying price changes.',
+            'error'
+        );
+        return;
+    }
+
+    const mode =
+        document.querySelector(
+            'input[name="priceOperation"]:checked'
+        )?.value || 'increase';
+
+    const percentage =
+        Number(
+            document.getElementById('pricePercentage')?.value
+        );
+
+    const scope =
+        document.querySelector(
+            'input[name="priceScope"]:checked'
+        )?.value || 'all';
+
+    if (
+        !Number.isFinite(percentage) ||
+        percentage <= 0
+    ) {
+        showOwnerNotification(
+            'Invalid Percentage',
+            'Enter a percentage greater than 0.',
+            'error'
+        );
+        return;
+    }
+
+    if (percentage > 1000) {
+        showOwnerNotification(
+            'Percentage Too High',
+            'The maximum allowed adjustment is 1000%.',
+            'error'
+        );
+        return;
+    }
+
+    if (
+        mode === 'decrease' &&
+        percentage >= 100
+    ) {
+        showOwnerNotification(
+            'Invalid Decrease',
+            'A decrease must be less than 100%.',
+            'error'
+        );
+        return;
+    }
+
+    let affectedItems = [];
+
+    if (scope === 'all') {
+        affectedItems = getAllPriceItems();
+
+    } else if (scope === 'category') {
+        const category =
+            document.getElementById('priceCategory')?.value;
+
+        if (!category) {
+            showOwnerNotification(
+                'Choose a Category',
+                'Select a category before continuing.',
+                'error'
+            );
+            return;
+        }
+
+        affectedItems =
+            getAllPriceItems().filter(
+                entry => entry.category === category
+            );
+
+    } else if (scope === 'items') {
+        affectedItems =
+            getSelectedPriceItems();
+
+        if (!affectedItems.length) {
+            showOwnerNotification(
+                'No Items Selected',
+                'Select at least one menu item.',
+                'error'
+            );
+            return;
+        }
+    }
+
+    if (!affectedItems.length) {
+        showOwnerNotification(
+            'No Priced Items',
+            'There are no valid priced items in the selected scope.',
+            'error'
+        );
+        return;
+    }
+
+    const operation =
+        mode === 'increase'
+            ? `Increase prices by ${percentage}%`
+            : `Decrease prices by ${percentage}%`;
+
+    const scopeText =
+        scope === 'all'
+            ? 'All menu items'
+            : scope === 'category'
+                ? formatPriceCategoryName(
+                    document.getElementById('priceCategory')?.value
+                )
+                : `${affectedItems.length} selected items`;
+
+    openOwnerActionPanel(
+        'Confirm Price Changes',
+        `
+            <div class="price-confirmation">
+
+                <div class="price-confirmation-icon">
+                    %
+                </div>
+
+                <span class="price-management-eyebrow">
+                    FINAL REVIEW
+                </span>
+
+                <h2>
+                    Apply price changes?
+                </h2>
+
+                <p>
+                    Please review this operation carefully before applying it.
+                </p>
+
+                <div class="price-confirmation-summary">
+
+                    <div>
+                        <span>Café</span>
+                        <strong>
+                            ${escapeHtml(
+                                priceManagementRestaurant.name
+                            )}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Adjustment</span>
+                        <strong>
+                            ${escapeHtml(operation)}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Applies To</span>
+                        <strong>
+                            ${escapeHtml(scopeText)}
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Affected Items</span>
+                        <strong>
+                            ${affectedItems.length}
+                        </strong>
+                    </div>
+
+                </div>
+
+                <div class="price-confirmation-warning">
+                    <div>!</div>
+                    <p>
+                        These changes will be saved permanently to
+                        ${escapeHtml(
+                            priceManagementRestaurant.name
+                        )}'s menu. Other cafés will not be affected.
+                    </p>
+                </div>
+
+                <div class="owner-confirmation-actions">
+                    <button type="button"
+                            class="owner-secondary-btn"
+                            onclick="renderPriceManagementForm()">
+                        Go Back
+                    </button>
+
+                    <button type="button"
+                            class="owner-primary-btn"
+                            onclick="applyPriceManagement()">
+                        Apply ${percentage}%
+                    </button>
+                </div>
+
+            </div>
+        `
+    );
+}
+
+/* ================================================================
+   APPLY PRICE MANAGEMENT
+   ================================================================ */
+
+async function applyPriceManagement() {
+    if (!priceManagementRestaurant) {
+        return;
+    }
+
+    const mode =
+        document.querySelector(
+            'input[name="priceOperation"]:checked'
+        )?.value || 'increase';
+
+    const percentage =
+        Number(
+            document.getElementById('pricePercentage')?.value
+        );
+
+    const scope =
+        document.querySelector(
+            'input[name="priceScope"]:checked'
+        )?.value || 'all';
+
+    const category =
+        document.getElementById('priceCategory')?.value || null;
+
+    if (
+        !Number.isFinite(percentage) ||
+        percentage <= 0 ||
+        percentage > 1000
+    ) {
+        showOwnerNotification(
+            'Invalid Percentage',
+            'Enter a percentage between 0.01 and 1000.',
+            'error'
+        );
+        return;
+    }
+
+    if (
+        mode === 'decrease' &&
+        percentage >= 100
+    ) {
+        showOwnerNotification(
+            'Invalid Decrease',
+            'A decrease must be less than 100%.',
+            'error'
+        );
+        return;
+    }
+
+    if (scope === 'category' && !category) {
+        showOwnerNotification(
+            'Choose a Category',
+            'Select a category before applying the changes.',
+            'error'
+        );
+        return;
+    }
+
+    const selectedItems =
+        scope === 'items'
+            ? getSelectedPriceItems().map(entry => ({
+                category: entry.category,
+                index: entry.index
+            }))
+            : [];
+
+    if (
+        scope === 'items' &&
+        !selectedItems.length
+    ) {
+        showOwnerNotification(
+            'No Items Selected',
+            'Select at least one item.',
+            'error'
+        );
+        return;
+    }
+
+    const token =
+        localStorage.getItem('adminToken');
+
+    showOwnerLoading('Applying menu price changes...');
+
+    try {
+        const response = await fetch(
+            `/api/owner/restaurants/${Number(
+                priceManagementRestaurant.id
+            )}/price-management`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    mode,
+                    percentage,
+                    scope,
+                    category:
+                        scope === 'category'
+                            ? category
+                            : null,
+                    items: selectedItems
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ||
+                'Unable to apply price changes.'
+            );
+        }
+
+        const affected =
+            Number(data.affectedCount || 0);
+
+        closeOwnerActionPanel();
+
+        await loadOwnerCafes();
+
+        showOwnerNotification(
+            'Prices Updated',
+            `${affected} menu item${affected === 1 ? '' : 's'} updated successfully.`,
+            'success'
+        );
+
+        priceManagementRestaurant = null;
+        priceManagementMenu = {};
+        priceManagementSelectedItems = new Set();
+
+    } catch (error) {
+        console.error('Price management error:', error);
+
+        showOwnerNotification(
+            'Price Update Failed',
+            error.message,
+            'error'
+        );
+
+    } finally {
+        hideOwnerLoading();
+    }
+}
+
+/* ================================================================
+   PUBLIC MENU / COMPANY PROFILE
+   ================================================================ */
+
+function manageOwnerCafeMenu(slug) {
+    if (!slug) {
+        return;
+    }
+
+    window.open(
+        `/${encodeURIComponent(slug)}`,
+        '_blank',
+        'noopener'
+    );
+}
+
+function openCompanyProfile() {
+    closeSuperAdminMenu();
+
+    window.open(
+        '/',
+        '_blank',
+        'noopener'
+    );
+}
+
+/* ================================================================
+   NOTIFICATIONS
+   ================================================================ */
+
+function showOwnerNotification(
+    title,
+    message,
+    type = 'success'
+) {
+    const notification =
+        document.getElementById('ownerTopNotification');
+
+    const titleElement =
+        document.getElementById('ownerNotificationTitle');
+
+    const messageElement =
+        document.getElementById('ownerNotificationMessage');
+
+    const iconElement =
+        document.getElementById('ownerNotificationIcon');
+
+    if (
+        !notification ||
+        !titleElement ||
+        !messageElement ||
+        !iconElement
+    ) {
+        return;
+    }
+
+    clearTimeout(ownerNotificationTimer);
+
+    notification.classList.remove(
+        'show',
+        'success',
+        'error',
+        'warning'
+    );
+
+    notification.classList.add(type);
+
+    titleElement.textContent =
+        title || 'Notification';
+
+    messageElement.textContent =
+        message || '';
+
+    iconElement.textContent =
+        type === 'error'
+            ? '!'
+            : type === 'warning'
+                ? '!'
+                : '✓';
+
+    requestAnimationFrame(() => {
+        notification.classList.add('show');
+    });
+
+    ownerNotificationTimer =
+        setTimeout(() => {
+            closeOwnerNotification();
+        }, 5000);
+}
+
+function closeOwnerNotification() {
+    const notification =
+        document.getElementById('ownerTopNotification');
+
+    if (!notification) {
+        return;
+    }
+
+    notification.classList.remove('show');
+
+    clearTimeout(ownerNotificationTimer);
+}
+
+/* ================================================================
+   ACTION PANEL / BACKDROP
+   ================================================================ */
+
+function ensureOwnerActionBackdrop() {
+    let backdrop =
+        document.getElementById('ownerActionBackdrop');
+
+    if (!backdrop) {
+        backdrop = document.createElement('div');
+
+        backdrop.id =
+            'ownerActionBackdrop';
+
+        backdrop.className =
+            'owner-action-backdrop';
+
+        backdrop.addEventListener('click', () => {
+            closeOwnerActionPanel();
+        });
+
+        document.body.appendChild(backdrop);
+    }
+
+    return backdrop;
+}
+
+function openOwnerActionPanel(title, html) {
+    const panel =
+        document.getElementById('ownerActionPanel');
+
+    const titleElement =
+        document.getElementById('ownerActionTitle');
+
+    const contentElement =
+        document.getElementById('ownerActionContent');
+
+    if (!panel || !titleElement || !contentElement) {
+        return;
+    }
+
+    ownerPreviousFocus =
+        document.activeElement;
+
+    titleElement.textContent =
+        title || 'Restaurant Action';
+
+    contentElement.innerHTML =
+        html || '';
+
+    const backdrop =
+        ensureOwnerActionBackdrop();
+
+    backdrop.classList.add('show');
+
+    panel.classList.add('show');
+
+    document.body.classList.add(
+        'owner-action-open'
+    );
+
+    setTimeout(() => {
+        const firstFocusable =
+            panel.querySelector(
+                'input, select, textarea, button'
+            );
+
+        if (firstFocusable) {
+            firstFocusable.focus();
+        }
+    }, 80);
+}
+
+function closeOwnerActionPanel() {
+    const panel =
+        document.getElementById('ownerActionPanel');
+
+    const backdrop =
+        document.getElementById('ownerActionBackdrop');
+
+    if (panel) {
+        panel.classList.remove('show');
+    }
+
+    if (backdrop) {
+        backdrop.classList.remove('show');
+    }
+
+    document.body.classList.remove(
+        'owner-action-open'
+    );
+
+    if (
+        ownerPreviousFocus &&
+        typeof ownerPreviousFocus.focus === 'function' &&
+        document.contains(ownerPreviousFocus)
+    ) {
+        setTimeout(() => {
+            ownerPreviousFocus.focus();
+        }, 50);
+    }
+
+    ownerPreviousFocus = null;
+}
+
+/* ================================================================
+   SUPER ADMIN MENU
+   ================================================================ */
+
+function ensureSuperAdminFeatureMenu() {
+    const menu =
+        document.getElementById('superAdminMenu');
+
+    if (!menu) {
+        return;
+    }
+
+    if (
+        !menu.querySelector(
+            '[data-owner-menu-action="duplicate"]'
+        )
+    ) {
+        const createButton =
+            menu.querySelector(
+                'button[onclick*="openCreateCafePanel"]'
+            );
+
+        const duplicateButton =
+            document.createElement('button');
+
+        duplicateButton.type = 'button';
+
+        duplicateButton.dataset.ownerMenuAction =
+            'duplicate';
+
+        duplicateButton.className =
+            'owner-menu-feature duplicate';
+
+        duplicateButton.innerHTML = `
+            <span class="owner-menu-feature-icon">
+                ⧉
+            </span>
+            <span>
+                <strong>Duplicate Café</strong>
+                <small>Create an independent copy</small>
+            </span>
+        `;
+
+        duplicateButton.addEventListener(
+            'click',
+            () => {
+                openDuplicateCafePanel();
+            }
+        );
+
+        if (createButton) {
+            createButton.insertAdjacentElement(
+                'afterend',
+                duplicateButton
+            );
+        } else {
+            menu.prepend(duplicateButton);
+        }
+    }
+
+    if (
+        !menu.querySelector(
+            '[data-owner-menu-action="price"]'
+        )
+    ) {
+        const duplicateButton =
+            menu.querySelector(
+                '[data-owner-menu-action="duplicate"]'
+            );
+
+        const priceButton =
+            document.createElement('button');
+
+        priceButton.type = 'button';
+
+        priceButton.dataset.ownerMenuAction =
+            'price';
+
+        priceButton.className =
+            'owner-menu-feature price';
+
+        priceButton.innerHTML = `
+            <span class="owner-menu-feature-icon">
+                %
+            </span>
+            <span>
+                <strong>Price Management</strong>
+                <small>Adjust café menu prices</small>
+            </span>
+        `;
+
+        priceButton.addEventListener(
+            'click',
+            () => {
+                openPriceManagementPanel();
+            }
+        );
+
+        if (duplicateButton) {
+            duplicateButton.insertAdjacentElement(
+                'afterend',
+                priceButton
+            );
+        } else {
+            menu.prepend(priceButton);
+        }
+    }
+}
+
+function toggleSuperAdminMenu(event) {
+    if (event) {
+        event.stopPropagation();
+    }
+
+    const menu =
+        document.getElementById('superAdminMenu');
+
+    const toggle =
+        document.getElementById('superAdminMenuToggle');
+
+    if (!menu) {
+        return;
+    }
+
+    const isOpen =
+        menu.classList.toggle('show');
+
+    if (toggle) {
+        toggle.setAttribute(
+            'aria-expanded',
+            String(isOpen)
+        );
+
+        toggle.classList.toggle(
+            'is-open',
+            isOpen
+        );
+    }
+}
+
+function closeSuperAdminMenu() {
+    const menu =
+        document.getElementById('superAdminMenu');
+
+    const toggle =
+        document.getElementById('superAdminMenuToggle');
+
+    if (menu) {
+        menu.classList.remove('show');
+    }
+
+    if (toggle) {
+        toggle.setAttribute(
+            'aria-expanded',
+            'false'
+        );
+
+        toggle.classList.remove(
+            'is-open'
+        );
+    }
+}
+
+/* ================================================================
+   SEARCH
+   ================================================================ */
+
+function setupRestaurantSearch() {
+    const input =
+        document.getElementById('restaurantSearch');
+
+    const clear =
+        document.getElementById('restaurantSearchClear');
 
     if (!input) {
         return;
     }
 
-    if (
-        input.value
-            .trim()
-            .toUpperCase() !==
-        'DELETE'
-    ) {
+    input.addEventListener('input', () => {
+        renderOwnerRestaurantList();
 
-        showOwnerNotification(
-            'Please type DELETE to confirm permanent deletion.',
-            'warning',
-            'Confirmation Required'
-        );
-
-        input.focus();
-
-        return;
-
-    }
-
-    showOwnerLoading(
-        'Deleting restaurant...'
-    );
-
-    try {
-
-        const token =
-            localStorage.getItem(
-                'adminToken'
+        if (clear) {
+            clear.classList.toggle(
+                'visible',
+                Boolean(input.value)
             );
-
-        const response =
-            await fetch(
-                `/api/owner/restaurants/${id}`,
-                {
-                    method: 'DELETE',
-
-                    headers: {
-                        'Authorization':
-                            'Bearer ' +
-                            token
-                    },
-
-                    credentials:
-                        'same-origin'
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            response.status === 401 ||
-            response.status === 403
-        ) {
-
-            window.location.replace(
-                '/admin.html'
-            );
-
-            return;
-
         }
+    });
 
-        if (!response.ok) {
+    if (clear) {
+        clear.addEventListener('click', () => {
+            input.value = '';
 
-            throw new Error(
-                data.message ||
-                'Failed to delete restaurant.'
+            clear.classList.remove(
+                'visible'
             );
 
+            input.focus();
+
+            renderOwnerRestaurantList();
+        });
+    }
+}
+
+/* ================================================================
+   MENU EVENTS
+   ================================================================ */
+
+function setupSuperAdminMenuEvents() {
+    const toggle =
+        document.getElementById(
+            'superAdminMenuToggle'
+        );
+
+    const menu =
+        document.getElementById(
+            'superAdminMenu'
+        );
+
+    if (toggle) {
+        toggle.addEventListener(
+            'click',
+            event => {
+                toggleSuperAdminMenu(event);
+            }
+        );
+    }
+
+    if (menu) {
+        menu.addEventListener(
+            'click',
+            event => {
+                event.stopPropagation();
+            }
+        );
+    }
+
+    document.addEventListener(
+        'click',
+        () => {
+            closeSuperAdminMenu();
         }
-
-        closeOwnerActionPanel();
-
-        ownerOpenRestaurantId =
-            null;
-
-        showOwnerNotification(
-            data.message ||
-            'Restaurant deleted successfully.',
-            'success',
-            'Restaurant Deleted'
-        );
-
-        await loadOwnerCafes();
-
-    } catch (error) {
-
-        console.error(
-            'Delete restaurant error:',
-            error
-        );
-
-        showOwnerNotification(
-            error.message,
-            'error',
-            'Delete Failed'
-        );
-
-    } finally {
-
-        hideOwnerLoading();
-
-    }
-
+    );
 }
 
+function setupActionPanelEvents() {
+    document.addEventListener(
+        'keydown',
+        event => {
+            if (event.key !== 'Escape') {
+                return;
+            }
 
-/*
-|--------------------------------------------------------------------------
-| MANAGE MENU
-|--------------------------------------------------------------------------
-|
-| Kept for compatibility with existing dashboard code.
-|--------------------------------------------------------------------------
-*/
+            closeSuperAdminMenu();
 
-function manageOwnerCafeMenu(
-    slug
-) {
+            const panel =
+                document.getElementById(
+                    'ownerActionPanel'
+                );
 
-    localStorage.setItem(
-        'selectedRestaurantSlug',
-        slug
-    );
-
-    window.location.href =
-        '/' +
-        encodeURIComponent(
-            slug
-        );
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| OWNER NOTIFICATIONS
-|--------------------------------------------------------------------------
-*/
-
-let ownerNotificationTimer =
-    null;
-
-
-function showOwnerNotification(
-    message,
-    type = 'success',
-    title = ''
-) {
-
-    const box =
-        document.getElementById(
-            'ownerTopNotification'
-        );
-
-    const icon =
-        document.getElementById(
-            'ownerNotificationIcon'
-        );
-
-    const titleEl =
-        document.getElementById(
-            'ownerNotificationTitle'
-        );
-
-    const messageEl =
-        document.getElementById(
-            'ownerNotificationMessage'
-        );
-
-    if (
-        !box ||
-        !messageEl
-    ) {
-
-        return;
-
-    }
-
-    clearTimeout(
-        ownerNotificationTimer
-    );
-
-    box.className =
-        'owner-top-notification show ' +
-        type;
-
-    const settings = {
-
-        success: {
-            icon: '✓',
-            title:
-                title || 'Success'
-        },
-
-        error: {
-            icon: '✕',
-            title:
-                title || 'Something went wrong'
-        },
-
-        warning: {
-            icon: '⚠',
-            title:
-                title || 'Warning'
-        },
-
-        info: {
-            icon: 'ⓘ',
-            title:
-                title || 'Information'
+            if (
+                panel &&
+                panel.classList.contains('show')
+            ) {
+                closeOwnerActionPanel();
+            }
         }
-
-    };
-
-    const setting =
-        settings[type] ||
-        settings.info;
-
-    if (icon) {
-
-        icon.textContent =
-            setting.icon;
-
-    }
-
-    if (titleEl) {
-
-        titleEl.textContent =
-            setting.title;
-
-    }
-
-    messageEl.textContent =
-        message;
-
-    ownerNotificationTimer =
-        setTimeout(
-            () => {
-
-                closeOwnerNotification();
-
-            },
-            5000
-        );
-
-}
-
-
-function closeOwnerNotification() {
-
-    const box =
-        document.getElementById(
-            'ownerTopNotification'
-        );
-
-    if (!box) {
-        return;
-    }
-
-    box.classList.remove(
-        'show'
     );
-
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| OWNER ACTION PANEL
-|--------------------------------------------------------------------------
-*/
-
-function openOwnerActionPanel(
-    title,
-    html
-) {
-
-    const panel =
-        document.getElementById(
-            'ownerActionPanel'
-        );
-
-    const titleEl =
-        document.getElementById(
-            'ownerActionTitle'
-        );
-
-    const content =
-        document.getElementById(
-            'ownerActionContent'
-        );
-
-    if (
-        !panel ||
-        !content
-    ) {
-
-        return;
-
-    }
-
-    if (titleEl) {
-
-        titleEl.textContent =
-            title;
-
-    }
-
-    content.innerHTML =
-        html;
-
-    panel.classList.add(
-        'show'
-    );
-
-}
-
-
-function closeOwnerActionPanel() {
-
-    const panel =
-        document.getElementById(
-            'ownerActionPanel'
-        );
-
-    if (!panel) {
-        return;
-    }
-
-    panel.classList.remove(
-        'show'
-    );
-
-    const content =
-        document.getElementById(
-            'ownerActionContent'
-        );
-
-    if (content) {
-
-        content.innerHTML =
-            '';
-
-    }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| LOGOUT
-|--------------------------------------------------------------------------
-*/
+/* ================================================================
+   LOGOUT
+   ================================================================ */
 
 async function logoutAdmin() {
-
-    showOwnerLoading(
-        'Logging out...'
-    );
+    closeSuperAdminMenu();
 
     try {
+        const token =
+            localStorage.getItem('adminToken');
 
         await fetch(
             '/api/admin/logout',
             {
                 method: 'POST',
-                credentials: 'same-origin',
-                cache: 'no-store'
+                headers: token
+                    ? {
+                        Authorization: `Bearer ${token}`
+                    }
+                    : {},
+                credentials: 'same-origin'
             }
         );
-
     } catch (error) {
-
-        console.error(
-            'Logout error:',
+        console.warn(
+            'Logout request failed:',
             error
         );
-
     }
 
-    localStorage.removeItem(
-        'adminToken'
-    );
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminRole');
+    localStorage.removeItem('adminRestaurantId');
+    localStorage.removeItem('adminRestaurantSlug');
+    localStorage.removeItem('selectedRestaurantSlug');
 
-    localStorage.removeItem(
-        'adminRole'
-    );
-
-    localStorage.removeItem(
-        'adminRestaurantId'
-    );
-
-    localStorage.removeItem(
-        'adminRestaurantSlug'
-    );
-
-    localStorage.removeItem(
-        'adminRestaurantName'
-    );
-
-    localStorage.removeItem(
-        'selectedRestaurantSlug'
-    );
-
-    window.location.replace(
-        '/admin.html'
-    );
-
+    window.location.href =
+        '/admin.html';
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| COMPATIBILITY
-|--------------------------------------------------------------------------
-*/
 
 function goBackToAdminLogin() {
-
-    logoutAdmin();
-
+    window.location.href =
+        '/admin.html';
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| START SUPER ADMIN
-|--------------------------------------------------------------------------
-*/
+/* ================================================================
+   STARTUP
+   ================================================================ */
 
 document.addEventListener(
     'DOMContentLoaded',
-    () => {
+    async () => {
+        ensureSuperAdminFeatureMenu();
 
-        checkSuperAdminAccess();
+        setupRestaurantSearch();
+        setupSuperAdminMenuEvents();
+        setupActionPanelEvents();
 
+        await checkSuperAdminAccess();
     }
 );
-
-
-/* ================================================================
-   SUPER ADMIN HEADER MENU
-================================================================ */
-
-function toggleSuperAdminMenu() {
-    const menu = document.getElementById('superAdminMenu');
-
-    if (!menu) {
-        console.error('Super Admin menu not found.');
-        return;
-    }
-
-    menu.classList.toggle('show');
-}
-
-
-function closeSuperAdminMenu() {
-    const menu = document.getElementById('superAdminMenu');
-
-    if (!menu) return;
-
-    menu.classList.remove('show');
-}
-
-
-/* ================================================================
-   MENU BUTTON
-================================================================ */
-
-const superAdminMenuToggle =
-    document.getElementById('superAdminMenuToggle');
-
-const superAdminMenu =
-    document.getElementById('superAdminMenu');
-
-
-if (superAdminMenuToggle && superAdminMenu) {
-
-    superAdminMenuToggle.addEventListener('click', function (event) {
-
-        event.stopPropagation();
-
-        superAdminMenu.classList.toggle('show');
-
-    });
-
-
-    superAdminMenu.addEventListener('click', function (event) {
-
-        event.stopPropagation();
-
-    });
-
-
-    document.addEventListener('click', function () {
-
-        superAdminMenu.classList.remove('show');
-
-    });
-
-}

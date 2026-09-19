@@ -8,11 +8,9 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 
-/*
-|--------------------------------------------------------------------------
-| DATABASE
-|--------------------------------------------------------------------------
-*/
+/* ================================================================
+   DATABASE
+   ================================================================ */
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -22,168 +20,130 @@ const pool = new Pool({
     : false,
 
   connectionTimeoutMillis: 15000,
-
   idleTimeoutMillis: 10000,
-
   query_timeout: 15000,
 
   max: 10,
 
   keepAlive: true,
-
   keepAliveInitialDelayMillis: 10000
 });
 
-pool.on('error', (error) => {
-  console.error(
-    'PostgreSQL pool error:',
-    error.message
-  );
-});
 
-/*
-|--------------------------------------------------------------------------
-| MENU CACHE
-|--------------------------------------------------------------------------
-*/
+/* ================================================================
+   MENU CACHE
+   ================================================================ */
 
 const menuCache = new Map();
 
 
+/* ================================================================
+   BASIC APP SETTINGS
+   ================================================================ */
 
-/*
-|--------------------------------------------------------------------------
-| RESTAURANT PROFILE TABLE
-|--------------------------------------------------------------------------
-*/
-
-async function ensureRestaurantProfilesTable() {
-
-  try {
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS restaurant_profiles (
-
-        id SERIAL PRIMARY KEY,
-
-        restaurant_id INTEGER NOT NULL UNIQUE
-          REFERENCES restaurants(id)
-          ON DELETE CASCADE,
-
-        phone_numbers JSONB NOT NULL DEFAULT '[]'::jsonb,
-
-        addresses JSONB NOT NULL DEFAULT '[]'::jsonb,
-
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-
-      )
-    `);
-
-    console.log(
-      'Restaurant profiles table ready'
-    );
-
-  } catch (error) {
-
-    console.error(
-      'Restaurant profiles table error:',
-      error.message
-    );
-
-  }
-
-}
-
-ensureRestaurantProfilesTable();
-
-/*
-|--------------------------------------------------------------------------
-| DATABASE CONNECTION TEST
-|--------------------------------------------------------------------------
-*/
-
-pool.query('SELECT NOW()')
-  .then(() => console.log('PostgreSQL connected'))
-  .catch(err =>
-    console.error('PostgreSQL connection error:', err.message)
-  );
-
-/*
-|--------------------------------------------------------------------------
-| MIDDLEWARE
-|--------------------------------------------------------------------------
-*/
-
-app.use(express.json({ limit: '50mb' }));
+app.set('trust proxy', 1);
 
 app.use(
-  express.urlencoded({
-    limit: '50mb',
-    extended: true
+  express.json({
+    limit: '50mb'
   })
 );
 
-/*
-|--------------------------------------------------------------------------
-| CORS
-|--------------------------------------------------------------------------
-*/
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: '50mb'
+  })
+);
+
+
+/* ================================================================
+   CORS
+   ================================================================ */
 
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Origin', '*');
 
-  res.setHeader(
+  res.header(
     'Access-Control-Allow-Methods',
     'GET,POST,PUT,DELETE,OPTIONS'
   );
 
-  res.setHeader(
+  res.header(
     'Access-Control-Allow-Headers',
     'Content-Type, Authorization'
   );
 
-  console.log(`[req] ${req.method} ${req.path}`);
-
-  next();
-});
-
-/*
-|--------------------------------------------------------------------------
-| OPTIONS / PREFLIGHT
-|--------------------------------------------------------------------------
-*/
-
-app.use((req, res, next) => {
-  if (
-    req.method === 'OPTIONS' &&
-    req.path &&
-    req.path.startsWith('/api/')
-  ) {
+  if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
 
   next();
 });
 
-/*
-|--------------------------------------------------------------------------
-| AUTHENTICATION HELPERS
-|--------------------------------------------------------------------------
-*/
 
-/*
- * Get JWT token from:
- *
- * 1. Authorization: Bearer TOKEN
- * 2. HttpOnly adminToken cookie
- */
+/* ================================================================
+   REQUEST LOGGER
+   ================================================================ */
+
+app.use((req, res, next) => {
+  console.log(
+    `[req] ${req.method} ${req.originalUrl}`
+  );
+
+  next();
+});
+
+
+/* ================================================================
+   DATABASE INITIALIZATION
+   ================================================================ */
+
+async function ensureDatabaseStructure() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS restaurant_profiles (
+        id SERIAL PRIMARY KEY,
+        restaurant_id INTEGER NOT NULL UNIQUE
+          REFERENCES restaurants(id) ON DELETE CASCADE,
+        logo TEXT NOT NULL DEFAULT '',
+        phone_numbers JSONB NOT NULL DEFAULT '[]'::jsonb,
+        addresses JSONB NOT NULL DEFAULT '[]'::jsonb,
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      ALTER TABLE restaurant_profiles
+      ADD COLUMN IF NOT EXISTS logo TEXT NOT NULL DEFAULT ''
+    `);
+
+    console.log('[db] Database structure checked.');
+  } catch (error) {
+    console.error(
+      '[db] Database structure check failed:',
+      error
+    );
+  }
+}
+
+
+/* ================================================================
+   AUTH HELPERS
+   ================================================================ */
 
 function getTokenFromRequest(req) {
+  const authHeader = req.headers.authorization;
 
-  const authHeader = req.headers.authorization || '';
-
-  if (authHeader.startsWith('Bearer ')) {
+  if (
+    authHeader &&
+    authHeader.startsWith('Bearer ')
+  ) {
     return authHeader.substring(7);
+  }
+
+  if (req.cookies && req.cookies.adminToken) {
+    return req.cookies.adminToken;
   }
 
   const cookieHeader = req.headers.cookie || '';
@@ -192,36 +152,25 @@ function getTokenFromRequest(req) {
     /(?:^|;\s*)adminToken=([^;]+)/
   );
 
-  if (!match) {
-    return null;
+  if (match) {
+    return decodeURIComponent(match[1]);
   }
 
-  try {
-    return decodeURIComponent(match[1]);
-  } catch (error) {
-    return null;
-  }
+  return null;
 }
 
-/*
-|--------------------------------------------------------------------------
-| SUPER ADMIN AUTH
-|--------------------------------------------------------------------------
-*/
 
 function requireOwner(req, res, next) {
+  const token = getTokenFromRequest(req);
+
+  if (!token) {
+    return res.status(401).json({
+      ok: false,
+      message: 'Authentication required.'
+    });
+  }
 
   try {
-
-    const token = getTokenFromRequest(req);
-
-    if (!token) {
-      return res.status(401).json({
-        ok: false,
-        message: 'Owner authentication required.'
-      });
-    }
-
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET
@@ -230,44 +179,42 @@ function requireOwner(req, res, next) {
     if (decoded.role !== 'super_admin') {
       return res.status(403).json({
         ok: false,
-        message: 'Owner access required.'
+        message: 'Super admin access required.'
       });
     }
 
     req.user = decoded;
 
     next();
-
   } catch (error) {
+    console.error(
+      '[auth] Owner token verification failed:',
+      error.message
+    );
 
     return res.status(401).json({
       ok: false,
       message: 'Invalid or expired authentication token.'
     });
-
   }
-
 }
 
-/*
-|--------------------------------------------------------------------------
-| RESTAURANT ADMIN AUTH
-|--------------------------------------------------------------------------
-*/
 
-function requireRestaurantAdmin(req, res, next) {
+async function requireRestaurantAdmin(
+  req,
+  res,
+  next
+) {
+  const token = getTokenFromRequest(req);
+
+  if (!token) {
+    return res.status(401).json({
+      ok: false,
+      message: 'Authentication required.'
+    });
+  }
 
   try {
-
-    const token = getTokenFromRequest(req);
-
-    if (!token) {
-      return res.status(401).json({
-        ok: false,
-        message: 'Admin authentication required.'
-      });
-    }
-
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET
@@ -279,988 +226,362 @@ function requireRestaurantAdmin(req, res, next) {
     ) {
       return res.status(403).json({
         ok: false,
-        message: 'Restaurant admin access required.'
+        message: 'Administrator access required.'
       });
     }
 
     req.user = decoded;
 
     next();
-
   } catch (error) {
-
-    return res.status(401).json({
-      ok: false,
-      message: 'Invalid or expired authentication token.'
-    });
-
-  }
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| PROTECTED CAFE ADMIN HTML PAGE
-|--------------------------------------------------------------------------
-*/
-
-app.get('/admin-panel.html', (req, res) => {
-
-  try {
-
-    const token = getTokenFromRequest(req);
-
-    if (!token) {
-      return res.redirect('/admin.html');
-    }
-
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
-
-    if (decoded.role !== 'cafe_admin') {
-      return res.redirect('/admin.html');
-    }
-
-    return res.sendFile(
-      path.join(__dirname, 'admin-panel.html')
-    );
-
-  } catch (error) {
-
-    return res.redirect('/admin.html');
-
-  }
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| PROTECTED SUPER ADMIN HTML PAGE
-|--------------------------------------------------------------------------
-*/
-
-app.get('/super-admin-panel.html', (req, res) => {
-
-  try {
-
-    const token = getTokenFromRequest(req);
-
-    if (!token) {
-      return res.redirect('/admin.html');
-    }
-
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
-
-    if (decoded.role !== 'super_admin') {
-      return res.redirect('/admin.html');
-    }
-
-    return res.sendFile(
-      path.join(__dirname, 'super-admin-panel.html')
-    );
-
-  } catch (error) {
-
-    return res.redirect('/admin.html');
-
-  }
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| ADMIN LOGIN PAGE
-|--------------------------------------------------------------------------
-*/
-
-app.get('/admin.html', (req, res) => {
-
-  res.sendFile(
-    path.join(__dirname, 'admin.html')
-  );
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| BLOCK DIRECT ACCESS TO save.html
-|--------------------------------------------------------------------------
-*/
-
-app.get('/save.html', (req, res) => {
-
-  res.status(404).send('Not Found');
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| STATIC FILES
-|--------------------------------------------------------------------------
-*/
-
-app.use(express.static(__dirname));
-
-app.use(
-  '/image',
-  express.static(
-    path.join(__dirname, 'image')
-  )
-);
-
-/*
-|--------------------------------------------------------------------------
-| HOME PAGE
-|--------------------------------------------------------------------------
-*/
-
-app.get('/', (req, res) => {
-
-  res.sendFile(
-    path.join(__dirname, 'company.html')
-  );
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| RESTAURANT PUBLIC URL
-|--------------------------------------------------------------------------
-|
-| Example:
-| /etete-coffee
-|
-| This serves save.html to customers.
-|
-|--------------------------------------------------------------------------
-*/
-
-app.get('/:slug', (req, res, next) => {
-
-  const { slug } = req.params;
-
-  /*
-   * Never treat API as restaurant slug.
-   */
-  if (slug === 'api') {
-    return next();
-  }
-
-  /*
-   * Admin pages are handled above.
-   */
-  if (
-    slug === 'admin.html' ||
-    slug === 'admin-panel.html' ||
-    slug === 'super-admin-panel.html'
-  ) {
-    return next();
-  }
-
-  res.sendFile(
-    path.join(__dirname, 'save.html')
-  );
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| ADMIN LOGIN
-|--------------------------------------------------------------------------
-*/
-
-app.post('/api/admin/login', async (req, res) => {
-
-  try {
-
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-
-      return res.status(400).json({
-        ok: false,
-        message: 'Email and password are required.'
-      });
-
-    }
-
-    const result = await pool.query(
-      `
-      SELECT
-        users.*,
-        restaurants.slug AS restaurant_slug,
-        restaurants.name AS restaurant_name,
-        restaurants.status AS restaurant_status
-      FROM users
-      LEFT JOIN restaurants
-        ON users.restaurant_id = restaurants.id
-      WHERE users.email = $1
-      `,
-      [email]
-    );
-
-    if (result.rows.length === 0) {
-
-      return res.status(401).json({
-        ok: false,
-        message: 'Invalid email or password.'
-      });
-
-    }
-
-    const user = result.rows[0];
-
-    /*
-     * Check password
-     */
-
-    if (user.password !== password) {
-
-      return res.status(401).json({
-        ok: false,
-        message: 'Invalid email or password.'
-      });
-
-    }
-
-    /*
-     * Disabled cafe cannot log in
-     */
-
-    if (
-      user.role === 'cafe_admin' &&
-      user.restaurant_status !== 'active'
-    ) {
-
-      return res.status(403).json({
-        ok: false,
-        message: 'This restaurant is currently disabled.'
-      });
-
-    }
-
-    /*
-     * Create JWT
-     */
-
-    const token = jwt.sign(
-      {
-        user_id: user.id,
-        role: user.role,
-        restaurant_id: user.restaurant_id
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: '7d'
-      }
-    );
-
-    /*
-     * Save token in HttpOnly cookie
-     */
-
-    res.setHeader(
-      'Set-Cookie',
-      `adminToken=${encodeURIComponent(token)}; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
-    );
-
-    /*
-     * Return login information
-     */
-
-    res.json({
-
-      ok: true,
-
-      token,
-
-      role: user.role,
-
-      restaurant_id: user.restaurant_id,
-
-      restaurant_slug: user.restaurant_slug,
-
-      restaurant_name: user.restaurant_name,
-
-      message: 'Login successful.'
-
-    });
-
-  } catch (err) {
-
     console.error(
-      'Admin login error:',
-      err.message
-    );
-
-    res.status(500).json({
-      ok: false,
-      message: 'Server error'
-    });
-
-  }
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| ADMIN LOGOUT
-|--------------------------------------------------------------------------
-*/
-
-app.post('/api/admin/logout', (req, res) => {
-
-  res.setHeader(
-    'Set-Cookie',
-    `adminToken=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
-  );
-
-  res.json({
-    ok: true,
-    message: 'Logged out successfully.'
-  });
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| OLD FILE VARIABLES
-|--------------------------------------------------------------------------
-*/
-
-const CART_FILE = './cart.json';
-const MENU_FILE = './menu.json';
-
-const ADMIN_USERS = {
-  'admin@example.com': 'admin123'
-};
-
-const TELEBIRR_MERCHANT_ACCOUNT =
-  process.env.TELEBIRR_MERCHANT_ACCOUNT || '';
-
-/*
-|--------------------------------------------------------------------------
-| OLD LOCAL MENU HELPERS
-|--------------------------------------------------------------------------
-|
-| Kept here so your existing project does not lose them.
-|
-|--------------------------------------------------------------------------
-*/
-
-function loadMenu() {
-
-  if (!fs.existsSync(MENU_FILE)) {
-
-    return {
-      breakfast: [],
-      lunch: [],
-      dessert: [],
-      hotdrinks: [],
-      mocktail: []
-    };
-
-  }
-
-  try {
-
-    return JSON.parse(
-      fs.readFileSync(
-        MENU_FILE,
-        'utf8'
-      )
-    );
-
-  } catch (error) {
-
-    return {
-      breakfast: [],
-      lunch: [],
-      dessert: [],
-      hotdrinks: [],
-      mocktail: []
-    };
-
-  }
-
-}
-
-function saveMenu(menu) {
-
-  fs.writeFileSync(
-    MENU_FILE,
-    JSON.stringify(menu, null, 2)
-  );
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| ADMIN SESSION
-|--------------------------------------------------------------------------
-*/
-
-app.get('/api/admin/session', async (req, res) => {
-
-  try {
-
-    const token = getTokenFromRequest(req);
-
-    if (!token) {
-
-      return res.status(401).json({
-        ok: false,
-        message: 'Not logged in.'
-      });
-
-    }
-
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
-
-    const result = await pool.query(
-      `
-      SELECT
-        u.id,
-        u.email,
-        u.role,
-        u.restaurant_id,
-        r.name AS restaurant_name,
-        r.slug AS restaurant_slug,
-        r.status AS restaurant_status
-      FROM users u
-      LEFT JOIN restaurants r
-        ON r.id = u.restaurant_id
-      WHERE u.id = $1
-      `,
-      [decoded.user_id]
-    );
-
-    if (result.rows.length === 0) {
-
-      return res.status(401).json({
-        ok: false,
-        message: 'Account not found.'
-      });
-
-    }
-
-    const user = result.rows[0];
-
-    /*
-     * Disabled restaurant check
-     */
-
-    if (
-      user.role === 'cafe_admin' &&
-      user.restaurant_status !== 'active'
-    ) {
-
-      return res.status(403).json({
-        ok: false,
-        message: 'This restaurant is currently disabled.'
-      });
-
-    }
-
-    res.json({
-
-      ok: true,
-
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        restaurant_id: user.restaurant_id,
-        restaurant_name: user.restaurant_name,
-        restaurant_slug: user.restaurant_slug
-      }
-
-    });
-
-  } catch (error) {
-
-    console.error(
-      'Admin session check error:',
+      '[auth] Restaurant admin token verification failed:',
       error.message
     );
 
     return res.status(401).json({
       ok: false,
-      message: 'Session expired.'
+      message: 'Invalid or expired authentication token.'
     });
-
   }
-
-});
-
-
-
-
-/*
-|--------------------------------------------------------------------------
-| RESTAURANT PROFILE
-|--------------------------------------------------------------------------
-*/
-
-/*
- * Check that the logged-in cafe admin
- * owns the requested restaurant.
- */
-
-async function getRestaurantForProfile(
-  req,
-  res,
-  slug
-) {
-
-  const result = await pool.query(
-    `
-    SELECT
-      id,
-      name,
-      slug,
-      status
-    FROM restaurants
-    WHERE slug = $1
-    `,
-    [slug]
-  );
-
-  if (result.rows.length === 0) {
-
-    res.status(404).json({
-      ok: false,
-      message: 'Restaurant not found.'
-    });
-
-    return null;
-
-  }
-
-  const restaurant =
-    result.rows[0];
-
-  /*
-   * Cafe admin can only manage
-   * their own restaurant.
-   */
-
-  if (
-    req.user.role === 'cafe_admin' &&
-    Number(req.user.restaurant_id) !==
-      Number(restaurant.id)
-  ) {
-
-    res.status(403).json({
-      ok: false,
-      message:
-        'You can only manage your own restaurant profile.'
-    });
-
-    return null;
-
-  }
-
-  /*
-   * Disabled restaurants cannot
-   * be edited.
-   */
-
-  if (
-    restaurant.status !== 'active'
-  ) {
-
-    res.status(403).json({
-      ok: false,
-      message:
-        'Restaurant is not active.'
-    });
-
-    return null;
-
-  }
-
-  return restaurant;
-
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| GET RESTAURANT PROFILE - ADMIN
-|--------------------------------------------------------------------------
-*/
+/* ================================================================
+   PROTECTED ADMIN HTML PAGES
+   ================================================================ */
+
+app.get(
+  '/admin-panel.html',
+  requireRestaurantAdmin,
+  (req, res) => {
+    if (req.user.role !== 'cafe_admin') {
+      return res.status(403).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Access Denied</title>
+        </head>
+        <body>
+          <h1>403 - Access Denied</h1>
+          <p>Restaurant admin access is required.</p>
+        </body>
+        </html>
+      `);
+    }
+
+    return res.sendFile(
+      path.join(__dirname, 'admin-panel.html')
+    );
+  }
+);
+
+
+app.get(
+  '/super-admin-panel.html',
+  requireOwner,
+  (req, res) => {
+    return res.sendFile(
+      path.join(__dirname, 'super-admin.html')
+    );
+  }
+);
+
+
+/* ================================================================
+   ADMIN LOGIN PAGE
+   ================================================================ */
+
+app.get('/admin.html', (req, res) => {
+  return res.sendFile(
+    path.join(__dirname, 'admin.html')
+  );
+});
+
+
+/* ================================================================
+   BLOCK DIRECT SAVE.HTML ACCESS
+   ================================================================ */
+
+app.get('/save.html', (req, res) => {
+  return res.status(404).send('Not Found');
+});
+
+
+/* ================================================================
+   STATIC FILES
+   ================================================================ */
+
+app.use(express.static(__dirname));
+
+
+/* ================================================================
+   COMPANY HOME PAGE
+   ================================================================ */
+
+app.get('/', (req, res) => {
+  return res.sendFile(
+    path.join(__dirname, 'company.html')
+  );
+});
+
+
+/* ================================================================
+   PUBLIC RESTAURANT SLUG ROUTE
+   ================================================================ */
+
+app.get('/:slug', (req, res, next) => {
+  const { slug } = req.params;
+
+  if (
+    slug === 'api' ||
+    slug === 'admin.html' ||
+    slug === 'admin-panel.html' ||
+    slug === 'super-admin-panel.html' ||
+    slug === 'save.html'
+  ) {
+    return next();
+  }
+
+  return res.sendFile(
+    path.join(__dirname, 'save.html')
+  );
+});
+
+
+/* ================================================================
+   ADMIN LOGIN
+   ================================================================ */
+
+app.post(
+  '/api/admin/login',
+  async (req, res) => {
+    try {
+      const {
+        email,
+        password
+      } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Email and password are required.'
+        });
+      }
+
+      const cleanEmail =
+        String(email)
+          .trim()
+          .toLowerCase();
+
+      const result = await pool.query(`
+        SELECT
+          u.id,
+          u.email,
+          u.password,
+          u.role,
+          u.restaurant_id,
+          r.name AS restaurant_name,
+          r.slug AS restaurant_slug,
+          r.status AS restaurant_status
+        FROM users u
+        LEFT JOIN restaurants r
+          ON r.id = u.restaurant_id
+        WHERE LOWER(u.email) = LOWER($1)
+        LIMIT 1
+      `, [
+        cleanEmail
+      ]);
+
+      if (result.rows.length === 0) {
+        return res.status(401).json({
+          ok: false,
+          message: 'Invalid email or password.'
+        });
+      }
+
+      const user = result.rows[0];
+
+      /*
+       * Current project authentication uses the password
+       * stored in the database.
+       */
+      if (user.password !== password) {
+        return res.status(401).json({
+          ok: false,
+          message: 'Invalid email or password.'
+        });
+      }
+
+      if (
+        user.role === 'cafe_admin' &&
+        user.restaurant_status !== 'active'
+      ) {
+        return res.status(403).json({
+          ok: false,
+          message: 'This restaurant is currently disabled.'
+        });
+      }
+
+      const token = jwt.sign(
+        {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          restaurant_id: user.restaurant_id
+        },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: '7d'
+        }
+      );
+
+      res.cookie(
+        'adminToken',
+        token,
+        {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 7 * 24 * 60 * 60 * 1000
+        }
+      );
+
+      return res.json({
+        ok: true,
+        message: 'Login successful.',
+        token,
+        role: user.role,
+        restaurantId: user.restaurant_id,
+        restaurantSlug: user.restaurant_slug,
+        restaurantName: user.restaurant_name
+      });
+
+    } catch (error) {
+      console.error(
+        '[login] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Login failed.'
+      });
+    }
+  }
+);
+
+
+/* ================================================================
+   ADMIN LOGOUT
+   ================================================================ */
+
+app.post(
+  '/api/admin/logout',
+  (req, res) => {
+    res.clearCookie(
+      'adminToken',
+      {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    );
+
+    return res.json({
+      ok: true,
+      message: 'Logged out successfully.'
+    });
+  }
+);
+
+
+/* ================================================================
+   ADMIN SESSION
+   ================================================================ */
+
+app.get(
+  '/api/admin/session',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT
+          u.id,
+          u.email,
+          u.role,
+          u.restaurant_id,
+          r.name AS restaurant_name,
+          r.slug AS restaurant_slug,
+          r.status AS restaurant_status
+        FROM users u
+        LEFT JOIN restaurants r
+          ON r.id = u.restaurant_id
+        WHERE u.id = $1
+        LIMIT 1
+      `, [
+        req.user.id
+      ]);
+
+      if (result.rows.length === 0) {
+        return res.status(401).json({
+          ok: false,
+          message: 'User account no longer exists.'
+        });
+      }
+
+      const user = result.rows[0];
+
+      if (
+        user.role === 'cafe_admin' &&
+        user.restaurant_status !== 'active'
+      ) {
+        return res.status(403).json({
+          ok: false,
+          message: 'This restaurant is disabled.'
+        });
+      }
+
+      return res.json({
+        ok: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          restaurantId: user.restaurant_id,
+          restaurantName: user.restaurant_name,
+          restaurantSlug: user.restaurant_slug,
+          restaurantStatus: user.restaurant_status
+        }
+      });
+
+    } catch (error) {
+      console.error(
+        '[session] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to load session.'
+      });
+    }
+  }
+);
+
+
+/* ================================================================
+   RESTAURANT PROFILE - GET
+   ================================================================ */
 
 app.get(
   '/api/admin/profile/:slug',
   requireRestaurantAdmin,
   async (req, res) => {
-
     try {
+      const { slug } = req.params;
 
-      const { slug } =
-        req.params;
-
-      const restaurant =
-        await getRestaurantForProfile(
-          req,
-          res,
-          slug
-        );
-
-      if (!restaurant) {
-        return;
-      }
-
-      /*
-       * Get profile.
-       */
-
-      const profileResult =
-        await pool.query(
-          `
-          SELECT
-            phone_numbers,
-            addresses,
-            updated_at
-          FROM restaurant_profiles
-          WHERE restaurant_id = $1
-          `,
-          [restaurant.id]
-        );
-
-      /*
-       * Create profile automatically
-       * if it does not exist.
-       */
-
-      if (
-        profileResult.rows.length === 0
-      ) {
-
-        await pool.query(
-          `
-          INSERT INTO restaurant_profiles
-            (
-              restaurant_id,
-              phone_numbers,
-              addresses
-            )
-          VALUES
-            (
-              $1,
-              '[]'::jsonb,
-              '[]'::jsonb
-            )
-          `,
-          [restaurant.id]
-        );
-
-        return res.json({
-
-          ok: true,
-
-          restaurant: {
-            id: restaurant.id,
-            name: restaurant.name,
-            slug: restaurant.slug
-          },
-
-          profile: {
-            phone_numbers: [],
-            addresses: []
-          }
-
-        });
-
-      }
-
-      const profile =
-        profileResult.rows[0];
-
-      res.json({
-
-        ok: true,
-
-        restaurant: {
-          id: restaurant.id,
-          name: restaurant.name,
-          slug: restaurant.slug
-        },
-
-        profile: {
-          phone_numbers:
-            Array.isArray(profile.phone_numbers)
-              ? profile.phone_numbers
-              : [],
-
-          addresses:
-            Array.isArray(profile.addresses)
-              ? profile.addresses
-              : []
-        }
-
-      });
-
-    } catch (error) {
-
-      console.error(
-        'Error loading restaurant profile:',
-        error.message
-      );
-
-      res.status(500).json({
-        ok: false,
-        message:
-          'Failed to load restaurant profile.'
-      });
-
-    }
-
-  }
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| SAVE RESTAURANT PROFILE - ADMIN
-|--------------------------------------------------------------------------
-*/
-
-app.put(
-  '/api/admin/profile/:slug',
-  requireRestaurantAdmin,
-  async (req, res) => {
-
-    try {
-
-      const { slug } =
-        req.params;
-
-      const restaurant =
-        await getRestaurantForProfile(
-          req,
-          res,
-          slug
-        );
-
-      if (!restaurant) {
-        return;
-      }
-
-      let {
-        phone_numbers,
-        addresses
-      } = req.body || {};
-
-      /*
-       * Validate arrays.
-       */
-
-      if (
-        !Array.isArray(phone_numbers)
-      ) {
-
-        phone_numbers = [];
-
-      }
-
-      if (
-        !Array.isArray(addresses)
-      ) {
-
-        addresses = [];
-
-      }
-
-      /*
-       * Clean phone numbers.
-       */
-
-      phone_numbers =
-        phone_numbers
-          .map(phone =>
-            String(phone || '').trim()
-          )
-          .filter(Boolean)
-          .slice(0, 10);
-
-      /*
-       * Clean addresses.
-       *
-       * Each address:
-       *
-       * {
-       *   name: "Bole Branch",
-       *   url: "https://maps.google.com/..."
-       * }
-       */
-
-      addresses =
-        addresses
-          .map(address => {
-
-            if (
-              !address ||
-              typeof address !== 'object'
-            ) {
-
-              return null;
-
-            }
-
-            return {
-
-              name:
-                String(
-                  address.name || ''
-                ).trim(),
-
-              url:
-                String(
-                  address.url || ''
-                ).trim()
-
-            };
-
-          })
-          .filter(address =>
-            address &&
-            address.name
-          )
-          .slice(0, 10);
-
-      /*
-       * Save profile.
-       */
-
-      await pool.query(
-        `
-        INSERT INTO restaurant_profiles
-          (
-            restaurant_id,
-            phone_numbers,
-            addresses,
-            updated_at
-          )
-        VALUES
-          (
-            $1,
-            $2::jsonb,
-            $3::jsonb,
-            NOW()
-          )
-
-        ON CONFLICT (restaurant_id)
-
-        DO UPDATE SET
-          phone_numbers = EXCLUDED.phone_numbers,
-          addresses = EXCLUDED.addresses,
-          updated_at = NOW()
-        `,
-        [
-          restaurant.id,
-          JSON.stringify(phone_numbers),
-          JSON.stringify(addresses)
-        ]
-      );
-
-      /*
-       * Clear customer cache.
-       */
-
-      menuCache.delete(
-        restaurant.slug
-      );
-
-      res.json({
-
-        ok: true,
-
-        profile: {
-          phone_numbers,
-          addresses
-        },
-
-        message:
-          'Restaurant profile saved successfully.'
-
-      });
-
-    } catch (error) {
-
-      console.error(
-        'Error saving restaurant profile:',
-        error.message
-      );
-
-      res.status(500).json({
-        ok: false,
-        message:
-          'Failed to save restaurant profile.'
-      });
-
-    }
-
-  }
-);
-
-
-
-
-/*
-|
---------------------------------------------------------------------------
-| GET RESTAURANT MENU
-|--------------------------------------------------------------------------
-*/
-
-app.get('/api/menu/:slug', async (req, res) => {
-
-  try {
-
-    const { slug } = req.params;
-
-    /*
-     * Return cached menu
-     */
-
-    if (menuCache.has(slug)) {
-
-      console.log(
-        `[cache] HIT ${slug}`
-      );
-
-      const cached =
-        menuCache.get(slug);
-
-      return res.json(cached);
-
-    }
-
-    console.log(
-      `[cache] MISS ${slug}`
-    );
-
-    /*
-     * Find restaurant
-     */
-
-    console.time(
-      'restaurant-query'
-    );
-
-    const restaurantResult =
-      await pool.query(
-        `
+      const restaurantResult = await pool.query(`
         SELECT
           id,
           name,
@@ -1268,460 +589,568 @@ app.get('/api/menu/:slug', async (req, res) => {
           status
         FROM restaurants
         WHERE slug = $1
-        `,
-        [slug]
-      );
-
-    console.timeEnd(
-      'restaurant-query'
-    );
-
-    if (
-      restaurantResult.rows.length === 0
-    ) {
-
-      return res.status(404).json({
-        ok: false,
-        message: 'Restaurant not found.'
-      });
-
-    }
-
-    const restaurant =
-      restaurantResult.rows[0];
-
-    /*
-     * Disabled restaurant
-     */
-
-    if (
-      restaurant.status !== 'active'
-    ) {
-
-      return res.status(403).json({
-        ok: false,
-        message:
-          `${restaurant.name} is temporarily unavailable. Please check back later.`
-      });
-
-    }
-
-    /*
-     * Load menu
-     */
-
-    console.time('menu-query');
-
-    const menuResult =
-      await pool.query(
-        `
-        SELECT menu
-        FROM menu_data
-        WHERE restaurant_id = $1
-        `,
-        [restaurant.id]
-      );
-
-    console.timeEnd('menu-query');
-
-    if (
-      menuResult.rows.length === 0
-    ) {
-
-      return res.status(404).json({
-        ok: false,
-        message:
-          'Menu not found for this restaurant.'
-      });
-
-    }
-
-    /*
- * Load restaurant profile
- */
-
-const profileResult =
-  await pool.query(
-    `
-    SELECT
-      phone_numbers,
-      addresses
-    FROM restaurant_profiles
-    WHERE restaurant_id = $1
-    `,
-    [restaurant.id]
-  );
-
-const profile =
-  profileResult.rows.length > 0
-    ? profileResult.rows[0]
-    : {
-        phone_numbers: [],
-        addresses: []
-      };
-
-    /*
-     * Response
-     */
-
-    const responseData = {
-
-  ok: true,
-
-  restaurant: {
-    id: restaurant.id,
-    name: restaurant.name,
-    slug: restaurant.slug
-  },
-
-  profile: {
-
-    phone_numbers:
-      Array.isArray(profile.phone_numbers)
-        ? profile.phone_numbers
-        : [],
-
-    addresses:
-      Array.isArray(profile.addresses)
-        ? profile.addresses
-        : []
-
-  },
-
-  menu:
-    menuResult.rows[0].menu
-
-};
-
-    /*
-     * Cache
-     */
-
-    menuCache.set(
-      slug,
-      responseData
-    );
-
-    res.json(responseData);
-
-  } catch (error) {
-
-    console.error(
-      'Error loading restaurant menu:',
-      error.message
-    );
-
-    res.status(500).json({
-      ok: false,
-      message:
-        'Failed to load restaurant menu.'
-    });
-
-  }
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| TELEBIRR PAYMENT
-|--------------------------------------------------------------------------
-*/
-
-app.post(
-  '/api/payments/telebirr/create',
-  (req, res) => {
-
-    const {
-      accountNumber,
-      amount,
-      items
-    } = req.body || {};
-
-    if (
-      !Number.isFinite(amount) ||
-      amount <= 0 ||
-      !Array.isArray(items) ||
-      !items.length
-    ) {
-
-      return res.status(400).json({
-        ok: false,
-        message:
-          'A valid cart and amount are required.'
-      });
-
-    }
-
-    if (!TELEBIRR_MERCHANT_ACCOUNT) {
-
-      return res.status(503).json({
-
-        ok: false,
-
-        message:
-          'Cafe Telebirr account is not configured. Set TELEBIRR_MERCHANT_ACCOUNT in the server environment.'
-
-      });
-
-    }
-
-    const paymentId =
-      `order-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`;
-
-    res.json({
-
-      ok: true,
-
-      paymentId,
-
-      merchantAccount:
-        TELEBIRR_MERCHANT_ACCOUNT
-
-    });
-
-  }
-);
-
-/*
-|--------------------------------------------------------------------------
-| SAVE RESTAURANT MENU
-|--------------------------------------------------------------------------
-*/
-
-app.post(
-  '/api/admin/menu/:slug',
-  requireRestaurantAdmin,
-  async (req, res) => {
-
-    const { slug } = req.params;
-
-    const { menu } = req.body;
-
-    if (
-      !menu ||
-      typeof menu !== 'object' ||
-      Array.isArray(menu)
-    ) {
-
-      return res.status(400).json({
-        ok: false,
-        message: 'Menu data is required.'
-      });
-
-    }
-
-    try {
-
-      /*
-       * Find restaurant
-       */
-
-      const restaurantResult =
-        await pool.query(
-          `
-          SELECT
-            id,
-            name,
-            slug,
-            status
-          FROM restaurants
-          WHERE slug = $1
-          `,
-          [slug]
-        );
-
-      if (
-        restaurantResult.rows.length === 0
-      ) {
-
+        LIMIT 1
+      `, [
+        slug
+      ]);
+
+      if (restaurantResult.rows.length === 0) {
         return res.status(404).json({
           ok: false,
-          message:
-            'Restaurant not found.'
+          message: 'Restaurant not found.'
         });
-
       }
 
       const restaurant =
         restaurantResult.rows[0];
-
-      /*
-       * Cafe admins can only
-       * edit their own restaurant.
-       */
 
       if (
         req.user.role === 'cafe_admin' &&
         Number(req.user.restaurant_id) !==
           Number(restaurant.id)
       ) {
-
         return res.status(403).json({
           ok: false,
-          message:
-            'You can only edit your own restaurant menu.'
+          message: 'You can only access your own restaurant profile.'
         });
-
       }
 
-      /*
-       * Disabled restaurant
-       */
+      const profileResult = await pool.query(`
+        SELECT
+          logo,
+          phone_numbers,
+          addresses,
+          updated_at
+        FROM restaurant_profiles
+        WHERE restaurant_id = $1
+        LIMIT 1
+      `, [
+        restaurant.id
+      ]);
 
-      if (
-        restaurant.status !== 'active'
-      ) {
+      const profile =
+        profileResult.rows[0] || {
+          logo: '',
+          phone_numbers: [],
+          addresses: [],
+          updated_at: null
+        };
 
-        return res.status(403).json({
-          ok: false,
-          message:
-            'Restaurant is not active.'
-        });
-
-      }
-
-      /*
-       * Save menu
-       */
-
-      const menuResult =
-        await pool.query(
-          `
-          UPDATE menu_data
-          SET
-            menu = $1,
-            updated_at = NOW()
-          WHERE restaurant_id = $2
-          `,
-          [
-            menu,
-            restaurant.id
-          ]
-        );
-
-      /*
-       * Clear cache
-       */
-
-      menuCache.delete(
-        slug
-      );
-
-      /*
-       * No menu record
-       */
-
-      if (
-        menuResult.rowCount === 0
-      ) {
-
-        return res.status(404).json({
-          ok: false,
-          message:
-            'Menu record not found for this restaurant.'
-        });
-
-      }
-
-      console.log(
-        `Menu saved for ${restaurant.name} (${restaurant.slug}).`
-      );
-
-      res.json({
-
+      return res.json({
         ok: true,
-
-        message:
-          `Menu saved for ${restaurant.name}.`
-
+        restaurant,
+        profile
       });
 
     } catch (error) {
-
       console.error(
-        'Error saving restaurant menu:',
-        error.message
+        '[profile:get] Error:',
+        error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         ok: false,
-        message:
-          'Failed to save restaurant menu.'
+        message: 'Unable to load restaurant profile.'
       });
-
     }
-
   }
 );
 
-/*
-|--------------------------------------------------------------------------
-| SUPER ADMIN: GET ALL RESTAURANTS
-|--------------------------------------------------------------------------
-*/
+
+/* ================================================================
+   RESTAURANT PROFILE - UPDATE
+   ================================================================ */
+
+app.put(
+  '/api/admin/profile/:slug',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const { slug } = req.params;
+
+      const {
+        logo = '',
+        phone_numbers = [],
+        addresses = []
+      } = req.body;
+
+      const restaurantResult = await pool.query(`
+        SELECT
+          id,
+          name,
+          slug,
+          status
+        FROM restaurants
+        WHERE slug = $1
+        LIMIT 1
+      `, [
+        slug
+      ]);
+
+      if (restaurantResult.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Restaurant not found.'
+        });
+      }
+
+      const restaurant =
+        restaurantResult.rows[0];
+
+      if (
+        req.user.role === 'cafe_admin' &&
+        Number(req.user.restaurant_id) !==
+          Number(restaurant.id)
+      ) {
+        return res.status(403).json({
+          ok: false,
+          message: 'You can only edit your own restaurant profile.'
+        });
+      }
+
+      if (
+        restaurant.status !== 'active' &&
+        req.user.role !== 'super_admin'
+      ) {
+        return res.status(403).json({
+          ok: false,
+          message: 'This restaurant is disabled.'
+        });
+      }
+
+      if (
+        typeof logo !== 'string' ||
+        logo.length > 5000000
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid restaurant logo.'
+        });
+      }
+
+      if (!Array.isArray(phone_numbers)) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Phone numbers must be an array.'
+        });
+      }
+
+      if (!Array.isArray(addresses)) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Addresses must be an array.'
+        });
+      }
+
+      await pool.query(`
+        INSERT INTO restaurant_profiles (
+          restaurant_id,
+          logo,
+          phone_numbers,
+          addresses,
+          updated_at
+        )
+        VALUES (
+          $1,
+          $2,
+          $3::jsonb,
+          $4::jsonb,
+          NOW()
+        )
+        ON CONFLICT (restaurant_id)
+        DO UPDATE SET
+          logo = EXCLUDED.logo,
+          phone_numbers = EXCLUDED.phone_numbers,
+          addresses = EXCLUDED.addresses,
+          updated_at = NOW()
+      `, [
+        restaurant.id,
+        logo,
+        JSON.stringify(phone_numbers),
+        JSON.stringify(addresses)
+      ]);
+
+      menuCache.delete(slug);
+
+      return res.json({
+        ok: true,
+        message: 'Restaurant profile updated successfully.'
+      });
+
+    } catch (error) {
+      console.error(
+        '[profile:update] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to update restaurant profile.'
+      });
+    }
+  }
+);
+
+
+/* ================================================================
+   PUBLIC MENU
+   ================================================================ */
+
+app.get(
+  '/api/menu/:slug',
+  async (req, res) => {
+    try {
+      const { slug } = req.params;
+
+      if (menuCache.has(slug)) {
+        return res.json(
+          menuCache.get(slug)
+        );
+      }
+
+      const restaurantResult = await pool.query(`
+        SELECT
+          id,
+          name,
+          slug,
+          status
+        FROM restaurants
+        WHERE slug = $1
+        LIMIT 1
+      `, [
+        slug
+      ]);
+
+      if (restaurantResult.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Restaurant not found.'
+        });
+      }
+
+      const restaurant =
+        restaurantResult.rows[0];
+
+      if (restaurant.status !== 'active') {
+        return res.status(403).json({
+          ok: false,
+          message: 'This restaurant is currently unavailable.'
+        });
+      }
+
+      const menuResult = await pool.query(`
+        SELECT
+          menu,
+          updated_at
+        FROM menu_data
+        WHERE restaurant_id = $1
+        LIMIT 1
+      `, [
+        restaurant.id
+      ]);
+
+      const profileResult = await pool.query(`
+        SELECT
+          logo,
+          phone_numbers,
+          addresses,
+          updated_at
+        FROM restaurant_profiles
+        WHERE restaurant_id = $1
+        LIMIT 1
+      `, [
+        restaurant.id
+      ]);
+
+      const responseData = {
+        ok: true,
+
+        restaurant,
+
+        menu:
+          menuResult.rows.length > 0
+            ? menuResult.rows[0].menu
+            : {},
+
+        menuUpdatedAt:
+          menuResult.rows.length > 0
+            ? menuResult.rows[0].updated_at
+            : null,
+
+        profile:
+          profileResult.rows.length > 0
+            ? profileResult.rows[0]
+            : {
+                logo: '',
+                phone_numbers: [],
+                addresses: [],
+                updated_at: null
+              }
+      };
+
+      menuCache.set(
+        slug,
+        responseData
+      );
+
+      return res.json(
+        responseData
+      );
+
+    } catch (error) {
+      console.error(
+        '[menu:get] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to load menu.'
+      });
+    }
+  }
+);
+
+
+/* ================================================================
+   TELEBIRR PAYMENT
+   ================================================================ */
+
+app.post(
+  '/api/payments/telebirr/create',
+  async (req, res) => {
+    try {
+      const {
+        amount,
+        items
+      } = req.body;
+
+      const numericAmount =
+        Number(amount);
+
+      if (
+        !Number.isFinite(numericAmount) ||
+        numericAmount <= 0
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid payment amount.'
+        });
+      }
+
+      if (
+        !Array.isArray(items) ||
+        items.length === 0
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Payment items are required.'
+        });
+      }
+
+      const merchantAccount =
+        process.env.TELEBIRR_MERCHANT_ACCOUNT;
+
+      if (!merchantAccount) {
+        return res.status(503).json({
+          ok: false,
+          message: 'Telebirr payment is not configured yet.'
+        });
+      }
+
+      const paymentId =
+        `TB-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 10)
+          .toUpperCase()}`;
+
+      return res.json({
+        ok: true,
+        paymentId,
+        amount: numericAmount,
+        merchantAccount,
+        message: 'Payment request created.'
+      });
+
+    } catch (error) {
+      console.error(
+        '[telebirr] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to create payment.'
+      });
+    }
+  }
+);
+
+
+/* ================================================================
+   RESTAURANT MENU - SAVE
+   ================================================================ */
+
+app.post(
+  '/api/admin/menu/:slug',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const { menu } = req.body;
+
+      if (
+        !menu ||
+        typeof menu !== 'object' ||
+        Array.isArray(menu)
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid menu data.'
+        });
+      }
+
+      const restaurantResult = await pool.query(`
+        SELECT
+          id,
+          name,
+          slug,
+          status
+        FROM restaurants
+        WHERE slug = $1
+        LIMIT 1
+      `, [
+        slug
+      ]);
+
+      if (restaurantResult.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Restaurant not found.'
+        });
+      }
+
+      const restaurant =
+        restaurantResult.rows[0];
+
+      if (
+        req.user.role === 'cafe_admin' &&
+        Number(req.user.restaurant_id) !==
+          Number(restaurant.id)
+      ) {
+        return res.status(403).json({
+          ok: false,
+          message: 'You can only edit your own restaurant menu.'
+        });
+      }
+
+      if (restaurant.status !== 'active') {
+        return res.status(403).json({
+          ok: false,
+          message: 'This restaurant is disabled.'
+        });
+      }
+
+      await pool.query(`
+        INSERT INTO menu_data (
+          id,
+          restaurant_id,
+          menu,
+          updated_at
+        )
+        VALUES (
+          (
+            SELECT COALESCE(MAX(id), 0) + 1
+            FROM menu_data
+          ),
+          $1,
+          $2::jsonb,
+          NOW()
+        )
+        ON CONFLICT (restaurant_id)
+        DO UPDATE SET
+          menu = EXCLUDED.menu,
+          updated_at = NOW()
+      `, [
+        restaurant.id,
+        JSON.stringify(menu)
+      ]);
+
+      menuCache.delete(slug);
+
+      return res.json({
+        ok: true,
+        message: 'Menu saved successfully.'
+      });
+
+    } catch (error) {
+      console.error(
+        '[menu:save] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to save menu.'
+      });
+    }
+  }
+);
+
+
+/* ================================================================
+   SUPER ADMIN
+   GET RESTAURANTS
+   ================================================================ */
 
 app.get(
   '/api/owner/restaurants',
   requireOwner,
   async (req, res) => {
-
     try {
+      const result = await pool.query(`
+        SELECT
+          id,
+          name,
+          slug,
+          status
+        FROM restaurants
+        ORDER BY id ASC
+      `);
 
-      const result =
-        await pool.query(
-          `
-          SELECT
-            id,
-            name,
-            slug,
-            status
-          FROM restaurants
-          ORDER BY id ASC
-          `
-        );
-
-      res.json({
-
+      return res.json({
         ok: true,
-
-        restaurants:
-          result.rows
-
+        restaurants: result.rows
       });
 
     } catch (error) {
-
       console.error(
-        'Error loading restaurants:',
-        error.message
+        '[owner:restaurants:get] Error:',
+        error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         ok: false,
-        message:
-          'Failed to load restaurants.'
+        message: 'Unable to load restaurants.'
       });
-
     }
-
   }
 );
 
-/*
-|--------------------------------------------------------------------------
-| SUPER ADMIN: CREATE RESTAURANT + CAFE ADMIN
-|--------------------------------------------------------------------------
-*/
+
+/* ================================================================
+   SUPER ADMIN
+   CREATE RESTAURANT
+   ================================================================ */
 
 app.post(
   '/api/owner/restaurants',
   requireOwner,
   async (req, res) => {
+    const client =
+      await pool.connect();
 
     try {
-
       const {
         name,
         slug,
@@ -1735,197 +1164,613 @@ app.post(
         !adminEmail ||
         !adminPassword
       ) {
-
         return res.status(400).json({
           ok: false,
           message:
-            'Restaurant name, slug, admin email, and admin password are required.'
+            'Restaurant name, slug, admin email and admin password are required.'
         });
-
       }
 
       const cleanName =
-        name.trim();
+        String(name).trim();
 
       const cleanSlug =
-        slug.trim().toLowerCase();
+        String(slug)
+          .trim()
+          .toLowerCase();
 
       const cleanEmail =
-        adminEmail.trim().toLowerCase();
+        String(adminEmail)
+          .trim()
+          .toLowerCase();
 
-      /*
-       * Check slug
-       */
+      const cleanPassword =
+        String(adminPassword);
+
+      if (!cleanName) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Restaurant name is required.'
+        });
+      }
+
+      if (
+        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(
+          cleanSlug
+        )
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Slug may contain only lowercase letters, numbers and hyphens.'
+        });
+      }
+
+      if (cleanPassword.length < 6) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Admin password must be at least 6 characters.'
+        });
+      }
+
+      await client.query(
+        'BEGIN'
+      );
 
       const slugCheck =
-        await pool.query(
-          `
+        await client.query(`
           SELECT id
           FROM restaurants
           WHERE slug = $1
-          `,
-          [cleanSlug]
+          LIMIT 1
+        `, [
+          cleanSlug
+        ]);
+
+      if (slugCheck.rows.length > 0) {
+        await client.query(
+          'ROLLBACK'
         );
 
-      if (
-        slugCheck.rows.length > 0
-      ) {
-
-        return res.status(400).json({
+        return res.status(409).json({
           ok: false,
           message:
-            'A restaurant with this slug already exists.'
+            'That restaurant slug already exists.'
         });
-
       }
-
-      /*
-       * Check email
-       */
 
       const emailCheck =
-        await pool.query(
-          `
+        await client.query(`
           SELECT id
           FROM users
-          WHERE email = $1
-          `,
-          [cleanEmail]
+          WHERE LOWER(email) = LOWER($1)
+          LIMIT 1
+        `, [
+          cleanEmail
+        ]);
+
+      if (emailCheck.rows.length > 0) {
+        await client.query(
+          'ROLLBACK'
         );
 
-      if (
-        emailCheck.rows.length > 0
-      ) {
-
-        return res.status(400).json({
+        return res.status(409).json({
           ok: false,
           message:
-            'This admin email is already in use.'
+            'That admin email is already in use.'
         });
-
       }
 
-      /*
-       * Create restaurant
-       */
-
-      const result =
-        await pool.query(
-          `
-          INSERT INTO restaurants
-            (name, slug, status)
-          VALUES
-            ($1, $2, 'active')
+      const restaurantResult =
+        await client.query(`
+          INSERT INTO restaurants (
+            name,
+            slug,
+            status
+          )
+          VALUES (
+            $1,
+            $2,
+            'active'
+          )
           RETURNING
             id,
             name,
             slug,
             status
-          `,
-          [
-            cleanName,
-            cleanSlug
-          ]
-        );
+        `, [
+          cleanName,
+          cleanSlug
+        ]);
 
       const restaurant =
-        result.rows[0];
+        restaurantResult.rows[0];
 
-      /*
-       * Create empty menu
-       */
-
-      await pool.query(
-        `
-        INSERT INTO menu_data
-          (id, restaurant_id, menu)
-        VALUES
+      await client.query(`
+        INSERT INTO menu_data (
+          id,
+          restaurant_id,
+          menu
+        )
+        VALUES (
           (
-            (SELECT COALESCE(MAX(id), 0) + 1 FROM menu_data),
-            $1,
-            $2
-          )
-        `,
-        [
-          restaurant.id,
-          {}
-        ]
-      );
+            SELECT COALESCE(MAX(id), 0) + 1
+            FROM menu_data
+          ),
+          $1,
+          $2::jsonb
+        )
+      `, [
+        restaurant.id,
+        JSON.stringify({})
+      ]);
 
-      /*
-       * Create cafe admin
-       */
+      await client.query(`
+        INSERT INTO restaurant_profiles (
+          restaurant_id,
+          logo,
+          phone_numbers,
+          addresses
+        )
+        VALUES (
+          $1,
+          '',
+          '[]'::jsonb,
+          '[]'::jsonb
+        )
+      `, [
+        restaurant.id
+      ]);
 
-      await pool.query(
-        `
-        INSERT INTO users
-          (
+      const userResult =
+        await client.query(`
+          INSERT INTO users (
             email,
             password,
             role,
             restaurant_id
           )
-        VALUES
-          (
+          VALUES (
             $1,
             $2,
             'cafe_admin',
             $3
           )
-        `,
-        [
+          RETURNING
+            id,
+            email,
+            role,
+            restaurant_id
+        `, [
           cleanEmail,
-          adminPassword,
+          cleanPassword,
           restaurant.id
-        ]
+        ]);
+
+      await client.query(
+        'COMMIT'
       );
 
-      res.status(201).json({
-
+      return res.status(201).json({
         ok: true,
-
+        message:
+          'Restaurant created successfully.',
         restaurant,
-
-        admin: {
-          email: cleanEmail,
-          role: 'cafe_admin',
-          restaurant_id:
-            restaurant.id
-        }
-
+        admin: userResult.rows[0]
       });
 
     } catch (error) {
+      try {
+        await client.query(
+          'ROLLBACK'
+        );
+      } catch (_) {}
 
       console.error(
-        'Error creating restaurant:',
-        error.message
+        '[owner:restaurant:create] Error:',
+        error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         ok: false,
         message:
-          'Failed to create restaurant.'
+          'Unable to create restaurant.'
       });
 
+    } finally {
+      client.release();
     }
-
   }
 );
 
-/*
-|--------------------------------------------------------------------------
-| SUPER ADMIN: UPDATE RESTAURANT NAME + SLUG
-|--------------------------------------------------------------------------
-*/
+
+/* ================================================================
+   SUPER ADMIN
+   DUPLICATE RESTAURANT
+   ================================================================ */
+
+app.post(
+  '/api/owner/restaurants/:id/duplicate',
+  requireOwner,
+  async (req, res) => {
+    const client =
+      await pool.connect();
+
+    try {
+      const sourceRestaurantId =
+        Number(req.params.id);
+
+      const {
+        name,
+        slug,
+        adminEmail,
+        adminPassword
+      } = req.body;
+
+      if (
+        !Number.isInteger(sourceRestaurantId) ||
+        sourceRestaurantId <= 0
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid source restaurant.'
+        });
+      }
+
+      if (
+        !name ||
+        !slug ||
+        !adminEmail ||
+        !adminPassword
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'New restaurant name, slug, admin email and admin password are required.'
+        });
+      }
+
+      const cleanName =
+        String(name).trim();
+
+      const cleanSlug =
+        String(slug)
+          .trim()
+          .toLowerCase();
+
+      const cleanEmail =
+        String(adminEmail)
+          .trim()
+          .toLowerCase();
+
+      const cleanPassword =
+        String(adminPassword);
+
+      if (!cleanName) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'New restaurant name is required.'
+        });
+      }
+
+      if (
+        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(
+          cleanSlug
+        )
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Slug may contain only lowercase letters, numbers and hyphens.'
+        });
+      }
+
+      if (cleanPassword.length < 6) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Admin password must be at least 6 characters.'
+        });
+      }
+
+      await client.query(
+        'BEGIN'
+      );
+
+      /*
+       * Lock the transaction while generating the legacy
+       * menu_data ID using MAX(id)+1.
+       */
+      await client.query(`
+        SELECT pg_advisory_xact_lock(847291)
+      `);
+
+      const sourceResult =
+        await client.query(`
+          SELECT
+            id,
+            name,
+            slug,
+            status
+          FROM restaurants
+          WHERE id = $1
+          LIMIT 1
+        `, [
+          sourceRestaurantId
+        ]);
+
+      if (sourceResult.rows.length === 0) {
+        await client.query(
+          'ROLLBACK'
+        );
+
+        return res.status(404).json({
+          ok: false,
+          message:
+            'Source restaurant not found.'
+        });
+      }
+
+      const sourceRestaurant =
+        sourceResult.rows[0];
+
+      const slugCheck =
+        await client.query(`
+          SELECT id
+          FROM restaurants
+          WHERE slug = $1
+          LIMIT 1
+        `, [
+          cleanSlug
+        ]);
+
+      if (slugCheck.rows.length > 0) {
+        await client.query(
+          'ROLLBACK'
+        );
+
+        return res.status(409).json({
+          ok: false,
+          message:
+            'That restaurant slug already exists.'
+        });
+      }
+
+      const emailCheck =
+        await client.query(`
+          SELECT id
+          FROM users
+          WHERE LOWER(email) = LOWER($1)
+          LIMIT 1
+        `, [
+          cleanEmail
+        ]);
+
+      if (emailCheck.rows.length > 0) {
+        await client.query(
+          'ROLLBACK'
+        );
+
+        return res.status(409).json({
+          ok: false,
+          message:
+            'That admin email is already in use.'
+        });
+      }
+
+      const menuResult =
+        await client.query(`
+          SELECT
+            menu
+          FROM menu_data
+          WHERE restaurant_id = $1
+          LIMIT 1
+        `, [
+          sourceRestaurantId
+        ]);
+
+      const sourceMenu =
+        menuResult.rows.length > 0
+          ? menuResult.rows[0].menu
+          : {};
+
+      const profileResult =
+        await client.query(`
+          SELECT
+            logo,
+            phone_numbers,
+            addresses
+          FROM restaurant_profiles
+          WHERE restaurant_id = $1
+          LIMIT 1
+        `, [
+          sourceRestaurantId
+        ]);
+
+      const sourceProfile =
+        profileResult.rows.length > 0
+          ? profileResult.rows[0]
+          : {
+              logo: '',
+              phone_numbers: [],
+              addresses: []
+            };
+
+      /*
+       * Create a completely new restaurant.
+       */
+      const newRestaurantResult =
+        await client.query(`
+          INSERT INTO restaurants (
+            name,
+            slug,
+            status
+          )
+          VALUES (
+            $1,
+            $2,
+            'active'
+          )
+          RETURNING
+            id,
+            name,
+            slug,
+            status
+        `, [
+          cleanName,
+          cleanSlug
+        ]);
+
+      const newRestaurant =
+        newRestaurantResult.rows[0];
+
+      /*
+       * Copy menu into a NEW menu_data row.
+       * JSONB is copied as a new value, so future changes
+       * to either restaurant are independent.
+       */
+      await client.query(`
+        INSERT INTO menu_data (
+          id,
+          restaurant_id,
+          menu,
+          updated_at
+        )
+        VALUES (
+          (
+            SELECT COALESCE(MAX(id), 0) + 1
+            FROM menu_data
+          ),
+          $1,
+          $2::jsonb,
+          NOW()
+        )
+      `, [
+        newRestaurant.id,
+        JSON.stringify(sourceMenu || {})
+      ]);
+
+      /*
+       * Copy restaurant profile.
+       */
+      await client.query(`
+        INSERT INTO restaurant_profiles (
+          restaurant_id,
+          logo,
+          phone_numbers,
+          addresses,
+          updated_at
+        )
+        VALUES (
+          $1,
+          $2,
+          $3::jsonb,
+          $4::jsonb,
+          NOW()
+        )
+      `, [
+        newRestaurant.id,
+        typeof sourceProfile.logo === 'string'
+          ? sourceProfile.logo
+          : '',
+        JSON.stringify(
+          Array.isArray(sourceProfile.phone_numbers)
+            ? sourceProfile.phone_numbers
+            : []
+        ),
+        JSON.stringify(
+          Array.isArray(sourceProfile.addresses)
+            ? sourceProfile.addresses
+            : []
+        )
+      ]);
+
+      /*
+       * Create a completely separate cafe admin account.
+       */
+      const adminResult =
+        await client.query(`
+          INSERT INTO users (
+            email,
+            password,
+            role,
+            restaurant_id
+          )
+          VALUES (
+            $1,
+            $2,
+            'cafe_admin',
+            $3
+          )
+          RETURNING
+            id,
+            email,
+            role,
+            restaurant_id
+        `, [
+          cleanEmail,
+          cleanPassword,
+          newRestaurant.id
+        ]);
+
+      await client.query(
+        'COMMIT'
+      );
+
+      return res.status(201).json({
+        ok: true,
+
+        message:
+          'Restaurant duplicated successfully. The new restaurant is independent from the original.',
+
+        source: {
+          id: sourceRestaurant.id,
+          name: sourceRestaurant.name,
+          slug: sourceRestaurant.slug
+        },
+
+        restaurant: newRestaurant,
+
+        admin: adminResult.rows[0]
+      });
+
+    } catch (error) {
+      try {
+        await client.query(
+          'ROLLBACK'
+        );
+      } catch (_) {}
+
+      console.error(
+        '[owner:restaurant:duplicate] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message:
+          'Unable to duplicate restaurant.'
+      });
+
+    } finally {
+      client.release();
+    }
+  }
+);
+
+
+/* ================================================================
+   SUPER ADMIN
+   EDIT RESTAURANT
+   ================================================================ */
 
 app.put(
   '/api/owner/restaurants/:id',
   requireOwner,
   async (req, res) => {
-
     try {
-
       const restaurantId =
         Number(req.params.id);
 
@@ -1935,62 +1780,65 @@ app.put(
       } = req.body;
 
       if (
-        !restaurantId ||
-        !name ||
-        !slug
+        !Number.isInteger(restaurantId) ||
+        restaurantId <= 0
       ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid restaurant ID.'
+        });
+      }
 
+      if (!name || !slug) {
         return res.status(400).json({
           ok: false,
           message:
-            'Restaurant ID, name, and slug are required.'
+            'Restaurant name and slug are required.'
         });
-
       }
 
       const cleanName =
-        name.trim();
+        String(name).trim();
 
       const cleanSlug =
-        slug.trim().toLowerCase();
+        String(slug)
+          .trim()
+          .toLowerCase();
 
-      /*
-       * Check duplicate slug
-       */
+      if (
+        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(
+          cleanSlug
+        )
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Slug may contain only lowercase letters, numbers and hyphens.'
+        });
+      }
 
-      const slugCheck =
-        await pool.query(
-          `
+      const existing =
+        await pool.query(`
           SELECT id
           FROM restaurants
           WHERE slug = $1
             AND id <> $2
-          `,
-          [
-            cleanSlug,
-            restaurantId
-          ]
-        );
+          LIMIT 1
+        `, [
+          cleanSlug,
+          restaurantId
+        ]);
 
-      if (
-        slugCheck.rows.length > 0
-      ) {
-
-        return res.status(400).json({
+      if (existing.rows.length > 0) {
+        return res.status(409).json({
           ok: false,
           message:
-            'Another restaurant already uses this slug.'
+            'That restaurant slug already exists.'
         });
-
       }
 
-      /*
-       * Update
-       */
-
       const result =
-        await pool.query(
-          `
+        await pool.query(`
           UPDATE restaurants
           SET
             name = $1,
@@ -2001,66 +1849,60 @@ app.put(
             name,
             slug,
             status
-          `,
-          [
-            cleanName,
-            cleanSlug,
-            restaurantId
-          ]
-        );
+        `, [
+          cleanName,
+          cleanSlug,
+          restaurantId
+        ]);
 
-      if (
-        result.rows.length === 0
-      ) {
-
+      if (result.rows.length === 0) {
         return res.status(404).json({
           ok: false,
           message:
             'Restaurant not found.'
         });
-
       }
 
-      res.json({
+      /*
+       * Cache may be stored using the old slug.
+       * Clear all cache entries to safely handle a slug change.
+       */
+      menuCache.clear();
 
+      return res.json({
         ok: true,
-
+        message:
+          'Restaurant updated successfully.',
         restaurant:
           result.rows[0]
-
       });
 
     } catch (error) {
-
       console.error(
-        'Error updating restaurant:',
-        error.message
+        '[owner:restaurant:update] Error:',
+        error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         ok: false,
         message:
-          'Failed to update restaurant.'
+          'Unable to update restaurant.'
       });
-
     }
-
   }
 );
 
-/*
-|--------------------------------------------------------------------------
-| SUPER ADMIN: UPDATE CAFE ADMIN EMAIL / PASSWORD
-|--------------------------------------------------------------------------
-*/
+
+/* ================================================================
+   SUPER ADMIN
+   UPDATE RESTAURANT ADMIN ACCOUNT
+   ================================================================ */
 
 app.put(
   '/api/owner/restaurants/:id/admin',
   requireOwner,
   async (req, res) => {
-
     try {
-
       const restaurantId =
         Number(req.params.id);
 
@@ -2069,36 +1911,85 @@ app.put(
         password
       } = req.body;
 
-      if (!restaurantId) {
-
+      if (
+        !Number.isInteger(restaurantId) ||
+        restaurantId <= 0
+      ) {
         return res.status(400).json({
           ok: false,
-          message:
-            'Restaurant ID is required.'
+          message: 'Invalid restaurant ID.'
         });
-
       }
+
+      if (!email) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Admin email is required.'
+        });
+      }
+
+      const cleanEmail =
+        String(email)
+          .trim()
+          .toLowerCase();
+
+      const cleanPassword =
+        password === undefined ||
+        password === null
+          ? ''
+          : String(password);
 
       if (
-        !email &&
-        !password
+        cleanPassword &&
+        cleanPassword.length < 6
       ) {
-
         return res.status(400).json({
           ok: false,
           message:
-            'Enter an email or password to update.'
+            'Password must be at least 6 characters.'
         });
-
       }
 
-      /*
-       * Find cafe admin
-       */
+      const restaurantResult =
+        await pool.query(`
+          SELECT id
+          FROM restaurants
+          WHERE id = $1
+          LIMIT 1
+        `, [
+          restaurantId
+        ]);
 
-      const userResult =
-        await pool.query(
-          `
+      if (restaurantResult.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message:
+            'Restaurant not found.'
+        });
+      }
+
+      const emailCheck =
+        await pool.query(`
+          SELECT id
+          FROM users
+          WHERE LOWER(email) = LOWER($1)
+            AND restaurant_id <> $2
+          LIMIT 1
+        `, [
+          cleanEmail,
+          restaurantId
+        ]);
+
+      if (emailCheck.rows.length > 0) {
+        return res.status(409).json({
+          ok: false,
+          message:
+            'That email is already used by another account.'
+        });
+      }
+
+      const adminResult =
+        await pool.query(`
           SELECT
             id,
             email,
@@ -2106,166 +1997,128 @@ app.put(
           FROM users
           WHERE restaurant_id = $1
             AND role = 'cafe_admin'
+          ORDER BY id ASC
           LIMIT 1
-          `,
-          [restaurantId]
-        );
+        `, [
+          restaurantId
+        ]);
 
-      if (
-        userResult.rows.length === 0
-      ) {
+      if (adminResult.rows.length === 0) {
+        const insertResult =
+          await pool.query(`
+            INSERT INTO users (
+              email,
+              password,
+              role,
+              restaurant_id
+            )
+            VALUES (
+              $1,
+              $2,
+              'cafe_admin',
+              $3
+            )
+            RETURNING
+              id,
+              email,
+              role,
+              restaurant_id
+          `, [
+            cleanEmail,
+            cleanPassword,
+            restaurantId
+          ]);
 
-        return res.status(404).json({
-          ok: false,
+        return res.json({
+          ok: true,
           message:
-            'Cafe admin account not found.'
+            'Restaurant admin account created.',
+          admin:
+            insertResult.rows[0]
         });
-
       }
 
       const admin =
-        userResult.rows[0];
+        adminResult.rows[0];
 
-      /*
-       * Update email
-       */
-
-      if (email) {
-
-        const cleanEmail =
-          email.trim().toLowerCase();
-
-        if (!cleanEmail) {
-
-          return res.status(400).json({
-            ok: false,
-            message:
-              'Admin email cannot be empty.'
-          });
-
-        }
-
-        const emailCheck =
-          await pool.query(
-            `
-            SELECT id
-            FROM users
-            WHERE email = $1
-              AND id <> $2
-            `,
-            [
-              cleanEmail,
-              admin.id
-            ]
-          );
-
-        if (
-          emailCheck.rows.length > 0
-        ) {
-
-          return res.status(400).json({
-            ok: false,
-            message:
-              'This email is already in use.'
-          });
-
-        }
-
-        await pool.query(
-          `
-          UPDATE users
-          SET email = $1
-          WHERE id = $2
-          `,
-          [
+      if (cleanPassword) {
+        const result =
+          await pool.query(`
+            UPDATE users
+            SET
+              email = $1,
+              password = $2
+            WHERE id = $3
+            RETURNING
+              id,
+              email,
+              role,
+              restaurant_id
+          `, [
             cleanEmail,
+            cleanPassword,
             admin.id
-          ]
-        );
+          ]);
 
+        return res.json({
+          ok: true,
+          message:
+            'Restaurant admin account updated.',
+          admin:
+            result.rows[0]
+        });
       }
 
-      /*
-       * Update password
-       */
-
-      if (password) {
-
-        await pool.query(
-          `
+      const result =
+        await pool.query(`
           UPDATE users
-          SET password = $1
+          SET
+            email = $1
           WHERE id = $2
-          `,
-          [
-            password,
-            admin.id
-          ]
-        );
-
-      }
-
-      /*
-       * Return updated admin
-       */
-
-      const updatedResult =
-        await pool.query(
-          `
-          SELECT
+          RETURNING
             id,
             email,
             role,
             restaurant_id
-          FROM users
-          WHERE id = $1
-          `,
-          [admin.id]
-        );
+        `, [
+          cleanEmail,
+          admin.id
+        ]);
 
-      res.json({
-
+      return res.json({
         ok: true,
-
-        admin:
-          updatedResult.rows[0],
-
         message:
-          'Admin account updated successfully.'
-
+          'Restaurant admin email updated.',
+        admin:
+          result.rows[0]
       });
 
     } catch (error) {
-
       console.error(
-        'Error updating restaurant admin:',
-        error.message
+        '[owner:restaurant:admin] Error:',
+        error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         ok: false,
         message:
-          'Failed to update admin account.'
+          'Unable to update restaurant admin account.'
       });
-
     }
-
   }
 );
 
-/*
-|--------------------------------------------------------------------------
-| SUPER ADMIN: ENABLE / DISABLE RESTAURANT
-|--------------------------------------------------------------------------
-*/
+
+/* ================================================================
+   SUPER ADMIN
+   CHANGE RESTAURANT STATUS
+   ================================================================ */
 
 app.put(
   '/api/owner/restaurants/:id/status',
   requireOwner,
   async (req, res) => {
-
     try {
-
       const restaurantId =
         Number(req.params.id);
 
@@ -2273,32 +2126,30 @@ app.put(
         status
       } = req.body;
 
-      if (!restaurantId) {
-
+      if (
+        !Number.isInteger(restaurantId) ||
+        restaurantId <= 0
+      ) {
         return res.status(400).json({
           ok: false,
           message:
-            'Restaurant ID is required.'
+            'Invalid restaurant ID.'
         });
-
       }
 
       if (
-        !['active', 'disabled']
-          .includes(status)
+        status !== 'active' &&
+        status !== 'disabled'
       ) {
-
         return res.status(400).json({
           ok: false,
           message:
             'Status must be active or disabled.'
         });
-
       }
 
       const result =
-        await pool.query(
-          `
+        await pool.query(`
           UPDATE restaurants
           SET status = $1
           WHERE id = $2
@@ -2307,119 +2158,232 @@ app.put(
             name,
             slug,
             status
-          `,
-          [
-            status,
-            restaurantId
-          ]
-        );
+        `, [
+          status,
+          restaurantId
+        ]);
 
-      if (
-        result.rows.length === 0
-      ) {
-
+      if (result.rows.length === 0) {
         return res.status(404).json({
           ok: false,
           message:
             'Restaurant not found.'
         });
-
       }
 
-      /*
-       * Remove cached menu
-       */
+      menuCache.clear();
 
-      menuCache.delete(
-        result.rows[0].slug
-      );
-
-      res.json({
-
+      return res.json({
         ok: true,
-
-        restaurant:
-          result.rows[0],
-
         message:
           status === 'active'
             ? 'Restaurant enabled successfully.'
-            : 'Restaurant disabled successfully.'
-
+            : 'Restaurant disabled successfully.',
+        restaurant:
+          result.rows[0]
       });
 
     } catch (error) {
-
       console.error(
-        'Error changing restaurant status:',
-        error.message
+        '[owner:restaurant:status] Error:',
+        error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         ok: false,
         message:
-          'Failed to change restaurant status.'
+          'Unable to update restaurant status.'
       });
-
     }
-
   }
 );
 
-/*
-|--------------------------------------------------------------------------
-| SUPER ADMIN: DELETE RESTAURANT
-|--------------------------------------------------------------------------
-*/
 
-app.delete(
-  '/api/owner/restaurants/:id',
+/* ================================================================
+   SUPER ADMIN
+   PRICE MANAGEMENT
+   ================================================================ */
+
+app.post(
+  '/api/owner/restaurants/:id/price-management',
   requireOwner,
   async (req, res) => {
-
     const client =
       await pool.connect();
 
     try {
-
       const restaurantId =
         Number(req.params.id);
 
-      if (!restaurantId) {
+      const {
+        mode,
+        percentage,
+        scope,
+        category,
+        items
+      } = req.body;
 
+      /* ------------------------------------------------------------
+         VALIDATE RESTAURANT ID
+         ------------------------------------------------------------ */
+
+      if (
+        !Number.isInteger(restaurantId) ||
+        restaurantId <= 0
+      ) {
         return res.status(400).json({
           ok: false,
           message:
             'Invalid restaurant ID.'
         });
-
       }
+
+      /* ------------------------------------------------------------
+         VALIDATE MODE
+         ------------------------------------------------------------ */
+
+      if (
+        mode !== 'increase' &&
+        mode !== 'decrease'
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Price operation must be increase or decrease.'
+        });
+      }
+
+      /* ------------------------------------------------------------
+         VALIDATE PERCENTAGE
+         ------------------------------------------------------------ */
+
+      const numericPercentage =
+        Number(percentage);
+
+      if (
+        !Number.isFinite(numericPercentage) ||
+        numericPercentage <= 0
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Percentage must be greater than 0.'
+        });
+      }
+
+      if (numericPercentage > 1000) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Percentage cannot be greater than 1000%.'
+        });
+      }
+
+      /*
+       * A 100% decrease would make every price zero.
+       * We require a value below 100%.
+       */
+      if (
+        mode === 'decrease' &&
+        numericPercentage >= 100
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Decrease percentage must be less than 100%.'
+        });
+      }
+
+      /* ------------------------------------------------------------
+         VALIDATE SCOPE
+         ------------------------------------------------------------ */
+
+      if (
+        scope !== 'all' &&
+        scope !== 'category' &&
+        scope !== 'items'
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Invalid price management scope.'
+        });
+      }
+
+      if (
+        scope === 'category' &&
+        (
+          typeof category !== 'string' ||
+          !category.trim()
+        )
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'A category is required.'
+        });
+      }
+
+      if (
+        scope === 'items' &&
+        (
+          !Array.isArray(items) ||
+          items.length === 0
+        )
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'At least one menu item must be selected.'
+        });
+      }
+
+      if (
+        Array.isArray(items) &&
+        items.length > 1000
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Too many menu items selected.'
+        });
+      }
+
+      /* ------------------------------------------------------------
+         START TRANSACTION
+         ------------------------------------------------------------ */
 
       await client.query(
         'BEGIN'
       );
 
       /*
-       * Find restaurant
+       * Lock the same advisory lock used by the manual
+       * menu_data ID generator.
        */
+      await client.query(`
+        SELECT pg_advisory_xact_lock(847291)
+      `);
+
+      /* ------------------------------------------------------------
+         LOAD RESTAURANT
+         ------------------------------------------------------------ */
 
       const restaurantResult =
-        await client.query(
-          `
+        await client.query(`
           SELECT
             id,
             name,
-            slug
+            slug,
+            status
           FROM restaurants
           WHERE id = $1
-          `,
-          [restaurantId]
-        );
+          LIMIT 1
+        `, [
+          restaurantId
+        ]);
 
-      if (
-        restaurantResult.rows.length === 0
-      ) {
-
+      if (restaurantResult.rows.length === 0) {
         await client.query(
           'ROLLBACK'
         );
@@ -2429,142 +2393,537 @@ app.delete(
           message:
             'Restaurant not found.'
         });
-
       }
 
       const restaurant =
         restaurantResult.rows[0];
 
       /*
-       * Delete cafe admin
+       * Price management only operates on active restaurants.
        */
+      if (restaurant.status !== 'active') {
+        await client.query(
+          'ROLLBACK'
+        );
 
-      await client.query(
-        `
-        DELETE FROM users
-        WHERE restaurant_id = $1
-          AND role = 'cafe_admin'
-        `,
-        [restaurantId]
-      );
+        return res.status(403).json({
+          ok: false,
+          message:
+            'Price management is only available for active restaurants.'
+        });
+      }
+
+      /* ------------------------------------------------------------
+         LOAD MENU WITH ROW LOCK
+         ------------------------------------------------------------ */
+
+      const menuResult =
+        await client.query(`
+          SELECT
+            menu
+          FROM menu_data
+          WHERE restaurant_id = $1
+          FOR UPDATE
+        `, [
+          restaurantId
+        ]);
+
+      if (menuResult.rows.length === 0) {
+        await client.query(
+          'ROLLBACK'
+        );
+
+        return res.status(404).json({
+          ok: false,
+          message:
+            'No menu data exists for this restaurant.'
+        });
+      }
+
+      const originalMenu =
+        menuResult.rows[0].menu || {};
 
       /*
-       * Delete menu
+       * Deep clone JSONB so we don't mutate the object
+       * returned by pg unexpectedly.
        */
+      const updatedMenu =
+        JSON.parse(
+          JSON.stringify(originalMenu)
+        );
 
-      await client.query(
-        `
-        DELETE FROM menu_data
-        WHERE restaurant_id = $1
-        `,
-        [restaurantId]
-      );
+      /* ------------------------------------------------------------
+         BUILD SELECTION
+         ------------------------------------------------------------ */
 
-      /*
-       * Delete restaurant
-       */
+      const selectedItems =
+        Array.isArray(items)
+          ? items
+          : [];
 
-      await client.query(
-        `
-        DELETE FROM restaurants
-        WHERE id = $1
-        `,
-        [restaurantId]
-      );
+      const selectedItemKeys =
+        new Set();
+
+      for (
+        const selectedItem
+        of selectedItems
+      ) {
+        if (
+          !selectedItem ||
+          typeof selectedItem !== 'object'
+        ) {
+          continue;
+        }
+
+        const selectedCategory =
+          typeof selectedItem.category === 'string'
+            ? selectedItem.category
+            : '';
+
+        const selectedIndex =
+          Number(selectedItem.index);
+
+        if (
+          selectedCategory &&
+          Number.isInteger(selectedIndex) &&
+          selectedIndex >= 0
+        ) {
+          selectedItemKeys.add(
+            `${selectedCategory}::${selectedIndex}`
+          );
+        }
+      }
+
+      if (
+        scope === 'items' &&
+        selectedItemKeys.size === 0
+      ) {
+        await client.query(
+          'ROLLBACK'
+        );
+
+        return res.status(400).json({
+          ok: false,
+          message:
+            'No valid menu items were selected.'
+        });
+      }
+
+      /* ------------------------------------------------------------
+         CALCULATE PRICE MULTIPLIER
+         ------------------------------------------------------------ */
+
+      const multiplier =
+        mode === 'increase'
+          ? 1 + numericPercentage / 100
+          : 1 - numericPercentage / 100;
+
+      /* ------------------------------------------------------------
+         PRICE MANAGEMENT
+         ------------------------------------------------------------ */
+
+      let affectedCount = 0;
+      let skippedCount = 0;
+
+      const changedItems = [];
+
+      for (
+        const categoryName of Object.keys(
+          updatedMenu
+        )
+      ) {
+        const categoryItems =
+          updatedMenu[categoryName];
+
+        if (!Array.isArray(categoryItems)) {
+          continue;
+        }
+
+        /*
+         * Category scope.
+         */
+        if (
+          scope === 'category' &&
+          categoryName !== category.trim()
+        ) {
+          continue;
+        }
+
+        for (
+          let index = 0;
+          index < categoryItems.length;
+          index++
+        ) {
+          const item =
+            categoryItems[index];
+
+          if (
+            !item ||
+            typeof item !== 'object'
+          ) {
+            skippedCount++;
+            continue;
+          }
+
+          /*
+           * Selected items scope.
+           */
+          if (scope === 'items') {
+            const key =
+              `${categoryName}::${index}`;
+
+            if (
+              !selectedItemKeys.has(key)
+            ) {
+              continue;
+            }
+          }
+
+          /*
+           * Only numeric prices can be updated.
+           */
+          const oldPrice =
+            Number(item.price);
+
+          if (
+            !Number.isFinite(oldPrice) ||
+            oldPrice < 0
+          ) {
+            skippedCount++;
+            continue;
+          }
+
+          const rawNewPrice =
+            oldPrice * multiplier;
+
+          /*
+           * Consistent two-decimal rounding.
+           */
+          const newPrice =
+            Math.round(
+              (rawNewPrice + Number.EPSILON) * 100
+            ) / 100;
+
+          item.price =
+            newPrice;
+
+          affectedCount++;
+
+          changedItems.push({
+            category: categoryName,
+            index,
+            name:
+              typeof item.name === 'string'
+                ? item.name
+                : `Item ${index + 1}`,
+            oldPrice,
+            newPrice
+          });
+        }
+      }
+
+      if (affectedCount === 0) {
+        await client.query(
+          'ROLLBACK'
+        );
+
+        return res.status(400).json({
+          ok: false,
+          message:
+            'No menu items with valid prices were found for this operation.'
+        });
+      }
+
+      /* ------------------------------------------------------------
+         SAVE UPDATED MENU
+         ------------------------------------------------------------ */
+
+      await client.query(`
+        UPDATE menu_data
+        SET
+          menu = $1::jsonb,
+          updated_at = NOW()
+        WHERE restaurant_id = $2
+      `, [
+        JSON.stringify(updatedMenu),
+        restaurantId
+      ]);
 
       await client.query(
         'COMMIT'
       );
 
       /*
-       * Clear cache
+       * Clear cached public menu so the new prices appear.
        */
+      menuCache.delete(
+        restaurant.slug
+      );
+
+      return res.json({
+        ok: true,
+
+        message:
+          mode === 'increase'
+            ? `Prices increased by ${numericPercentage}% for ${affectedCount} item${affectedCount === 1 ? '' : 's'}.`
+            : `Prices decreased by ${numericPercentage}% for ${affectedCount} item${affectedCount === 1 ? '' : 's'}.`,
+
+        restaurant: {
+          id: restaurant.id,
+          name: restaurant.name,
+          slug: restaurant.slug
+        },
+
+        operation: {
+          mode,
+          percentage: numericPercentage,
+          scope,
+          category:
+            scope === 'category'
+              ? category.trim()
+              : null
+        },
+
+        affectedCount,
+        skippedCount,
+        changedItems
+      });
+
+    } catch (error) {
+      try {
+        await client.query(
+          'ROLLBACK'
+        );
+      } catch (_) {}
+
+      console.error(
+        '[owner:price-management] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message:
+          'Unable to update menu prices.'
+      });
+
+    } finally {
+      client.release();
+    }
+  }
+);
+
+
+/* ================================================================
+   SUPER ADMIN
+   DELETE RESTAURANT
+   ================================================================ */
+
+app.delete(
+  '/api/owner/restaurants/:id',
+  requireOwner,
+  async (req, res) => {
+    const client =
+      await pool.connect();
+
+    try {
+      const restaurantId =
+        Number(req.params.id);
+
+      if (
+        !Number.isInteger(restaurantId) ||
+        restaurantId <= 0
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Invalid restaurant ID.'
+        });
+      }
+
+      await client.query(
+        'BEGIN'
+      );
+
+      const restaurantResult =
+        await client.query(`
+          SELECT
+            id,
+            name,
+            slug
+          FROM restaurants
+          WHERE id = $1
+          LIMIT 1
+        `, [
+          restaurantId
+        ]);
+
+      if (restaurantResult.rows.length === 0) {
+        await client.query(
+          'ROLLBACK'
+        );
+
+        return res.status(404).json({
+          ok: false,
+          message:
+            'Restaurant not found.'
+        });
+      }
+
+      const restaurant =
+        restaurantResult.rows[0];
+
+      /*
+       * Delete cafe admin accounts.
+       */
+      await client.query(`
+        DELETE FROM users
+        WHERE restaurant_id = $1
+          AND role = 'cafe_admin'
+      `, [
+        restaurantId
+      ]);
+
+      /*
+       * Delete menu data.
+       */
+      await client.query(`
+        DELETE FROM menu_data
+        WHERE restaurant_id = $1
+      `, [
+        restaurantId
+      ]);
+
+      /*
+       * restaurant_profiles will also be removed through
+       * ON DELETE CASCADE, but explicitly deleting it keeps
+       * this operation clear and safe if the schema changes.
+       */
+      await client.query(`
+        DELETE FROM restaurant_profiles
+        WHERE restaurant_id = $1
+      `, [
+        restaurantId
+      ]);
+
+      /*
+       * Delete restaurant.
+       */
+      await client.query(`
+        DELETE FROM restaurants
+        WHERE id = $1
+      `, [
+        restaurantId
+      ]);
+
+      await client.query(
+        'COMMIT'
+      );
 
       menuCache.delete(
         restaurant.slug
       );
 
-      res.json({
-
+      return res.json({
         ok: true,
-
         message:
-          `${restaurant.name} deleted successfully.`
-
+          'Restaurant deleted successfully.',
+        restaurant
       });
 
     } catch (error) {
-
-      await client.query(
-        'ROLLBACK'
-      );
+      try {
+        await client.query(
+          'ROLLBACK'
+        );
+      } catch (_) {}
 
       console.error(
-        'Error deleting restaurant:',
-        error.message
+        '[owner:restaurant:delete] Error:',
+        error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         ok: false,
         message:
-          'Failed to delete restaurant.'
+          'Unable to delete restaurant.'
       });
 
     } finally {
-
       client.release();
-
     }
-
   }
 );
 
-/*
-|--------------------------------------------------------------------------
-| FALLBACK FOR UNMATCHED API ROUTES
-|--------------------------------------------------------------------------
-*/
 
-app.use((req, res, next) => {
+/* ================================================================
+   API 404
+   ================================================================ */
 
-  if (
-    req.path &&
-    req.path.startsWith('/api/')
-  ) {
-
-    console.log(
-      `[api] No matching route for ${req.method} ${req.path}`
-    );
-
+app.use(
+  '/api',
+  (req, res) => {
     return res.status(404).json({
       ok: false,
-      message:
-        'API route not found'
+      message: 'API endpoint not found.'
     });
-
   }
+);
 
-  next();
 
-});
+/* ================================================================
+   GENERAL ERROR HANDLER
+   ================================================================ */
 
-/*
-|--------------------------------------------------------------------------
-| START SERVER
-|--------------------------------------------------------------------------
-*/
-
-const PORT =
-  process.env.PORT || 3000;
-
-app.listen(
-  PORT,
-  '0.0.0.0',
-  () => {
-
-    console.log(
-      `Server running on port ${PORT}`
+app.use(
+  (error, req, res, next) => {
+    console.error(
+      '[server] Unhandled error:',
+      error
     );
 
+    if (res.headersSent) {
+      return next(error);
+    }
+
+    return res.status(500).json({
+      ok: false,
+      message:
+        'Internal server error.'
+    });
+  }
+);
+
+
+/* ================================================================
+   SERVER START
+   ================================================================ */
+
+const PORT =
+  Number(process.env.PORT) || 10000;
+
+async function startServer() {
+  await ensureDatabaseStructure();
+
+  app.listen(
+    PORT,
+    '0.0.0.0',
+    () => {
+      console.log(
+        `[server] Caffemenu running on port ${PORT}`
+      );
+    }
+  );
+}
+
+
+startServer().catch(
+  (error) => {
+    console.error(
+      '[server] Failed to start:',
+      error
+    );
+
+    process.exit(1);
   }
 );

@@ -1,0 +1,1217 @@
+/* ================================================================
+   TODAY'S SPECIAL
+   Premium Customer Modal
+   ================================================================ */
+
+
+/* ================================================================
+   GLOBAL SAFETY
+   ================================================================ */
+
+.customer-day-special-overlay,
+.customer-day-special-overlay *,
+.customer-day-special-modal,
+.customer-day-special-modal * {
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+
+/* ================================================================
+   BODY LOCK
+   ================================================================ */
+
+body.customer-day-special-open {
+    overflow: hidden;
+}
+
+
+/* ================================================================
+   FULL SCREEN OVERLAY
+   ================================================================ */
+
+.customer-day-special-overlay {
+    position: fixed;
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    padding: 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background:
+        rgba(15, 15, 15, 0.62);
+
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+
+    z-index: 99999;
+
+    overflow: hidden;
+
+    opacity: 0;
+    visibility: hidden;
+
+    transition:
+        opacity 0.25s ease,
+        visibility 0.25s ease;
+}
+
+
+/* ================================================================
+   ACTIVE OVERLAY
+   ================================================================ */
+
+.customer-day-special-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+
+/* ================================================================
+   MAIN MODAL
+   ================================================================ */
+
+.customer-day-special-multiple-modal,
+.customer-day-special-empty-modal {
+
+    position: relative;
+
+    width: min(920px, 100%);
+    max-width: 920px;
+
+    max-height: calc(100vh - 48px);
+
+    margin: 0 auto;
+
+    display: flex;
+    flex-direction: column;
+
+    background: #ffffff;
+
+    border: 1px solid rgba(0, 0, 0, 0.06);
+
+    border-radius: 22px;
+
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.30),
+        0 8px 25px rgba(0, 0, 0, 0.10);
+
+    overflow: hidden;
+
+    transform: translateY(12px) scale(0.98);
+
+    transition:
+        transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+
+/* ================================================================
+   MODAL ACTIVE ANIMATION
+   ================================================================ */
+
+.customer-day-special-overlay.active
+.customer-day-special-multiple-modal,
+
+.customer-day-special-overlay.active
+.customer-day-special-empty-modal {
+
+    transform:
+        translateY(0)
+        scale(1);
+}
+
+
+/* ================================================================
+   HEADER
+   ================================================================ */
+
+.customer-day-special-top {
+
+    position: relative;
+
+    width: 100%;
+
+    min-height: 76px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding:
+        18px
+        68px
+        18px
+        68px;
+
+    background:
+        linear-gradient(
+            to bottom,
+            #ffffff,
+            #fcfcfc
+        );
+
+    border-bottom:
+        1px solid #eeeeee;
+
+    flex-shrink: 0;
+}
+
+
+/* ================================================================
+   TITLE
+   ================================================================ */
+
+.customer-day-special-heading {
+
+    margin: 0;
+
+    text-align: center;
+
+    font-size: 25px;
+    line-height: 1.25;
+
+    font-weight: 800;
+
+    color: #202020;
+
+    letter-spacing: 0.15px;
+
+    white-space: normal;
+}
+
+
+/* ================================================================
+   HIDE OLD LABELS / BADGES
+   ================================================================ */
+
+.customer-day-special-badge,
+.customer-day-special-label {
+
+    display: none !important;
+}
+
+
+/* ================================================================
+   CLOSE BUTTON
+   ================================================================ */
+
+.customer-day-special-close {
+
+    position: absolute;
+
+    top: 50%;
+    right: 18px;
+
+    width: 40px;
+    height: 40px;
+
+    padding: 0;
+
+    transform: translateY(-50%);
+
+    border:
+        1px solid #e9e9e9;
+
+    border-radius: 50%;
+
+    background: #f7f7f7;
+
+    color: #333333;
+
+    font-size: 25px;
+    font-weight: 400;
+
+    line-height: 1;
+
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+
+.customer-day-special-close:hover {
+
+    background: #eeeeee;
+
+    border-color: #dddddd;
+
+    transform:
+        translateY(-50%)
+        rotate(4deg);
+
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+
+.customer-day-special-close:active {
+
+    transform:
+        translateY(-50%)
+        scale(0.94);
+}
+
+
+/* ================================================================
+   SPECIAL LIST
+   ================================================================ */
+
+.customer-day-special-list {
+
+    width: 100%;
+
+    padding: 22px 24px;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 16px;
+
+    min-width: 0;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    overscroll-behavior: contain;
+
+    scrollbar-width: thin;
+}
+
+
+/* ================================================================
+   CUSTOM SCROLLBAR
+   ================================================================ */
+
+.customer-day-special-list::-webkit-scrollbar {
+
+    width: 7px;
+}
+
+
+.customer-day-special-list::-webkit-scrollbar-track {
+
+    background: transparent;
+}
+
+
+.customer-day-special-list::-webkit-scrollbar-thumb {
+
+    background: #d6d6d6;
+
+    border-radius: 20px;
+}
+
+
+.customer-day-special-list::-webkit-scrollbar-thumb:hover {
+
+    background: #bbbbbb;
+}
+
+
+/* ================================================================
+   EACH SPECIAL ITEM
+   ================================================================ */
+
+.customer-day-special-card {
+
+    width: 100%;
+    max-width: 100%;
+
+    min-width: 0;
+
+    display: grid;
+
+    grid-template-columns:
+        160px
+        minmax(0, 1fr)
+        auto;
+
+    align-items: center;
+
+    gap: 20px;
+
+    padding: 15px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ffffff,
+            #fafafa
+        );
+
+    border:
+        1px solid #e9e9e9;
+
+    border-radius: 16px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.035);
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        border-color 0.2s ease;
+}
+
+
+.customer-day-special-card:hover {
+
+    transform: translateY(-2px);
+
+    border-color: #dddddd;
+
+    box-shadow:
+        0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+
+/* ================================================================
+   IMAGE WRAPPER
+   ================================================================ */
+
+.customer-day-special-image-wrap {
+
+    width: 160px;
+    height: 135px;
+
+    min-width: 0;
+
+    overflow: hidden;
+
+    border-radius: 13px;
+
+    background: #eeeeee;
+
+    box-shadow:
+        inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+
+/* ================================================================
+   IMAGE
+   ================================================================ */
+
+.customer-day-special-image {
+
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    max-width: none;
+
+    object-fit: cover;
+
+    border-radius: inherit;
+
+    transition:
+        transform 0.35s ease;
+}
+
+
+.customer-day-special-card:hover
+.customer-day-special-image {
+
+    transform: scale(1.035);
+}
+
+
+/* ================================================================
+   ITEM INFORMATION
+   ================================================================ */
+
+.customer-day-special-content {
+
+    min-width: 0;
+    max-width: 100%;
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: center;
+
+    align-items: flex-start;
+
+    gap: 6px;
+}
+
+
+/* ================================================================
+   ITEM NAME
+   ================================================================ */
+
+.customer-day-special-content h2 {
+
+    margin: 0;
+
+    max-width: 100%;
+
+    font-size: 21px;
+
+    line-height: 1.25;
+
+    font-weight: 800;
+
+    color: #1e1e1e;
+
+    letter-spacing: -0.1px;
+
+    word-break: break-word;
+
+    overflow-wrap: anywhere;
+}
+
+
+/* ================================================================
+   INGREDIENT / DESCRIPTION
+   ================================================================ */
+
+.customer-day-special-ingredient {
+
+    margin: 0;
+
+    max-width: 100%;
+
+    font-size: 14px;
+
+    line-height: 1.5;
+
+    font-weight: 400;
+
+    color: #6b6b6b;
+
+    word-break: break-word;
+
+    overflow-wrap: anywhere;
+}
+
+
+/* ================================================================
+   PRICE
+   ================================================================ */
+
+.customer-day-special-price {
+
+    margin-top: 3px;
+
+    font-size: 18px;
+
+    line-height: 1.2;
+
+    font-weight: 800;
+
+    color: #222222;
+
+    letter-spacing: 0.1px;
+}
+
+
+/* ================================================================
+   ACTION AREA
+   ================================================================ */
+
+.customer-day-special-actions {
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    min-width: 0;
+
+    flex-shrink: 0;
+}
+
+
+/* ================================================================
+   ADD TO CART BUTTON
+   ================================================================ */
+
+.customer-day-special-add {
+
+    min-width: 140px;
+
+    min-height: 44px;
+
+    padding:
+        0 18px;
+
+    box-sizing: border-box;
+
+    border: 0;
+
+    border-radius: 10px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #222222,
+            #111111
+        );
+
+    color: #ffffff;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.1px;
+
+    white-space: nowrap;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 5px 14px rgba(0, 0, 0, 0.14);
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+
+.customer-day-special-add:hover {
+
+    background:
+        linear-gradient(
+            135deg,
+            #111111,
+            #000000
+        );
+
+    transform:
+        translateY(-2px);
+
+    box-shadow:
+        0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
+
+.customer-day-special-add:active {
+
+    transform:
+        translateY(0)
+        scale(0.98);
+
+    box-shadow:
+        0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+
+/* ================================================================
+   UNAVAILABLE
+   ================================================================ */
+
+.customer-day-special-add.disabled {
+
+    background: #eeeeee;
+
+    color: #888888;
+
+    box-shadow: none;
+
+    cursor: not-allowed;
+
+    transform: none;
+}
+
+
+/* ================================================================
+   FOOTER
+   ================================================================ */
+
+.customer-day-special-modal-footer {
+
+    width: 100%;
+
+    box-sizing: border-box;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding:
+        16px
+        24px
+        20px;
+
+    background: #ffffff;
+
+    border-top:
+        1px solid #eeeeee;
+
+    flex-shrink: 0;
+}
+
+
+/* ================================================================
+   CONTINUE BROWSING
+   ================================================================ */
+
+.customer-day-special-close-button {
+
+    min-height: 44px;
+
+    padding:
+        0 25px;
+
+    box-sizing: border-box;
+
+    border:
+        1px solid #dddddd;
+
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    color: #333333;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.05px;
+
+    cursor: pointer;
+
+    white-space: nowrap;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+
+.customer-day-special-close-button:hover {
+
+    background: #f7f7f7;
+
+    border-color: #cfcfcf;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+
+.customer-day-special-close-button:active {
+
+    transform: translateY(0);
+}
+
+
+/* ================================================================
+   EMPTY SPECIAL MODAL
+   ================================================================ */
+
+.customer-day-special-empty-modal {
+
+    width: min(440px, 100%);
+
+    max-width: 440px;
+
+    padding: 34px 30px;
+
+    text-align: center;
+
+    align-items: center;
+}
+
+
+.customer-day-special-empty-icon {
+
+    width: 62px;
+    height: 62px;
+
+    margin-bottom: 15px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #f7f7f7;
+
+    font-size: 28px;
+}
+
+
+.customer-day-special-empty-modal h2 {
+
+    margin:
+        0 0 8px;
+
+    font-size: 21px;
+
+    color: #222222;
+}
+
+
+.customer-day-special-empty-modal p {
+
+    margin:
+        0 0 22px;
+
+    max-width: 330px;
+
+    font-size: 14px;
+
+    line-height: 1.6;
+
+    color: #666666;
+}
+
+
+/* ================================================================
+   TABLET
+   ================================================================ */
+
+@media (max-width: 760px) {
+
+    .customer-day-special-overlay {
+
+        padding: 16px;
+    }
+
+
+    .customer-day-special-multiple-modal {
+
+        width: 100%;
+
+        max-width: 100%;
+
+        max-height:
+            calc(100vh - 32px);
+
+        border-radius: 18px;
+    }
+
+
+    .customer-day-special-top {
+
+        min-height: 68px;
+
+        padding:
+            17px
+            58px
+            17px
+            58px;
+    }
+
+
+    .customer-day-special-heading {
+
+        font-size: 22px;
+    }
+
+
+    .customer-day-special-close {
+
+        right: 14px;
+
+        width: 38px;
+        height: 38px;
+
+        font-size: 23px;
+    }
+
+
+    .customer-day-special-list {
+
+        padding:
+            17px;
+
+        gap: 14px;
+    }
+
+
+    .customer-day-special-card {
+
+        grid-template-columns:
+            120px
+            minmax(0, 1fr)
+            auto;
+
+        gap: 14px;
+
+        padding: 12px;
+
+        border-radius: 14px;
+    }
+
+
+    .customer-day-special-image-wrap {
+
+        width: 120px;
+        height: 110px;
+
+        border-radius: 11px;
+    }
+
+
+    .customer-day-special-content h2 {
+
+        font-size: 18px;
+    }
+
+
+    .customer-day-special-ingredient {
+
+        font-size: 13px;
+
+        line-height: 1.45;
+    }
+
+
+    .customer-day-special-price {
+
+        font-size: 16px;
+    }
+
+
+    .customer-day-special-add {
+
+        min-width: 125px;
+
+        min-height: 42px;
+
+        padding:
+            0 14px;
+
+        font-size: 13px;
+    }
+}
+
+
+/* ================================================================
+   MOBILE
+   ================================================================ */
+
+@media (max-width: 560px) {
+
+    .customer-day-special-overlay {
+
+        padding: 10px;
+    }
+
+
+    .customer-day-special-multiple-modal {
+
+        max-height:
+            calc(100vh - 20px);
+
+        border-radius: 16px;
+    }
+
+
+    .customer-day-special-top {
+
+        min-height: 62px;
+
+        padding:
+            15px
+            50px
+            15px;
+    }
+
+
+    .customer-day-special-heading {
+
+        font-size: 20px;
+
+        line-height: 1.25;
+    }
+
+
+    .customer-day-special-close {
+
+        top: 50%;
+
+        right: 11px;
+
+        width: 36px;
+        height: 36px;
+
+        font-size: 22px;
+    }
+
+
+    .customer-day-special-list {
+
+        padding:
+            12px;
+
+        gap: 12px;
+    }
+
+
+    /* ------------------------------------------------------------
+       IMAGE + INFORMATION
+       ------------------------------------------------------------ */
+
+    .customer-day-special-card {
+
+        grid-template-columns:
+            100px
+            minmax(0, 1fr);
+
+        gap: 12px;
+
+        padding: 10px;
+
+        border-radius: 13px;
+    }
+
+
+    .customer-day-special-image-wrap {
+
+        width: 100px;
+        height: 100px;
+
+        border-radius: 10px;
+    }
+
+
+    .customer-day-special-content {
+
+        min-width: 0;
+
+        align-self: center;
+    }
+
+
+    .customer-day-special-content h2 {
+
+        font-size: 17px;
+
+        line-height: 1.25;
+    }
+
+
+    .customer-day-special-ingredient {
+
+        font-size: 12.5px;
+
+        line-height: 1.4;
+    }
+
+
+    .customer-day-special-price {
+
+        margin-top: 2px;
+
+        font-size: 16px;
+    }
+
+
+    /* ------------------------------------------------------------
+       ADD TO CART BELOW ITEM
+       ------------------------------------------------------------ */
+
+    .customer-day-special-actions {
+
+        grid-column:
+            1 / -1;
+
+        width: 100%;
+
+        margin-top: 1px;
+    }
+
+
+    .customer-day-special-add {
+
+        width: 100%;
+
+        min-height: 42px;
+
+        font-size: 13px;
+    }
+
+
+    /* ------------------------------------------------------------
+       FOOTER
+       ------------------------------------------------------------ */
+
+    .customer-day-special-modal-footer {
+
+        padding:
+            12px
+            14px
+            15px;
+    }
+
+
+    .customer-day-special-close-button {
+
+        width: 100%;
+
+        min-height: 43px;
+    }
+}
+
+
+/* ================================================================
+   VERY SMALL PHONES
+   ================================================================ */
+
+@media (max-width: 360px) {
+
+    .customer-day-special-overlay {
+
+        padding: 7px;
+    }
+
+
+    .customer-day-special-multiple-modal {
+
+        max-height:
+            calc(100vh - 14px);
+
+        border-radius: 14px;
+    }
+
+
+    .customer-day-special-top {
+
+        padding-left: 44px;
+
+        padding-right: 44px;
+    }
+
+
+    .customer-day-special-heading {
+
+        font-size: 18px;
+    }
+
+
+    .customer-day-special-list {
+
+        padding: 9px;
+
+        gap: 10px;
+    }
+
+
+    .customer-day-special-card {
+
+        grid-template-columns:
+            85px
+            minmax(0, 1fr);
+
+        gap: 10px;
+
+        padding: 8px;
+    }
+
+
+    .customer-day-special-image-wrap {
+
+        width: 85px;
+        height: 85px;
+
+        border-radius: 9px;
+    }
+
+
+    .customer-day-special-content h2 {
+
+        font-size: 16px;
+    }
+
+
+    .customer-day-special-ingredient {
+
+        font-size: 12px;
+
+        line-height: 1.35;
+    }
+
+
+    .customer-day-special-price {
+
+        font-size: 15px;
+    }
+
+
+    .customer-day-special-add {
+
+        min-height: 40px;
+
+        font-size: 12.5px;
+    }
+}
+
+
+/* ================================================================
+   ACCESSIBILITY
+   ================================================================ */
+
+.customer-day-special-close:focus-visible,
+.customer-day-special-add:focus-visible,
+.customer-day-special-close-button:focus-visible {
+
+    outline:
+        3px solid rgba(0, 0, 0, 0.18);
+
+    outline-offset: 2px;
+}
+
+
+/* ================================================================
+   HARD PREVENT HORIZONTAL OVERFLOW
+   ================================================================ */
+
+.customer-day-special-overlay,
+.customer-day-special-multiple-modal,
+.customer-day-special-empty-modal,
+.customer-day-special-list,
+.customer-day-special-card,
+.customer-day-special-content {
+
+    overflow-x: hidden;
+}
+
+
+/* ================================================================
+   REDUCE MOTION
+   ================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .customer-day-special-overlay,
+    .customer-day-special-multiple-modal,
+    .customer-day-special-empty-modal,
+    .customer-day-special-card,
+    .customer-day-special-image,
+    .customer-day-special-add,
+    .customer-day-special-close,
+    .customer-day-special-close-button {
+
+        transition: none !important;
+    }
+}

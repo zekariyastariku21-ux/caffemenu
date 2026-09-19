@@ -3,1491 +3,2939 @@ let cart = [];
 const STORAGE_KEY = 'simple-cart';
 
 let currentCategory = 'all';
+
 let searchTerm = '';
 
-const API_BASE =
-  (location.port && location.port !== '3000')
-    ? `${location.protocol}//${location.hostname}:3000`
-    : '';
+let restaurantProfile = {
+    logo: '',
+    phone_numbers: [],
+    addresses: []
+};
 
-/*
-|--------------------------------------------------------------------------
-| RESTAURANT SLUG
-|--------------------------------------------------------------------------
-|
-| Customer URL example:
-| /etete-coffee
-|
-|--------------------------------------------------------------------------
-*/
+const API_BASE =
+    (location.port && location.port !== '3000')
+        ? `${location.protocol}//${location.hostname}:3000`
+        : '';
+
+/* ==========================================================================
+   RESTAURANT SLUG
+   ========================================================================== */
 
 const pathSlug =
-  window.location.pathname
-    .split('/')
-    .filter(Boolean)[0];
+    window.location.pathname
+        .split('/')
+        .filter(Boolean)[0];
 
 const CAFE_SLUG =
-  (pathSlug && pathSlug !== 'save.html'
-    ? pathSlug
-    : null) ||
-  localStorage.getItem('selectedRestaurantSlug') ||
-  'etete-coffee';
-
+    (pathSlug && pathSlug !== 'save.html'
+        ? pathSlug
+        : null) ||
+    localStorage.getItem('selectedRestaurantSlug') ||
+    'etete-coffee';
 
 let foods = {};
 
 
-/*
-|--------------------------------------------------------------------------
-| TOAST NOTIFICATIONS
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   TOAST NOTIFICATIONS
+   ========================================================================== */
 
 function showToast(
-  message,
-  type = 'success',
-  duration = 3000
+    message,
+    type = 'success',
+    duration = 3000
 ) {
+    let toastContainer =
+        document.getElementById('toast-container');
 
-  let toastContainer =
-    document.getElementById(
-      'toast-container'
-    );
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        document.body.appendChild(toastContainer);
+    }
 
-  if (!toastContainer) {
+    toastContainer.innerHTML = '';
 
-    toastContainer =
-      document.createElement('div');
+    const toast = document.createElement('div');
 
-    toastContainer.id =
-      'toast-container';
+    toast.className =
+        `toast-message toast-${type}`;
 
-    document.body.appendChild(
-      toastContainer
-    );
+    if (type === 'loading') {
+        toast.innerHTML = `
+            <span class="toast-spinner"></span>
+            <span>${escapeHtml(message)}</span>
+        `;
+    } else {
+        toast.innerHTML = `
+            <span>${escapeHtml(message)}</span>
+        `;
+    }
 
-  }
+    toastContainer.appendChild(toast);
 
-  toastContainer.innerHTML = '';
+    if (type !== 'loading') {
+        setTimeout(() => {
+            toast.classList.add('toast-hide');
 
-
-  const toast =
-    document.createElement('div');
-
-  toast.className =
-    `toast-message toast-${type}`;
-
-
-  if (type === 'loading') {
-
-    toast.innerHTML =
-      `<span class="toast-spinner"></span>
-       <span>${message}</span>`;
-
-  } else {
-
-    toast.innerHTML =
-      `<span>${message}</span>`;
-
-  }
-
-
-  toastContainer.appendChild(
-    toast
-  );
-
-
-  if (type !== 'loading') {
-
-    setTimeout(() => {
-
-      toast.classList.add(
-        'toast-hide'
-      );
-
-      setTimeout(
-        () => toast.remove(),
-        300
-      );
-
-    }, duration);
-
-  }
-
+            setTimeout(() => {
+                if (toast && toast.parentNode) {
+                    toast.remove();
+                }
+            }, 300);
+        }, duration);
+    }
 }
 
 
 function hideToast() {
+    const toastContainer =
+        document.getElementById('toast-container');
 
-  const toastContainer =
-    document.getElementById(
-      'toast-container'
-    );
+    if (toastContainer) {
+        toastContainer.innerHTML = '';
+    }
+}
 
-  if (toastContainer) {
-    toastContainer.innerHTML = '';
-  }
 
+/* ==========================================================================
+   HTML ESCAPING
+   ========================================================================== */
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+
+function escapeAttribute(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+
+/* ==========================================================================
+   RESTAURANT HEADER LOADING
+   ========================================================================== */
+
+/*
+   This creates a small built-in loading image.
+
+   We use an inline SVG so the loading state does not depend on
+   another image file from the server.
+*/
+
+function getRestaurantLoadingLogo() {
+
+    const svg = `
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="180"
+            height="180"
+            viewBox="0 0 180 180"
+        >
+            <rect
+                width="180"
+                height="180"
+                rx="24"
+                fill="#f5efe6"
+            />
+
+            <circle
+                cx="90"
+                cy="72"
+                r="25"
+                fill="none"
+                stroke="#9a6b3f"
+                stroke-width="6"
+                stroke-linecap="round"
+                stroke-dasharray="90 70"
+            >
+                <animateTransform
+                    attributeName="transform"
+                    type="rotate"
+                    from="0 90 72"
+                    to="360 90 72"
+                    dur="1s"
+                    repeatCount="indefinite"
+                />
+            </circle>
+
+            <text
+                x="90"
+                y="125"
+                text-anchor="middle"
+                font-family="Arial, sans-serif"
+                font-size="15"
+                font-weight="700"
+                fill="#6b4a2f"
+            >
+                Loading...
+            </text>
+        </svg>
+    `;
+
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
 
 /*
-|--------------------------------------------------------------------------
-| LOAD MENU
-|--------------------------------------------------------------------------
+   Put the restaurant header into loading mode.
+
+   This runs BEFORE the server request starts, so the customer
+   never sees an old café name while the new café is loading.
 */
+
+function showRestaurantHeaderLoading() {
+
+    const restaurantName =
+        document.getElementById('restaurantName');
+
+    if (restaurantName) {
+        restaurantName.textContent = 'Loading...';
+
+        restaurantName.classList.add(
+            'restaurant-loading-name'
+        );
+
+        restaurantName.setAttribute(
+            'aria-busy',
+            'true'
+        );
+    }
+
+
+    const logoElement =
+        document.getElementById('restaurantLogo');
+
+    if (logoElement) {
+
+        logoElement.src =
+            getRestaurantLoadingLogo();
+
+        logoElement.alt =
+            'Loading restaurant';
+
+        logoElement.classList.add(
+            'restaurant-loading-logo'
+        );
+
+        logoElement.style.display =
+            'block';
+
+        logoElement.setAttribute(
+            'aria-busy',
+            'true'
+        );
+    }
+}
+
+
+/*
+   Remove the loading state after the real restaurant
+   information has arrived.
+*/
+
+function hideRestaurantHeaderLoading() {
+
+    const restaurantName =
+        document.getElementById('restaurantName');
+
+    if (restaurantName) {
+
+        restaurantName.classList.remove(
+            'restaurant-loading-name'
+        );
+
+        restaurantName.removeAttribute(
+            'aria-busy'
+        );
+    }
+
+
+    const logoElement =
+        document.getElementById('restaurantLogo');
+
+    if (logoElement) {
+
+        logoElement.classList.remove(
+            'restaurant-loading-logo'
+        );
+
+        logoElement.removeAttribute(
+            'aria-busy'
+        );
+    }
+}
+
+
+/*
+   Error state.
+
+   If the server cannot be reached, we do not leave the customer
+   looking at "Loading..." forever.
+*/
+
+function showRestaurantHeaderError() {
+
+    const restaurantName =
+        document.getElementById('restaurantName');
+
+    if (restaurantName) {
+
+        restaurantName.textContent =
+            'Cafe Menu';
+
+        restaurantName.classList.remove(
+            'restaurant-loading-name'
+        );
+
+        restaurantName.removeAttribute(
+            'aria-busy'
+        );
+    }
+
+
+    const logoElement =
+        document.getElementById('restaurantLogo');
+
+    if (logoElement) {
+
+        logoElement.classList.remove(
+            'restaurant-loading-logo'
+        );
+
+        logoElement.removeAttribute(
+            'aria-busy'
+        );
+
+        logoElement.src =
+            'image/latte.jpeg';
+
+        logoElement.alt =
+            'Restaurant Logo';
+
+        logoElement.style.display =
+            'block';
+    }
+}
+
+
+/* ==========================================================================
+   LOAD MENU FROM SERVER
+   ========================================================================== */
 
 async function loadMenuFromServer() {
 
-  try {
+    /*
+       IMPORTANT:
 
-    const response =
-      await fetch(
-        API_BASE +
-        `/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
-        {
-          cache: 'no-store'
-        }
-      );
+       Start loading state BEFORE fetch().
+       This means every refresh begins with:
 
+       Loading...
+       Loading logo...
 
-    const text =
-      await response.text();
+       and then switches to the real restaurant information.
+    */
 
-
-    let data = null;
+    showRestaurantHeaderLoading();
 
 
     try {
 
-      data =
-        text
-          ? JSON.parse(text)
-          : null;
-
-    } catch (error) {
-
-      throw new Error(
-        'Invalid server response: ' +
-        text
-      );
-
-    }
-
-
-    if (!response.ok) {
-
-      throw new Error(
-        data?.message ||
-        'Failed to fetch menu'
-      );
-
-    }
-
-
-    if (
-      data &&
-      data.menu &&
-      typeof data.menu === 'object'
-    ) {
-
-      foods =
-        data.menu;
-
-
-      console.log(
-        'Loaded menu for:',
-        data.restaurant?.name
-      );
-
-
-      console.log(
-        'Menu:',
-        foods
-      );
-
-
-      /*
-       * Restaurant name
-       */
-
-      const cafeName =
-        document.getElementById(
-          'cafeName'
+        const response = await fetch(
+            API_BASE +
+            `/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
+            {
+                cache: 'no-store'
+            }
         );
 
 
-      if (
-        cafeName &&
-        data.restaurant?.name
-      ) {
-
-        cafeName.textContent =
-          data.restaurant.name;
-
-      }
+        const text =
+            await response.text();
 
 
-      /*
-       * Amharic name is optional.
-       * Leave existing HTML unchanged.
-       */
+        let data = null;
 
-      renderItems();
 
-      renderCategoryButtons();
+        try {
 
+            data = text
+                ? JSON.parse(text)
+                : null;
+
+        } catch (error) {
+
+            throw new Error(
+                'Invalid server response: ' + text
+            );
+        }
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.message ||
+                'Failed to fetch menu'
+            );
+        }
+
+
+        /* ------------------------------------------------------------------
+           RESTAURANT INFORMATION
+           ------------------------------------------------------------------ */
+
+        if (data?.restaurant) {
+
+            const restaurantName =
+                document.getElementById(
+                    'restaurantName'
+                );
+
+
+            if (restaurantName) {
+
+                restaurantName.textContent =
+                    data.restaurant.name ||
+                    'Cafe Menu';
+            }
+
+
+            document.title =
+                `${data.restaurant.name || 'Cafe'} Menu`;
+        }
+
+
+        /* ------------------------------------------------------------------
+           RESTAURANT PROFILE
+           ------------------------------------------------------------------ */
+
+        if (
+            data?.profile &&
+            typeof data.profile === 'object'
+        ) {
+
+            restaurantProfile = {
+
+                logo:
+                    typeof data.profile.logo === 'string'
+                        ? data.profile.logo.trim()
+                        : '',
+
+                phone_numbers:
+                    Array.isArray(
+                        data.profile.phone_numbers
+                    )
+                        ? data.profile.phone_numbers
+                        : [],
+
+                addresses:
+                    Array.isArray(
+                        data.profile.addresses
+                    )
+                        ? data.profile.addresses
+                        : []
+            };
+
+        } else {
+
+            restaurantProfile = {
+
+                logo: '',
+
+                phone_numbers: [],
+
+                addresses: []
+            };
+        }
+
+
+        /*
+           The real restaurant information has now arrived.
+
+           Remove the loading state BEFORE rendering the real logo.
+        */
+
+        hideRestaurantHeaderLoading();
+
+
+        renderRestaurantProfile();
+
+
+        /* ------------------------------------------------------------------
+           MENU
+           ------------------------------------------------------------------ */
+
+        if (
+            data &&
+            data.menu &&
+            typeof data.menu === 'object' &&
+            !Array.isArray(data.menu)
+        ) {
+
+            foods = data.menu;
+
+
+            console.log(
+                'Loaded menu for:',
+                data.restaurant?.name
+            );
+
+
+            console.log(
+                'Restaurant profile:',
+                restaurantProfile
+            );
+
+
+            console.log(
+                'Menu:',
+                foods
+            );
+
+
+            renderItems();
+
+            renderCategoryButtons();
+
+            setupDaySpecial();
+
+        } else {
+
+            foods = {};
+
+            renderItems();
+
+            renderCategoryButtons();
+
+            setupDaySpecial();
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            'Could not load menu from server:',
+            error
+        );
+
+
+        foods = {};
+
+
+        restaurantProfile = {
+
+            logo: '',
+
+            phone_numbers: [],
+
+            addresses: []
+        };
+
+
+        /*
+           Do not leave "Loading..." forever if the server fails.
+        */
+
+        showRestaurantHeaderError();
+
+
+        renderRestaurantProfile();
+
+        renderItems();
+
+        renderCategoryButtons();
+
+        setupDaySpecial();
     }
-
-  } catch (error) {
-
-    console.error(
-      'Could not load menu from server:',
-      error
-    );
-
-
-    foods = {};
-
-
-    const cafeName =
-      document.getElementById(
-        'cafeName'
-      );
-
-
-    if (cafeName) {
-
-      cafeName.textContent =
-        error.message;
-
-    }
-
-
-    renderItems();
-
-    renderCategoryButtons();
-
-  }
-
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| CATEGORY BUTTONS
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   RESTAURANT PROFILE
+   ========================================================================== */
 
-function renderCategoryButtons() {
+function renderRestaurantProfile() {
+
+    /* ----------------------------------------------------------------------
+       RESTAURANT LOGO
+       ---------------------------------------------------------------------- */
+
+    const logoElement =
+        document.getElementById(
+            'restaurantLogo'
+        );
+
+
+    const logo =
+        typeof restaurantProfile.logo === 'string'
+            ? restaurantProfile.logo.trim()
+            : '';
+
+
+    const validLogo =
+        logo.startsWith('data:image/');
+
+
+    if (logoElement) {
+
+        if (validLogo) {
+
+            logoElement.src =
+                logo;
+
+            logoElement.style.display =
+                'block';
+
+            logoElement.alt =
+                'Restaurant Logo';
+
+        } else {
+
+            if (
+                !logoElement.getAttribute('src') ||
+                logoElement.getAttribute('src') === ''
+            ) {
+
+                logoElement.src =
+                    'image/latte.jpeg';
+            }
+
+            logoElement.style.display =
+                'block';
+
+            logoElement.alt =
+                'Restaurant Logo';
+        }
+    }
+
+
+    /* ----------------------------------------------------------------------
+       CONTACT CONTAINER
+       ---------------------------------------------------------------------- */
 
     const container =
-        document.getElementById('categoryButtons');
+        document.getElementById(
+            'restaurantContactRow'
+        );
+
 
     if (!container) {
         return;
     }
 
+
     container.innerHTML = '';
 
-    /*
-     * =========================================================
-     * ALL ITEMS — ALWAYS FIRST
-     * =========================================================
-     */
+
+    /* ----------------------------------------------------------------------
+       PHONE NUMBERS
+       ---------------------------------------------------------------------- */
+
+    const phones =
+        Array.isArray(
+            restaurantProfile.phone_numbers
+        )
+            ? restaurantProfile.phone_numbers
+            : [];
+
+
+    phones.forEach(phone => {
+
+        const cleanPhone =
+            String(phone || '').trim();
+
+
+        if (!cleanPhone) {
+            return;
+        }
+
+
+        const link =
+            document.createElement('a');
+
+
+        link.className =
+            'menu-contact-link';
+
+
+        const telNumber =
+            cleanPhone.replace(
+                /[^\d+]/g,
+                ''
+            );
+
+
+        link.href =
+            `tel:${telNumber}`;
+
+
+        link.innerHTML = `
+            <span class="contact-icon">
+                📞
+            </span>
+
+            <span class="contact-text">
+
+                <strong>
+                    ${escapeHtml(cleanPhone)}
+                </strong>
+
+                <small>
+                    Call Us
+                </small>
+
+            </span>
+        `;
+
+
+        container.appendChild(link);
+    });
+
+
+    /* ----------------------------------------------------------------------
+       LOCATIONS
+       ---------------------------------------------------------------------- */
+
+    const addresses =
+        Array.isArray(
+            restaurantProfile.addresses
+        )
+            ? restaurantProfile.addresses
+            : [];
+
+
+    addresses.forEach(address => {
+
+        if (
+            !address ||
+            typeof address !== 'object'
+        ) {
+            return;
+        }
+
+
+        const name =
+            String(
+                address.name || ''
+            ).trim();
+
+
+        const url =
+            String(
+                address.url || ''
+            ).trim();
+
+
+        if (!name) {
+            return;
+        }
+
+
+        const link =
+            document.createElement('a');
+
+
+        link.className =
+            'menu-contact-link';
+
+
+        if (
+            url &&
+            /^https?:\/\/.+/i.test(url)
+        ) {
+
+            link.href =
+                url;
+
+            link.target =
+                '_blank';
+
+            link.rel =
+                'noopener noreferrer';
+
+        } else {
+
+            link.href =
+                '#';
+
+
+            link.addEventListener(
+                'click',
+                event => {
+                    event.preventDefault();
+                }
+            );
+        }
+
+
+        link.innerHTML = `
+            <span class="contact-icon">
+                📍
+            </span>
+
+            <span class="contact-text">
+
+                <strong>
+                    ${escapeHtml(name)}
+                </strong>
+
+                <small>
+                    Our Location
+                </small>
+
+            </span>
+        `;
+
+
+        container.appendChild(link);
+    });
+
+
+    /* ----------------------------------------------------------------------
+       NO PROFILE INFORMATION
+       ---------------------------------------------------------------------- */
+
+    if (!container.children.length) {
+
+        container.innerHTML = `
+            <div class="menu-contact-empty">
+                Contact information unavailable
+            </div>
+        `;
+    }
+}
+
+
+/* ==========================================================================
+   CATEGORY BUTTONS
+   ========================================================================== */
+
+function renderCategoryButtons() {
+
+    const container =
+        document.getElementById(
+            'categoryButtons'
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    container.innerHTML = '';
+
+
+    /* ----------------------------------------------------------------------
+       ALL ITEMS ALWAYS FIRST
+       ---------------------------------------------------------------------- */
 
     const allButton =
         document.createElement('button');
 
-    allButton.textContent = 'all item';
 
-    if (currentCategory === 'all') {
-        allButton.classList.add('active');
+    allButton.textContent =
+        'all item';
+
+
+    if (
+        currentCategory === 'all'
+    ) {
+
+        allButton.classList.add(
+            'active'
+        );
     }
 
+
     allButton.onclick = () => {
+
         showCatagories('all');
     };
 
-    container.appendChild(allButton);
+
+    container.appendChild(
+        allButton
+    );
 
 
-    /*
-     * =========================================================
-     * CATEGORY ORDER
-     *
-     * Object.keys(foods) is used directly.
-     *
-     * We do NOT sort the categories.
-     * We do NOT alphabetically reorder them.
-     *
-     * The order received from the saved menu is preserved.
-     * =========================================================
-     */
+    /* ----------------------------------------------------------------------
+       CATEGORIES
+       ---------------------------------------------------------------------- */
 
     const categories =
         Object.keys(foods);
+
 
     categories.forEach(category => {
 
         const button =
             document.createElement('button');
 
+
         button.textContent =
             category;
+
 
         if (
             currentCategory === category
         ) {
-            button.classList.add('active');
+
+            button.classList.add(
+                'active'
+            );
         }
+
 
         button.onclick = () => {
 
             showCatagories(category);
-
         };
 
-        container.appendChild(button);
 
+        container.appendChild(
+            button
+        );
     });
-
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| CATEGORY SELECTION
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   CATEGORY SELECTION
+   ========================================================================== */
 
-function showCatagories(
-  category
-) {
+function showCatagories(category) {
 
-  currentCategory =
-    category;
+    currentCategory =
+        category;
 
 
-  renderItems();
+    renderItems();
 
-  renderCategoryButtons();
-
+    renderCategoryButtons();
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| RENDER MENU ITEMS
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   RENDER MENU ITEMS
+   ========================================================================== */
 
 function renderItems() {
 
-  const container =
-    document.querySelector(
-      '.container'
-    );
+    const container =
+        document.querySelector(
+            '.container'
+        );
 
 
-  if (!container) {
-    return;
-  }
+    if (!container) {
+        return;
+    }
 
 
-  const items =
-    currentCategory === 'all'
-      ? Object.values(foods).flat()
-      : (foods[currentCategory] || []);
+    let items = [];
 
 
-  const search =
-    searchTerm.toLowerCase();
+    if (currentCategory === 'all') {
+
+        items =
+            Object.values(foods)
+                .filter(Array.isArray)
+                .flat();
+
+    } else {
+
+        items =
+            Array.isArray(
+                foods[currentCategory]
+            )
+                ? foods[currentCategory]
+                : [];
+    }
 
 
-  const filteredItems =
-    items.filter(food => {
-
-      const text =
-        `${food.name || ''} ${
-          food.ingridient || ''
-        }`.toLowerCase();
+    const search =
+        String(searchTerm || '')
+            .trim()
+            .toLowerCase();
 
 
-      return text.includes(
-        search
-      );
+    const filteredItems =
+        items.filter(food => {
 
+            if (
+                !food ||
+                typeof food !== 'object'
+            ) {
+                return false;
+            }
+
+
+            const ingredient =
+                food.ingridient ||
+                food.ingredient ||
+                '';
+
+
+            const text =
+                `${food.name || ''} ${ingredient}`
+                    .toLowerCase();
+
+
+            return text.includes(search);
+        });
+
+
+    if (!filteredItems.length) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                No items match your search.
+            </div>
+        `;
+
+        return;
+    }
+
+
+    /* ----------------------------------------------------------------------
+       BUILD MENU
+       ---------------------------------------------------------------------- */
+
+    container.innerHTML =
+        filteredItems
+            .map(food => {
+
+                const isAvailable =
+                    food.isAvailable !== false;
+
+
+                const ingredient =
+                    food.ingridient ||
+                    food.ingredient ||
+                    '';
+
+
+                const image =
+                    food.image ||
+                    'image/latte.jpeg';
+
+
+                const daySpecial =
+                    food.isDaySpecial === true;
+
+
+                return `
+                    <div class="foodd ${
+                        !isAvailable
+                            ? 'unavailable'
+                            : ''
+                    } ${
+                        daySpecial
+                            ? 'has-day-special'
+                            : ''
+                    }">
+
+                        ${
+                            daySpecial
+                                ? `
+                                    <div class="menu-item-day-special">
+                                        ⭐ Day Special ⭐
+                                    </div>
+                                `
+                                : ''
+                        }
+
+                        <div class="divimage">
+
+                            <img
+                                class="image"
+                                src="${escapeAttribute(
+                                    image
+                                )}"
+                                alt="${escapeAttribute(
+                                    food.name || ''
+                                )}"
+                                loading="lazy"
+                                onclick="zoomImage(this.src)"
+                                onerror="this.onerror=null;this.src='image/latte.jpeg';"
+                            >
+
+                        </div>
+
+
+                        <div class="divinfo">
+
+                            <p>
+                                ${escapeHtml(
+                                    food.name || ''
+                                )}
+                            </p>
+
+
+                            <p class="ingredient">
+                                ${escapeHtml(
+                                    ingredient
+                                )}
+                            </p>
+
+
+                            <div class="info2">
+
+                                <p>
+                                    <strong>
+                                        ${escapeHtml(
+                                            food.price || 0
+                                        )} ETB
+                                    </strong>
+                                </p>
+
+
+                                ${
+                                    isAvailable
+                                        ? `
+                                            <button
+                                                type="button"
+                                                class="addbutton"
+                                                data-name="${escapeAttribute(
+                                                    food.name || ''
+                                                )}"
+                                            >
+                                                +add
+                                            </button>
+                                        `
+                                        : `
+                                            <button
+                                                type="button"
+                                                class="addbutton"
+                                                disabled
+                                                style="
+                                                    background:#ccc;
+                                                    cursor:not-allowed;
+                                                "
+                                            >
+                                                Unavailable
+                                            </button>
+                                        `
+                                }
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                `;
+            })
+            .join('');
+
+
+    /* ----------------------------------------------------------------------
+       ADD BUTTON EVENTS
+       ---------------------------------------------------------------------- */
+
+    container
+        .querySelectorAll(
+            '.addbutton:not([disabled])'
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                'click',
+                event => {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+
+                    addToCart(
+                        event,
+                        button
+                    );
+                }
+            );
+        });
+}
+
+
+/* ==========================================================================
+   DAY SPECIALS
+   ========================================================================== */
+
+const MAX_CUSTOMER_DAY_SPECIALS = 5;
+
+
+/* --------------------------------------------------------------------------
+   GET ALL DAY SPECIALS
+   -------------------------------------------------------------------------- */
+
+function getDaySpecialItems() {
+
+    const specials = [];
+
+
+    Object.keys(foods).forEach(category => {
+
+        const categoryItems =
+            Array.isArray(foods[category])
+                ? foods[category]
+                : [];
+
+
+        categoryItems.forEach(item => {
+
+            if (
+                item &&
+                typeof item === 'object' &&
+                item.isDaySpecial === true
+            ) {
+
+                specials.push({
+                    category,
+                    item
+                });
+            }
+        });
     });
 
 
-  if (!filteredItems.length) {
-
-    container.innerHTML =
-      `
-      <div class="empty-state">
-        No items match your search.
-      </div>
-      `;
-
-    return;
-
-  }
+    return specials.slice(
+        0,
+        MAX_CUSTOMER_DAY_SPECIALS
+    );
+}
 
 
-  /*
-   * Build menu in one DOM update
-   */
+/* --------------------------------------------------------------------------
+   GET FIRST DAY SPECIAL
+   -------------------------------------------------------------------------- */
 
-  container.innerHTML =
-    filteredItems.map(
-      food => {
+function getDaySpecialItem() {
 
-        const isAvailable =
-          food.isAvailable !== false;
+    const specials =
+        getDaySpecialItems();
 
 
-        return `
-          <div class="foodd ${
-            !isAvailable
-              ? 'unavailable'
-              : ''
-          }">
-
-            <div class="divimage">
-
-              <img
-                class="image"
-                src="${food.image || ''}"
-                alt="${food.name || ''}"
-                loading="lazy"
-                onclick="zoomImage(this.src)"
-              >
-
-            </div>
+    return specials.length
+        ? specials[0]
+        : null;
+}
 
 
-            <div class="divinfo">
+/* ==========================================================================
+   CUSTOMER DAY SPECIAL BUTTON
+   ========================================================================== */
 
-              <p>
-                ${food.name || ''}
-              </p>
+function setupDaySpecial() {
 
-              <p class="ingredient">
-                ${food.ingridient || ''}
-              </p>
+    const button =
+        document.getElementById(
+            'daySpecialBtn'
+        );
 
 
-              <div class="info2">
+    if (!button) {
+        return;
+    }
+
+
+    if (
+        button.dataset.daySpecialReady === 'true'
+    ) {
+
+        updateDaySpecialButtonState();
+
+        return;
+    }
+
+
+    button.dataset.daySpecialReady =
+        'true';
+
+
+    button.addEventListener(
+        'click',
+        openCustomerDaySpecial
+    );
+
+
+    updateDaySpecialButtonState();
+}
+
+
+/* ==========================================================================
+   UPDATE DAY SPECIAL BUTTON
+   ========================================================================== */
+
+function updateDaySpecialButtonState() {
+
+    const button =
+        document.getElementById(
+            'daySpecialBtn'
+        );
+
+
+    if (!button) {
+        return;
+    }
+
+
+    const specials =
+        getDaySpecialItems();
+
+
+    if (specials.length) {
+
+        button.classList.add(
+            'has-special'
+        );
+
+
+        button.removeAttribute(
+            'aria-disabled'
+        );
+
+
+        button.title =
+            specials.length === 1
+                ? `Today's special: ${specials[0].item.name}`
+                : `${specials.length} Day Specials available today`;
+
+    } else {
+
+        button.classList.remove(
+            'has-special'
+        );
+
+
+        button.removeAttribute(
+            'title'
+        );
+    }
+}
+
+
+/* ==========================================================================
+   OPEN CUSTOMER DAY SPECIALS
+   ========================================================================== */
+
+function openCustomerDaySpecial() {
+
+    closeCustomerDaySpecial();
+
+
+    const specials =
+        getDaySpecialItems();
+
+
+    const overlay =
+        document.createElement('div');
+
+
+    overlay.id =
+        'customerDaySpecialModal';
+
+
+    overlay.className =
+        'customer-day-special-overlay';
+
+
+    /* ============================================================
+       NO SPECIAL AVAILABLE
+       ============================================================ */
+
+    if (!specials.length) {
+
+        overlay.innerHTML = `
+            <div
+                class="customer-day-special-empty-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="daySpecialEmptyTitle"
+            >
+
+                <button
+                    type="button"
+                    class="customer-day-special-close"
+                    id="customerDaySpecialClose"
+                    aria-label="Close"
+                >
+                    ×
+                </button>
+
+
+                <div class="customer-day-special-empty-icon">
+                    ⭐
+                </div>
+
+
+                <h2 id="daySpecialEmptyTitle">
+                    No Day Special
+                </h2>
+
 
                 <p>
-                  <strong>
-                    ${food.price || 0} ETB
-                  </strong>
+                    There is no special item available today.
+                    Please check back later.
                 </p>
 
-                ${
-                  isAvailable
-                    ? `
-                      <button
-                        type="button"
-                        class="addbutton"
-                        data-name="${escapeAttribute(
-                          food.name || ''
-                        )}"
-                      >
-                        +add
-                      </button>
-                    `
-                    : `
-                      <button
-                        type="button"
-                        class="addbutton"
-                        disabled
-                        style="
-                          background:#ccc;
-                          cursor:not-allowed;
-                        "
-                      >
-                        Unavailable
-                      </button>
-                    `
-                }
 
-              </div>
+                <button
+                    type="button"
+                    class="customer-day-special-close-button"
+                    id="customerDaySpecialCloseButton"
+                >
+                    Close
+                </button>
+
+            </div>
+        `;
+
+
+        document.body.appendChild(
+            overlay
+        );
+
+
+        document.body.classList.add(
+            'customer-day-special-open'
+        );
+
+
+        requestAnimationFrame(() => {
+
+            overlay.classList.add(
+                'active'
+            );
+        });
+
+
+        attachCustomerDaySpecialCloseEvents(
+            overlay
+        );
+
+
+        return;
+    }
+
+
+    /* ============================================================
+       SPECIAL ITEMS
+       ============================================================ */
+
+    const specialCards =
+        specials
+            .map(special => {
+
+                const item =
+                    special.item;
+
+
+                const isAvailable =
+                    item.isAvailable !== false;
+
+
+                const ingredient =
+                    item.ingridient ||
+                    item.ingredient ||
+                    '';
+
+
+                const image =
+                    item.image ||
+                    'image/latte.jpeg';
+
+
+                const price =
+                    Number(item.price) || 0;
+
+
+                const itemName =
+                    item.name ||
+                    'Day Special';
+
+
+                return `
+                    <div
+                        class="customer-day-special-card"
+                    >
+
+                        <!-- IMAGE -->
+
+                        <div
+                            class="customer-day-special-image-wrap"
+                        >
+
+                            <img
+                                src="${escapeAttribute(image)}"
+                                alt="${escapeAttribute(itemName)}"
+                                class="customer-day-special-image"
+                                onerror="
+                                    this.onerror = null;
+                                    this.src = 'image/latte.jpeg';
+                                "
+                            >
+
+                        </div>
+
+
+                        <!-- INFORMATION -->
+
+                        <div
+                            class="customer-day-special-content"
+                        >
+
+                            <h2>
+                                ${escapeHtml(itemName)}
+                            </h2>
+
+
+                            ${
+                                ingredient
+                                    ? `
+                                        <p
+                                            class="customer-day-special-ingredient"
+                                        >
+                                            ${escapeHtml(
+                                                ingredient
+                                            )}
+                                        </p>
+                                    `
+                                    : ''
+                            }
+
+
+                            <div
+                                class="customer-day-special-price"
+                            >
+                                ${escapeHtml(price)} ETB
+                            </div>
+
+                        </div>
+
+
+                        <!-- ACTION -->
+
+                        <div
+                            class="customer-day-special-actions"
+                        >
+
+                            ${
+                                isAvailable
+                                    ? `
+                                        <button
+                                            type="button"
+                                            class="customer-day-special-add"
+                                            data-name="${escapeAttribute(
+                                                itemName
+                                            )}"
+                                        >
+                                            + Add to Cart
+                                        </button>
+                                    `
+                                    : `
+                                        <button
+                                            type="button"
+                                            class="customer-day-special-add disabled"
+                                            disabled
+                                        >
+                                            Currently Unavailable
+                                        </button>
+                                    `
+                            }
+
+                        </div>
+
+                    </div>
+                `;
+            })
+            .join('');
+
+
+    /* ============================================================
+       MODAL
+       ============================================================ */
+
+    overlay.innerHTML = `
+        <div
+            class="customer-day-special-multiple-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="customerDaySpecialTitle"
+        >
+
+            <!-- HEADER -->
+
+            <div class="customer-day-special-top">
+
+                <h2
+                    id="customerDaySpecialTitle"
+                    class="customer-day-special-heading"
+                >
+                    ⭐ TODAY'S SPECIALS ⭐
+                </h2>
+
+
+                <button
+                    type="button"
+                    class="customer-day-special-close"
+                    id="customerDaySpecialClose"
+                    aria-label="Close"
+                >
+                    ×
+                </button>
 
             </div>
 
-          </div>
-        `;
 
-      }
-    ).join('');
+            <!-- SPECIAL ITEMS -->
+
+            <div class="customer-day-special-list">
+                ${specialCards}
+            </div>
 
 
-  /*
-   * Add button events
-   */
+            <!-- FOOTER -->
 
-  container
-    .querySelectorAll(
-      '.addbutton:not([disabled])'
-    )
-    .forEach(button => {
+            <div
+                class="customer-day-special-modal-footer"
+            >
 
-      button.addEventListener(
+                <button
+                    type="button"
+                    class="customer-day-special-close-button"
+                    id="customerDaySpecialCloseButton"
+                >
+                    Continue Browsing
+                </button>
+
+            </div>
+
+        </div>
+    `;
+
+
+    document.body.appendChild(
+        overlay
+    );
+
+
+    document.body.classList.add(
+        'customer-day-special-open'
+    );
+
+
+    /* ============================================================
+       OPEN ANIMATION
+       ============================================================ */
+
+    requestAnimationFrame(() => {
+
+        requestAnimationFrame(() => {
+
+            overlay.classList.add(
+                'active'
+            );
+        });
+    });
+
+
+    /* ============================================================
+       CLOSE EVENTS
+       ============================================================ */
+
+    attachCustomerDaySpecialCloseEvents(
+        overlay
+    );
+
+
+    /* ============================================================
+       ADD TO CART
+       ============================================================ */
+
+    overlay
+        .querySelectorAll(
+            '.customer-day-special-add:not(.disabled)'
+        )
+        .forEach(addButton => {
+
+            addButton.addEventListener(
+                'click',
+                event => {
+
+                    const fakeButton = {
+
+                        dataset: {
+                            name:
+                                addButton.dataset.name
+                        },
+
+                        textContent:
+                            addButton.textContent,
+
+                        disabled: false
+                    };
+
+
+                    addToCart(
+                        event,
+                        fakeButton
+                    );
+
+
+                    addButton.textContent =
+                        '✓ Added to Cart';
+
+
+                    addButton.disabled =
+                        true;
+
+
+                    setTimeout(() => {
+
+                        if (
+                            document.body.contains(
+                                addButton
+                            )
+                        ) {
+
+                            addButton.textContent =
+                                '+ Add to Cart';
+
+
+                            addButton.disabled =
+                                false;
+                        }
+
+                    }, 900);
+                }
+            );
+        });
+}
+
+
+/* ==========================================================================
+   DAY SPECIAL CLOSE EVENTS
+   ========================================================================== */
+
+function attachCustomerDaySpecialCloseEvents(
+    overlay
+) {
+
+    const closeButton =
+        overlay.querySelector(
+            '#customerDaySpecialClose'
+        );
+
+
+    const closeBottomButton =
+        overlay.querySelector(
+            '#customerDaySpecialCloseButton'
+        );
+
+
+    if (closeButton) {
+
+        closeButton.addEventListener(
+            'click',
+            closeCustomerDaySpecial
+        );
+    }
+
+
+    if (closeBottomButton) {
+
+        closeBottomButton.addEventListener(
+            'click',
+            closeCustomerDaySpecial
+        );
+    }
+
+
+    /* Click outside modal */
+
+    overlay.addEventListener(
         'click',
         event => {
 
-          event.preventDefault();
-          event.stopPropagation();
+            if (
+                event.target === overlay
+            ) {
 
-          addToCart(
-            event,
-            button
-          );
-
+                closeCustomerDaySpecial();
+            }
         }
-      );
-
-    });
-
+    );
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| SMALL HTML ATTRIBUTE HELPER
-|--------------------------------------------------------------------------
-*/
+function closeCustomerDaySpecial() {
 
-function escapeAttribute(value) {
+    const modal =
+        document.getElementById(
+            'customerDaySpecialModal'
+        );
 
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
 
+    if (!modal) {
+
+        document.body.classList.remove(
+            'customer-day-special-open'
+        );
+
+        return;
+    }
+
+
+    modal.classList.remove(
+        'active'
+    );
+
+
+    document.body.classList.remove(
+        'customer-day-special-open'
+    );
+
+
+    setTimeout(() => {
+
+        if (
+            modal &&
+            modal.parentNode
+        ) {
+
+            modal.remove();
+        }
+
+    }, 280);
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| CART LOCAL STORAGE
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   CART LOCAL STORAGE
+   ========================================================================== */
 
 function loadFromLocalStorage() {
 
-  try {
+    try {
 
-    const stored =
-      localStorage.getItem(
-        STORAGE_KEY
-      );
+        const stored =
+            localStorage.getItem(
+                STORAGE_KEY
+            );
 
 
-    return stored
-      ? JSON.parse(stored)
-      : [];
+        if (!stored) {
+            return [];
+        }
 
-  } catch (error) {
 
-    console.warn(
-      'Could not load cart from local storage:',
-      error
-    );
+        const parsed =
+            JSON.parse(stored);
 
-    return [];
 
-  }
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
 
+
+        return parsed.filter(
+            item =>
+                item &&
+                typeof item === 'object' &&
+                Number(item.quantity) > 0
+        );
+
+    } catch (error) {
+
+        console.warn(
+            'Could not load cart from local storage:',
+            error
+        );
+
+
+        return [];
+    }
 }
 
 
 function saveToLocalStorage() {
 
-  const smallCart =
-    cart.map(item => ({
+    const smallCart =
+        cart.map(item => ({
 
-      id: item.id,
+            id:
+                item.id,
 
-      name: item.name,
+            name:
+                item.name,
 
-      price: item.price,
+            price:
+                item.price,
 
-      ingridient:
-        item.ingridient || '',
+            ingridient:
+                item.ingridient ||
+                item.ingredient ||
+                '',
 
-      quantity:
-        item.quantity
+            quantity:
+                Number(item.quantity) || 1
+        }));
 
-    }));
 
-
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(smallCart)
-  );
-
+    localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(smallCart)
+    );
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| CART
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   CART
+   ========================================================================== */
 
 function loadCart() {
 
-  cart =
-    loadFromLocalStorage();
+    cart =
+        loadFromLocalStorage();
 
 
-  renderCart();
-
+    renderCart();
 }
 
 
 function saveCart() {
 
-  saveToLocalStorage();
-
+    saveToLocalStorage();
 }
 
 
 function addToCart(
-  event,
-  button
+    event,
+    button
 ) {
 
-  const name =
-    button.dataset.name;
+    if (!button) {
+        return;
+    }
 
 
-  const food =
-    Object.values(foods)
-      .flat()
-      .find(
-        item =>
-          item.name === name
-      );
+    const name =
+        button.dataset?.name;
 
 
-  if (!food) {
-    return;
-  }
+    if (!name) {
+        return;
+    }
 
 
-  const matchingItem =
-    cart.find(
-      item =>
-        item.name ===
-        food.name
-    );
+    const food =
+        Object.values(foods)
+            .filter(Array.isArray)
+            .flat()
+            .find(
+                item =>
+                    item &&
+                    item.name === name
+            );
 
 
-  if (matchingItem) {
+    if (!food) {
 
-    matchingItem.quantity += 1;
+        showToast(
+            'This item is no longer available.',
+            'error'
+        );
 
-  } else {
-
-    cart.push({
-
-      id:
-        food.id,
-
-      name:
-        food.name,
-
-      price:
-        food.price,
-
-      ingridient:
-        food.ingridient || '',
-
-      quantity:
-        1
-
-    });
-
-  }
+        return;
+    }
 
 
-  saveCart();
+    if (
+        food.isAvailable === false
+    ) {
 
-  renderCart();
+        showToast(
+            'This item is currently unavailable.',
+            'error'
+        );
 
-
-  /*
-   * Button feedback
-   */
-
-  const originalText =
-    button.textContent;
-
-
-  button.textContent =
-    '✓ Added';
+        return;
+    }
 
 
-  button.disabled = true;
+    const matchingItem =
+        cart.find(
+            item =>
+                item.name ===
+                food.name
+        );
 
 
-  setTimeout(
-    () => {
+    if (matchingItem) {
 
-      button.textContent =
-        originalText;
+        matchingItem.quantity =
+            Number(
+                matchingItem.quantity || 0
+            ) + 1;
 
-      button.disabled = false;
+    } else {
 
-    },
-    250
-  );
+        const ingredient =
+            food.ingridient ||
+            food.ingredient ||
+            '';
 
+
+        cart.push({
+
+            id:
+                food.id,
+
+            name:
+                food.name,
+
+            price:
+                food.price,
+
+            ingridient:
+                ingredient,
+
+            quantity:
+                1
+        });
+    }
+
+
+    saveCart();
+
+    renderCart();
+
+
+    if (
+        button &&
+        'textContent' in button
+    ) {
+
+        const originalText =
+            button.textContent;
+
+
+        button.textContent =
+            '✓ Added';
+
+
+        button.disabled =
+            true;
+
+
+        setTimeout(() => {
+
+            if (
+                button &&
+                button.parentNode
+            ) {
+
+                button.textContent =
+                    originalText;
+
+
+                button.disabled =
+                    false;
+            }
+
+        }, 250);
+    }
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| RENDER CART
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   RENDER CART
+   ========================================================================== */
 
 function renderCart() {
 
-  const cartBody =
-    document.getElementById(
-      'cart-body'
-    );
+    const cartBody =
+        document.getElementById(
+            'cart-body'
+        );
 
 
-  if (!cartBody) {
-    return;
-  }
+    if (!cartBody) {
+        return;
+    }
 
 
-  if (!cart.length) {
+    if (!cart.length) {
 
-    cartBody.innerHTML = `
-      <tr>
-        <td colspan="3">
-          Your cart is empty
-        </td>
-      </tr>
-    `;
+        cartBody.innerHTML = `
+            <tr>
+                <td colspan="3">
+                    Your cart is empty
+                </td>
+            </tr>
+        `;
 
-  } else {
+    } else {
 
-    cartBody.innerHTML =
-      cart.map(
-        item => `
-          <tr>
+        cartBody.innerHTML =
+            cart
+                .map(item => {
 
-            <td>
-              ${item.name}
-            </td>
-
-            <td>
-              ${
-                item.price *
-                item.quantity
-              }
-            </td>
-
-            <td>
-
-              <div class="qty-controls">
-
-                <button
-                  class="minus"
-                  onclick="decreaseQuantity(
-                    '${escapeJs(item.name)}'
-                  )"
-                >
-                  −
-                </button>
-
-                ${item.quantity}
-
-                <button
-                  class="plus"
-                  onclick="increaseQuantity(
-                    '${escapeJs(item.name)}'
-                  )"
-                >
-                  +
-                </button>
-
-              </div>
-
-            </td>
-
-          </tr>
-        `
-      ).join('');
-
-  }
+                    const itemPrice =
+                        Number(item.price) || 0;
 
 
-  const total =
-    cart.reduce(
-      (sum, item) =>
-        sum +
-        (
-          item.price *
-          item.quantity
-        ),
-      0
-    );
+                    const quantity =
+                        Number(item.quantity) || 0;
 
 
-  const totalElement =
-    document.getElementById(
-      'total-price'
-    );
+                    return `
+                        <tr>
+
+                            <td>
+                                ${escapeHtml(
+                                    item.name
+                                )}
+                            </td>
 
 
-  if (totalElement) {
+                            <td>
+                                ${
+                                    itemPrice *
+                                    quantity
+                                }
+                            </td>
 
-    totalElement.textContent =
-      total + ' ETB';
 
-  }
+                            <td>
 
+                                <div class="qty-controls">
+
+                                    <button
+                                        type="button"
+                                        class="minus"
+                                        onclick="decreaseQuantity('${escapeJs(
+                                            item.name
+                                        )}')"
+                                    >
+                                        −
+                                    </button>
+
+
+                                    ${quantity}
+
+
+                                    <button
+                                        type="button"
+                                        class="plus"
+                                        onclick="increaseQuantity('${escapeJs(
+                                            item.name
+                                        )}')"
+                                    >
+                                        +
+                                    </button>
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+                    `;
+                })
+                .join('');
+    }
+
+
+    const total =
+        cart.reduce(
+            (sum, item) =>
+                sum +
+                (
+                    (Number(item.price) || 0) *
+                    (Number(item.quantity) || 0)
+                ),
+            0
+        );
+
+
+    const totalElement =
+        document.getElementById(
+            'total-price'
+        );
+
+
+    if (totalElement) {
+
+        totalElement.textContent =
+            `${total} ETB`;
+    }
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| CART TEXT ESCAPING
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   CART TEXT ESCAPING
+   ========================================================================== */
 
 function escapeJs(value) {
 
-  return String(value)
-    .replace(/\\/g, '\\\\')
-    .replace(/'/g, "\\'")
-    .replace(/\r/g, '\\r')
-    .replace(/\n/g, '\\n');
-
+    return String(value ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n');
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| QUANTITY
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   QUANTITY
+   ========================================================================== */
 
-function increaseQuantity(
-  name
-) {
+function increaseQuantity(name) {
 
-  const item =
-    cart.find(
-      currentItem =>
-        currentItem.name === name
-    );
+    const item =
+        cart.find(
+            currentItem =>
+                currentItem.name === name
+        );
 
 
-  if (item) {
-    item.quantity++;
-  }
+    if (!item) {
+        return;
+    }
 
 
-  saveCart();
+    item.quantity =
+        Number(item.quantity || 0) + 1;
 
-  renderCart();
 
+    saveCart();
+
+    renderCart();
 }
 
 
-function decreaseQuantity(
-  name
-) {
+function decreaseQuantity(name) {
 
-  const item =
-    cart.find(
-      currentItem =>
-        currentItem.name === name
-    );
+    const item =
+        cart.find(
+            currentItem =>
+                currentItem.name === name
+        );
 
 
-  if (!item) {
-    return;
-  }
+    if (!item) {
+        return;
+    }
 
 
-  item.quantity--;
+    item.quantity =
+        Number(item.quantity || 0) - 1;
 
 
-  if (
-    item.quantity <= 0
-  ) {
+    if (
+        item.quantity <= 0
+    ) {
 
-    cart =
-      cart.filter(
-        currentItem =>
-          currentItem.name !== name
-      );
+        cart =
+            cart.filter(
+                currentItem =>
+                    currentItem.name !== name
+            );
+    }
 
-  }
 
+    saveCart();
 
-  saveCart();
-
-  renderCart();
-
+    renderCart();
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| CART BUTTON
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   CART BUTTON
+   ========================================================================== */
 
 function setupCartButton() {
 
-  const cartButton =
-    document.querySelector(
-      '.cartbutton'
-    );
-
-
-  const container2 =
-    document.querySelector(
-      '.container2'
-    );
-
-
-  if (
-    cartButton &&
-    container2
-  ) {
-
-    cartButton.addEventListener(
-      'click',
-      () => {
-
-        container2.classList.toggle(
-          'open'
+    const cartButton =
+        document.querySelector(
+            '.cartbutton'
         );
 
-      }
+
+    const container2 =
+        document.querySelector(
+            '.container2'
+        );
+
+
+    if (
+        !cartButton ||
+        !container2
+    ) {
+
+        return;
+    }
+
+
+    if (
+        cartButton.dataset.cartReady === 'true'
+    ) {
+
+        return;
+    }
+
+
+    cartButton.dataset.cartReady =
+        'true';
+
+
+    cartButton.addEventListener(
+        'click',
+        () => {
+
+            container2.classList.toggle(
+                'open'
+            );
+        }
     );
-
-  }
-
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| IMAGE VIEWER
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   IMAGE VIEWER
+   ========================================================================== */
 
 function zoomImage(src) {
 
-  const viewer =
-    document.getElementById(
-      'imageViewer'
-    );
+    const viewer =
+        document.getElementById(
+            'imageViewer'
+        );
 
 
-  const image =
-    document.getElementById(
-      'bigImage'
-    );
+    const image =
+        document.getElementById(
+            'bigImage'
+        );
 
 
-  if (
-    viewer &&
-    image
-  ) {
+    if (
+        !viewer ||
+        !image ||
+        !src
+    ) {
 
-    image.src = src;
+        return;
+    }
+
+
+    image.src =
+        src;
+
 
     viewer.classList.add(
-      'show'
+        'show'
     );
-
-  }
-
 }
 
 
 function closeImage() {
 
-  const viewer =
-    document.getElementById(
-      'imageViewer'
-    );
+    const viewer =
+        document.getElementById(
+            'imageViewer'
+        );
 
 
-  if (viewer) {
+    if (viewer) {
 
-    viewer.classList.remove(
-      'show'
-    );
-
-  }
-
+        viewer.classList.remove(
+            'show'
+        );
+    }
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| SEARCH
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   SEARCH
+   ========================================================================== */
 
 function setupSearch() {
 
-  const searchInput =
-    document.getElementById(
-      'searchInput'
-    );
+    const searchInput =
+        document.getElementById(
+            'searchInput'
+        );
 
 
-  if (!searchInput) {
-    return;
-  }
-
-
-  searchInput.addEventListener(
-    'input',
-    event => {
-
-      searchTerm =
-        event.target.value;
-
-      renderItems();
-
+    if (!searchInput) {
+        return;
     }
-  );
 
+
+    if (
+        searchInput.dataset.searchReady === 'true'
+    ) {
+
+        return;
+    }
+
+
+    searchInput.dataset.searchReady =
+        'true';
+
+
+    searchInput.addEventListener(
+        'input',
+        event => {
+
+            searchTerm =
+                event.target.value || '';
+
+
+            renderItems();
+        }
+    );
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| PAYMENT MODAL
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   PAYMENT MODAL
+   ========================================================================== */
 
 function openPaymentModal() {
 
-  const paymentModal =
-    document.getElementById(
-      'paymentModal'
-    );
+    const paymentModal =
+        document.getElementById(
+            'paymentModal'
+        );
 
 
-  const paymentTotal =
-    document.getElementById(
-      'payment-total'
-    );
+    const paymentTotal =
+        document.getElementById(
+            'payment-total'
+        );
 
 
-  const paymentMessage =
-    document.getElementById(
-      'paymentMessage'
-    );
+    const paymentMessage =
+        document.getElementById(
+            'paymentMessage'
+        );
 
 
-  const total =
-    cart.reduce(
-      (sum, item) =>
-        sum +
-        (
-          item.price *
-          item.quantity
-        ),
-      0
-    );
+    const total =
+        cart.reduce(
+            (sum, item) =>
+                sum +
+                (
+                    (Number(item.price) || 0) *
+                    (Number(item.quantity) || 0)
+                ),
+            0
+        );
 
 
-  if (!total) {
+    if (!total) {
 
-    showToast(
-      'Add an item to the cart before paying.',
-      'error'
-    );
+        showToast(
+            'Add an item to the cart before paying.',
+            'error'
+        );
 
-    return;
-
-  }
-
-
-  if (paymentTotal) {
-
-    paymentTotal.textContent =
-      `${total} ETB`;
-
-  }
+        return;
+    }
 
 
-  if (paymentMessage) {
+    if (paymentTotal) {
 
-    paymentMessage.textContent =
-      '';
+        paymentTotal.textContent =
+            `${total} ETB`;
+    }
 
-  }
+
+    if (paymentMessage) {
+
+        paymentMessage.textContent =
+            '';
+    }
 
 
-  if (paymentModal) {
+    if (paymentModal) {
 
-    paymentModal.classList.add(
-      'show'
-    );
-
-  }
-
+        paymentModal.classList.add(
+            'show'
+        );
+    }
 }
 
 
 function closePaymentModal() {
 
-  const modal =
-    document.getElementById(
-      'paymentModal'
-    );
+    const modal =
+        document.getElementById(
+            'paymentModal'
+        );
 
 
-  if (modal) {
+    if (modal) {
 
-    modal.classList.remove(
-      'show'
-    );
-
-  }
-
+        modal.classList.remove(
+            'show'
+        );
+    }
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| PAYMENT SETUP
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   PAYMENT SETUP
+   ========================================================================== */
 
 function setupPayment() {
 
-  const paymentButton =
-    document.querySelector(
-      '.payment'
-    );
+    const paymentButton =
+        document.querySelector(
+            '.payment'
+        );
 
 
-  const paymentModal =
-    document.getElementById(
-      'paymentModal'
-    );
+    const paymentModal =
+        document.getElementById(
+            'paymentModal'
+        );
 
 
-  const paymentForm =
-    document.getElementById(
-      'telebirrPaymentForm'
-    );
+    const paymentForm =
+        document.getElementById(
+            'telebirrPaymentForm'
+        );
 
 
-  if (
-    !paymentButton ||
-    !paymentModal ||
-    !paymentForm
-  ) {
+    if (
+        !paymentButton ||
+        !paymentModal ||
+        !paymentForm
+    ) {
 
-    return;
-
-  }
-
-
-  paymentButton.addEventListener(
-    'click',
-    openPaymentModal
-  );
-
-
-  paymentModal.addEventListener(
-    'click',
-    event => {
-
-      if (
-        event.target ===
-        paymentModal
-      ) {
-
-        closePaymentModal();
-
-      }
-
+        return;
     }
-  );
 
 
-  paymentModal
-    .querySelectorAll(
-      '.payment-option'
-    )
-    .forEach(option => {
+    if (
+        paymentButton.dataset.paymentReady === 'true'
+    ) {
 
-      option.addEventListener(
+        return;
+    }
+
+
+    paymentButton.dataset.paymentReady =
+        'true';
+
+
+    paymentButton.addEventListener(
         'click',
-        () => {
-
-          paymentModal
-            .querySelectorAll(
-              '.payment-option'
-            )
-            .forEach(
-              item =>
-                item.classList.remove(
-                  'selected'
-                )
-            );
+        openPaymentModal
+    );
 
 
-          option.classList.add(
-            'selected'
-          );
+    paymentModal.addEventListener(
+        'click',
+        event => {
 
+            if (
+                event.target ===
+                paymentModal
+            ) {
 
-          paymentForm.hidden =
-            option.dataset.method !==
-            'Telebirr';
-
-
-          const paymentMessage =
-            document.getElementById(
-              'paymentMessage'
-            );
-
-
-          if (paymentMessage) {
-
-            paymentMessage.textContent =
-              option.dataset.method ===
-              'BOA'
-                ? 'BOA payment is not configured yet.'
-                : '';
-
-          }
-
+                closePaymentModal();
+            }
         }
-      );
-
-    });
+    );
 
 
-  paymentForm.addEventListener(
-    'submit',
-    startTelebirrPayment
-  );
+    paymentModal
+        .querySelectorAll(
+            '.payment-option'
+        )
+        .forEach(option => {
 
+            option.addEventListener(
+                'click',
+                () => {
+
+                    paymentModal
+                        .querySelectorAll(
+                            '.payment-option'
+                        )
+                        .forEach(
+                            item =>
+                                item.classList.remove(
+                                    'selected'
+                                )
+                        );
+
+
+                    option.classList.add(
+                        'selected'
+                    );
+
+
+                    paymentForm.hidden =
+                        option.dataset.method !==
+                        'Telebirr';
+
+
+                    const paymentMessage =
+                        document.getElementById(
+                            'paymentMessage'
+                        );
+
+
+                    if (paymentMessage) {
+
+                        paymentMessage.textContent =
+                            option.dataset.method ===
+                            'BOA'
+                                ? 'BOA payment is not configured yet.'
+                                : '';
+                    }
+                }
+            );
+        });
+
+
+    paymentForm.addEventListener(
+        'submit',
+        startTelebirrPayment
+    );
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| TELEBIRR PAYMENT
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   TELEBIRR PAYMENT
+   ========================================================================== */
 
 async function startTelebirrPayment(
-  event
+    event
 ) {
 
-  event.preventDefault();
+    event.preventDefault();
 
 
-  const accountNumber =
-    document.getElementById(
-      'telebirrAccount'
-    )?.value.trim();
+    const accountNumber =
+        document.getElementById(
+            'telebirrAccount'
+        )?.value.trim();
 
 
-  const total =
-    cart.reduce(
-      (sum, item) =>
-        sum +
-        (
-          item.price *
-          item.quantity
-        ),
-      0
-    );
+    const total =
+        cart.reduce(
+            (sum, item) =>
+                sum +
+                (
+                    (Number(item.price) || 0) *
+                    (Number(item.quantity) || 0)
+                ),
+            0
+        );
 
 
-  const submitButton =
-    event.target.querySelector(
-      '.payment-submit'
-    );
+    const submitButton =
+        event.target.querySelector(
+            '.payment-submit'
+        );
 
 
-  if (
-    !/^0\d{9}$/.test(
-      accountNumber
-    )
-  ) {
+    if (
+        !/^0\d{9}$/.test(
+            accountNumber
+        )
+    ) {
+
+        showToast(
+            'Enter a valid 10-digit Telebirr account number.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    if (!total) {
+
+        showToast(
+            'Your cart is empty.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    if (submitButton) {
+
+        submitButton.disabled =
+            true;
+    }
+
 
     showToast(
-      'Enter a valid 10-digit Telebirr account number.',
-      'error'
+        'Preparing Telebirr payment...',
+        'loading'
     );
 
-    return;
 
-  }
+    try {
+
+        const response =
+            await fetch(
+                API_BASE +
+                '/api/payments/telebirr/create',
+                {
+                    method: 'POST',
+
+                    headers: {
+                        'Content-Type':
+                            'application/json'
+                    },
+
+                    body:
+                        JSON.stringify({
+                            accountNumber,
+                            amount: total,
+                            items: cart
+                        })
+                }
+            );
 
 
-  if (submitButton) {
-
-    submitButton.disabled =
-      true;
-
-  }
+        let data = null;
 
 
-  showToast(
-    'Preparing Telebirr payment...',
-    'loading'
-  );
+        try {
 
+            data =
+                await response.json();
 
-  try {
+        } catch (error) {
 
-    const response =
-      await fetch(
-        API_BASE +
-        '/api/payments/telebirr/create',
-        {
-          method: 'POST',
-
-          headers: {
-            'Content-Type':
-              'application/json'
-          },
-
-          body:
-            JSON.stringify({
-              accountNumber,
-              amount: total,
-              items: cart
-            })
+            data = null;
         }
-      );
 
 
-    const data =
-      await response.json();
+        if (!response.ok) {
+
+            throw new Error(
+                data?.message ||
+                'Could not create payment.'
+            );
+        }
 
 
-    if (!response.ok) {
+        const merchantAccount =
+            data?.merchantAccount ||
+            '';
 
-      throw new Error(
-        data.message ||
-        'Could not create payment.'
-      );
 
+        await copyPaymentDetails(
+            `Telebirr: ${total} ETB to ${merchantAccount}`
+        );
+
+
+        if (submitButton) {
+
+            submitButton.textContent =
+                'Payment details copied';
+
+            submitButton.disabled =
+                false;
+        }
+
+
+        hideToast();
+
+
+        showToast(
+            'Payment details copied successfully!',
+            'success'
+        );
+
+
+    } catch (error) {
+
+        if (submitButton) {
+
+            submitButton.disabled =
+                false;
+        }
+
+
+        hideToast();
+
+
+        showToast(
+            error.message ||
+            'Payment creation failed.',
+            'error'
+        );
     }
-
-
-    await copyPaymentDetails(
-      `Telebirr: ${total} ETB to ${data.merchantAccount}`
-    );
-
-
-    if (submitButton) {
-
-      submitButton.textContent =
-        'Payment details copied';
-
-      submitButton.disabled =
-        false;
-
-    }
-
-
-    showToast(
-      'Payment details copied successfully!',
-      'success'
-    );
-
-
-  } catch (error) {
-
-    if (submitButton) {
-      submitButton.disabled = false;
-    }
-
-
-    showToast(
-      error.message ||
-      'Payment creation failed.',
-      'error'
-    );
-
-  }
-
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| COPY PAYMENT DETAILS
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   COPY PAYMENT DETAILS
+   ========================================================================== */
 
 async function copyPaymentDetails(
-  details
+    details
 ) {
 
-  try {
+    try {
 
-    await navigator.clipboard.writeText(
-      details
-    );
+        if (
+            navigator.clipboard &&
+            navigator.clipboard.writeText
+        ) {
 
-  } catch (error) {
+            await navigator.clipboard.writeText(
+                details
+            );
 
-    console.warn(
-      'Could not copy payment details:',
-      error
-    );
+            return true;
+        }
 
-  }
+    } catch (error) {
 
+        console.warn(
+            'Could not copy payment details:',
+            error
+        );
+    }
+
+
+    /* ----------------------------------------------------------------------
+       FALLBACK
+       ---------------------------------------------------------------------- */
+
+    try {
+
+        const textarea =
+            document.createElement(
+                'textarea'
+            );
+
+
+        textarea.value =
+            details;
+
+
+        textarea.style.position =
+            'fixed';
+
+
+        textarea.style.opacity =
+            '0';
+
+
+        document.body.appendChild(
+            textarea
+        );
+
+
+        textarea.focus();
+
+        textarea.select();
+
+
+        const copied =
+            document.execCommand(
+                'copy'
+            );
+
+
+        textarea.remove();
+
+
+        return copied;
+
+    } catch (error) {
+
+        console.warn(
+            'Clipboard fallback failed:',
+            error
+        );
+
+
+        return false;
+    }
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| START CUSTOMER PAGE
-|--------------------------------------------------------------------------
-*/
+/* ==========================================================================
+   ESC KEY
+   ========================================================================== */
+
+function setupEscapeKey() {
+
+    document.addEventListener(
+        'keydown',
+        event => {
+
+            if (
+                event.key !== 'Escape'
+            ) {
+
+                return;
+            }
+
+
+            closeCustomerDaySpecial();
+
+            closePaymentModal();
+
+            closeImage();
+        }
+    );
+}
+
+
+/* ==========================================================================
+   START CUSTOMER PAGE
+   ========================================================================== */
 
 window.addEventListener(
-  'DOMContentLoaded',
-  async () => {
+    'DOMContentLoaded',
+    async () => {
 
-    setupSearch();
+        /*
+           The loading state is started immediately by
+           loadMenuFromServer(), before the API request.
+        */
 
-    setupPayment();
+        setupSearch();
 
-    setupCartButton();
+        setupPayment();
 
-    await loadMenuFromServer();
+        setupCartButton();
 
-    loadCart();
+        setupEscapeKey();
 
-  }
+
+        await loadMenuFromServer();
+
+
+        loadCart();
+    }
 );

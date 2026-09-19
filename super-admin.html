@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+<title>Super Admin Dashboard - Caffe Menu</title>
+
+<link rel="stylesheet" href="/stylesheets/super-admin.css">
+
+
+</head>
+
+<body>
+
+<!-- ================================================================
+     TOP NOTIFICATION
+================================================================ -->
+
+<div id="ownerTopNotification"
+     class="owner-top-notification">
+
+
+<div class="owner-notification-content">
+
+    <div id="ownerNotificationIcon"
+         class="owner-notification-icon">
+        ✓
+    </div>
+
+    <div class="owner-notification-text">
+
+        <div id="ownerNotificationTitle"
+             class="owner-notification-title">
+            Success
+        </div>
+
+        <div id="ownerNotificationMessage"
+             class="owner-notification-message">
+        </div>
+
+    </div>
+
+    <button class="owner-notification-close"
+            onclick="closeOwnerNotification()"
+            type="button"
+            aria-label="Close notification">
+        ✕
+    </button>
+
+</div>
+
+
+</div>
+
+<!-- ================================================================
+     MAIN APP
+================================================================ -->
+
+<main class="super-admin-app">
+
+
+<!-- ============================================================
+     HEADER
+============================================================= -->
+<header class="super-admin-header">
+
+    <div class="header-left">
+
+        <button id="ownerRefreshBtn"
+                class="header-icon-btn"
+                onclick="refreshOwnerDashboard()"
+                title="Refresh Dashboard"
+                type="button"
+                aria-label="Refresh Dashboard">
+            ↻
+        </button>
+
+    </div>
+
+
+    <div class="dashboard-intro">
+
+        <div class="dashboard-kicker">
+            CAFFE MENU
+        </div>
+
+        <h1>
+            Super Admin Dashboard
+        </h1>
+
+        <p>
+            Manage restaurants, pricing and platform settings.
+        </p>
+
+    </div>
+
+
+    <div class="header-right">
+
+        <div class="header-actions">
+
+            <button type="button"
+                    class="menu-toggle"
+                    id="superAdminMenuToggle"
+                    aria-label="Open menu"
+                    aria-expanded="false">
+                ☰
+            </button>
+
+            <div class="super-admin-menu"
+                 id="superAdminMenu">
+
+                <button type="button"
+                        onclick="openCreateCafePanel(); closeSuperAdminMenu();">
+
+                    <span class="owner-menu-feature-icon">
+                        ＋
+                    </span>
+
+                    <span>
+                        Create New
+                    </span>
+
+                </button>
+
+
+                <button type="button"
+                        class="owner-menu-feature duplicate"
+                        onclick="openDuplicateCafePanel(); closeSuperAdminMenu();">
+
+                    <span class="owner-menu-feature-icon">
+                        ⧉
+                    </span>
+
+                    <span>
+                        Duplicate Café
+                    </span>
+
+                </button>
+
+
+                <button type="button"
+                        class="owner-menu-feature price"
+                        onclick="openPriceManagementPanel(); closeSuperAdminMenu();">
+
+                    <span class="owner-menu-feature-icon">
+                        %
+                    </span>
+
+                    <span>
+                        Price Management
+                    </span>
+
+                </button>
+
+
+                <button type="button"
+                        onclick="openCompanyProfile(); closeSuperAdminMenu();">
+
+                    <span class="owner-menu-feature-icon">
+                        ⚙
+                    </span>
+
+                    <span>
+                        Edit Company Profile
+                    </span>
+
+                </button>
+
+
+                <div class="menu-divider"></div>
+
+
+                <button type="button"
+                        class="menu-logout"
+                        onclick="logoutAdmin(); closeSuperAdminMenu();">
+
+                    <span class="owner-menu-feature-icon">
+                        ↪
+                    </span>
+
+                    <span>
+                        Log Out
+                    </span>
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</header>
+
+
+<!-- ============================================================
+     RESTAURANT STATS
+============================================================= -->
+<section class="restaurant-stats">
+
+    <button type="button"
+            class="stat-card stat-filter active-filter"
+            onclick="filterOwnerRestaurants('all')">
+
+        <div class="stat-icon total-icon">
+            🏪
+        </div>
+
+        <div class="stat-content">
+
+            <div class="stat-label">
+                Total Restaurants
+            </div>
+
+            <div id="totalRestaurants"
+                 class="stat-number">
+                0
+            </div>
+
+            <div class="stat-description">
+                All restaurants
+            </div>
+
+        </div>
+
+    </button>
+
+
+    <button type="button"
+            class="stat-card stat-filter active-stat"
+            onclick="filterOwnerRestaurants('active')">
+
+        <div class="stat-icon active-icon">
+            ✓
+        </div>
+
+        <div class="stat-content">
+
+            <div class="stat-label">
+                Active Restaurants
+            </div>
+
+            <div id="activeRestaurants"
+                 class="stat-number">
+                0
+            </div>
+
+            <div class="stat-description">
+                Currently active
+            </div>
+
+        </div>
+
+    </button>
+
+
+    <button type="button"
+            class="stat-card stat-filter disabled-stat"
+            onclick="filterOwnerRestaurants('disabled')">
+
+        <div class="stat-icon disabled-icon">
+            ⏸
+        </div>
+
+        <div class="stat-content">
+
+            <div class="stat-label">
+                Disabled Restaurants
+            </div>
+
+            <div id="disabledRestaurants"
+                 class="stat-number">
+                0
+            </div>
+
+            <div class="stat-description">
+                Currently disabled
+            </div>
+
+        </div>
+
+    </button>
+
+</section>
+
+
+<!-- ============================================================
+     RESTAURANT MANAGEMENT
+============================================================= -->
+<section class="restaurant-management">
+
+    <div class="dashboard-section-heading">
+
+        <div>
+
+            <span class="section-eyebrow">
+                PLATFORM
+            </span>
+
+            <h2>
+                Restaurant Management
+            </h2>
+
+            <p>
+                Manage and monitor all restaurants registered
+                on your platform.
+            </p>
+
+        </div>
+
+
+        <button class="management-refresh-btn"
+                onclick="loadOwnerCafes()"
+                type="button">
+
+            <span>
+                ↻
+            </span>
+
+            Refresh
+
+        </button>
+
+    </div>
+
+
+    <!-- ========================================================
+         SEARCH
+    ========================================================= -->
+    <div class="restaurant-toolbar">
+
+        <div class="restaurant-search-bar">
+
+            <span class="search-icon">
+                ⌕
+            </span>
+
+            <input type="text"
+                   id="restaurantSearch"
+                   placeholder="Search restaurant..."
+                   autocomplete="off">
+
+            <button type="button"
+                    class="search-clear"
+                    id="restaurantSearchClear"
+                    title="Clear search"
+                    aria-label="Clear search">
+                ✕
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================
+         TABLE
+    ========================================================= -->
+    <div class="restaurant-table">
+
+        <div class="restaurant-table-header">
+
+            <div>
+                #
+            </div>
+
+            <div>
+                Restaurant
+            </div>
+
+            <div>
+                Slug
+            </div>
+
+            <div>
+                Status
+            </div>
+
+            <div>
+                Access
+            </div>
+
+        </div>
+
+
+        <div id="ownerCafeList"
+             class="owner-cafe-list">
+
+            Loading cafés...
+
+        </div>
+
+    </div>
+
+
+    <div id="ownerDashboardMessage"
+         class="owner-dashboard-message">
+    </div>
+
+</section>
+
+
+<!-- ============================================================
+     FOOTER
+============================================================= -->
+<footer class="super-admin-footer">
+
+    <div class="footer-info">
+
+        <span class="footer-status-dot"></span>
+
+        <span>
+            Super Admin Control Center
+        </span>
+
+    </div>
+
+    <div class="footer-right">
+        Secure Administration
+    </div>
+
+</footer>
+
+
+</main>
+
+<!-- ================================================================
+     ACTION PANEL
+================================================================ -->
+
+<div id="ownerActionPanel"
+     class="owner-action-panel"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="ownerActionTitle">
+
+
+<div class="owner-action-header">
+
+    <div>
+
+        <span class="owner-action-eyebrow">
+            SUPER ADMIN
+        </span>
+
+        <h3 id="ownerActionTitle">
+            Restaurant Action
+        </h3>
+
+    </div>
+
+
+    <button class="owner-action-close"
+            onclick="closeOwnerActionPanel()"
+            type="button"
+            aria-label="Close">
+        ✕
+    </button>
+
+</div>
+
+
+<div id="ownerActionContent"
+     class="owner-action-content">
+</div>
+
+
+</div>
+
+<!-- ================================================================
+     JAVASCRIPT
+================================================================ -->
+
+<script src="/scripts/super-admin.js"></script>
+
+</body>
+</html>

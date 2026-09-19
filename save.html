@@ -2,170 +2,271 @@
 <html lang="en">
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>save html</title>
+  <title>Cafe Menu</title>
   <link rel="stylesheet" href="stylesheets/save.css">
+  <link rel="stylesheet" href="stylesheets/day-special.css">
 </head>
+
 <body>
 
   <!-- PROFESSIONAL SUPER ADMIN NOTIFICATION -->
-<div id="ownerTopNotification" class="owner-top-notification">
-  <div class="owner-notification-content">
-    <div id="ownerNotificationIcon" class="owner-notification-icon">✓</div>
+  <div id="ownerTopNotification" class="owner-top-notification">
+    <div class="owner-notification-content">
 
-    <div class="owner-notification-text">
-      <div id="ownerNotificationTitle" class="owner-notification-title">
-        Success
+      <div id="ownerNotificationIcon" class="owner-notification-icon">
+        ✓
       </div>
 
-      <div id="ownerNotificationMessage" class="owner-notification-message">
+      <div class="owner-notification-text">
+        <div id="ownerNotificationTitle" class="owner-notification-title">
+          Success
+        </div>
+
+        <div
+          id="ownerNotificationMessage"
+          class="owner-notification-message"
+        ></div>
       </div>
+
+      <button
+        class="owner-notification-close"
+        onclick="closeOwnerNotification()"
+      >
+        ✕
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- PROFESSIONAL SUPER ADMIN ACTION PANEL -->
+  <div id="ownerActionPanel" class="owner-action-panel">
+
+    <div class="owner-action-header">
+
+      <h3 id="ownerActionTitle">
+        Restaurant Action
+      </h3>
+
+      <button
+        class="owner-action-close"
+        onclick="closeOwnerActionPanel()"
+      >
+        ✕
+      </button>
+
     </div>
 
-    <button
-      class="owner-notification-close"
-      onclick="closeOwnerNotification()"
-    >
-      ✕
-    </button>
-  </div>
-</div>
+    <div id="ownerActionContent"></div>
 
-
-<!-- PROFESSIONAL SUPER ADMIN ACTION PANEL -->
-<div id="ownerActionPanel" class="owner-action-panel">
-
-  <div class="owner-action-header">
-    <h3 id="ownerActionTitle">Restaurant Action</h3>
-
-    <button
-      class="owner-action-close"
-      onclick="closeOwnerActionPanel()"
-    >
-      ✕
-    </button>
   </div>
 
-  <div id="ownerActionContent"></div>
 
-</div>
-
-
-
+  <!-- IMAGE VIEWER -->
   <div id="imageViewer" class="image-viewer">
-    <button class="close-image" onclick="closeImage()">✕</button>
-    <img id="bigImage">
+
+    <button
+      class="close-image"
+      onclick="closeImage()"
+    >
+      ✕
+    </button>
+
+    <img
+      id="bigImage"
+      alt="Menu item"
+    >
+
   </div>
 
 
+  <!-- PAYMENT MODAL -->
+  <div
+    id="paymentModal"
+    class="payment-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="paymentTitle"
+  >
 
-  <div id="paymentModal" class="payment-overlay" role="dialog" aria-modal="true" aria-labelledby="paymentTitle">
     <div class="payment-card">
-      <button class="payment-close" type="button" onclick="closePaymentModal()" aria-label="Close payment options">&times;</button>
-      <h2 id="paymentTitle">Choose a payment method</h2>
-      <p class="payment-total">Total to pay: <strong id="payment-total">0 ETB</strong></p>
-      <div class="payment-options" role="group" aria-label="Payment methods">
-        <button type="button" class="payment-option selected" data-method="Telebirr">Telebirr</button>
-        <button type="button" class="payment-option" data-method="CBE Contactless">CBE Tap</button>
-        <button type="button" class="payment-option" data-method="BOA">BOA</button>
+
+      <button
+        class="payment-close"
+        type="button"
+        onclick="closePaymentModal()"
+        aria-label="Close payment options"
+      >
+        &times;
+      </button>
+
+      <h2 id="paymentTitle">
+        Choose a payment method
+      </h2>
+
+      <p class="payment-total">
+        Total to pay:
+        <strong id="payment-total">
+          0 ETB
+        </strong>
+      </p>
+
+      <div
+        class="payment-options"
+        role="group"
+        aria-label="Payment methods"
+      >
+
+        <button
+          type="button"
+          class="payment-option selected"
+          data-method="Telebirr"
+        >
+          Telebirr
+        </button>
+
+        <button
+          type="button"
+          class="payment-option"
+          data-method="CBE Contactless"
+        >
+          CBE Tap
+        </button>
+
+        <button
+          type="button"
+          class="payment-option"
+          data-method="BOA"
+        >
+          BOA
+        </button>
+
       </div>
-      <form id="telebirrPaymentForm" class="payment-form">
-        <label for="telebirrAccount">Telebirr account number</label>
-        <input id="telebirrAccount" name="telebirrAccount" type="tel" inputmode="tel" autocomplete="tel" placeholder="09XXXXXXXX" required>
-        <button type="submit" class="payment-submit">Pay with Telebirr</button>
+
+      <form
+        id="telebirrPaymentForm"
+        class="payment-form"
+      >
+
+        <label for="telebirrAccount">
+          Telebirr account number
+        </label>
+
+        <input
+          id="telebirrAccount"
+          name="telebirrAccount"
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel"
+          placeholder="09XXXXXXXX"
+          required
+        >
+
+        <button
+          type="submit"
+          class="payment-submit"
+        >
+          Pay with Telebirr
+        </button>
+
       </form>
-      <p id="paymentMessage" class="payment-message" aria-live="polite"></p>
+
+      <p
+        id="paymentMessage"
+        class="payment-message"
+        aria-live="polite"
+      ></p>
+
     </div>
+
   </div>
 
 
-
-    <!-- In save.html -->
-  
-
-    <header class="menu-profile-header">
+  <!-- CUSTOMER RESTAURANT HEADER -->
+  <header class="menu-profile-header">
 
     <div class="menu-brand-row">
 
-        <div class="menu-profile-image">
-            <img
-                id="restaurantLogo"
-                src="image/latte.jpeg"
-                alt="Restaurant"
-            >
-        </div>
+      <div class="menu-profile-image">
 
-        <div class="menu-brand-info">
-
-            <h1 id="restaurantName">
-                ZEKARIYAS MENU
-            </h1>
-
-            <div class="menu-contact-row">
-
-                <a
-                    id="restaurantPhone"
-                    href="tel:+251911000000"
-                    class="menu-contact-link"
-                >
-                    <span class="contact-icon">📞</span>
-                    <span class="contact-text">
-                        <strong>+251 911 000 000</strong>
-                        <small>Call Us</small>
-                    </span>
-                </a>
-
-                <a
-                    id="restaurantLocation"
-                    href="https://www.google.com/maps/search/?api=1&query=Addis+Ababa+Ethiopia"
-                    target="_blank"
-                    rel="noopener"
-                    class="menu-contact-link"
-                >
-                    <span class="contact-icon">📍</span>
-                    <span class="contact-text">
-                        <strong>Addis Ababa, Ethiopia</strong>
-                        <small>Our Location</small>
-                    </span>
-                </a>
-
-            </div>
-
-        </div>
-
-        <button
-            id="daySpecialBtn"
-            class="menu-day-special"
+        <img
+          id="restaurantLogo"
+          src="image/latte.jpeg"
+          alt="Restaurant"
         >
-            ⭐ DAY SPECIAL ⭐
-        </button>
 
-    </div>
-
-</header>
-
-
-
-
-
-  <div class="main">
-    <div class="filter-bar">
-      <input id="searchInput" type="text" placeholder="Search items..." />
-      <div class="buttons" id="categoryButtons">
-        <button>all item</button>
       </div>
+
+
+      <div class="menu-brand-info">
+
+        <h1 id="restaurantName">
+          ZEKARIYAS MENU
+        </h1>
+
+
+        <!--
+          Customer contact information is populated
+          automatically from the restaurant profile.
+        -->
+        <div
+          id="restaurantContactRow"
+          class="menu-contact-row"
+        ></div>
+
+      </div>
+
+
+      <button
+          id="daySpecialBtn"
+          class="menu-day-special"
+          type="button"
+      >
+          ⭐ DAY SPECIAL ⭐
+      </button>
+
     </div>
 
-    <div class="container">
+  </header>
+
+
+  <!-- MAIN MENU -->
+  <div class="main">
+
+    <div class="filter-bar">
+
+      <input
+        id="searchInput"
+        type="text"
+        placeholder="Search items..."
+      >
+
+      <div
+        class="buttons"
+        id="categoryButtons"
+      >
+        <button>
+          all item
+        </button>
+      </div>
 
     </div>
 
 
+    <div class="container"></div>
+
+
+    <!-- CART -->
     <div class="container2">
+
       <div class="cart">
+
         <div class="cart-actions">
-          <!-- Save/Load cart buttons removed — cart persists per-device via localStorage -->
+          <!-- Cart persists per-device via localStorage -->
         </div>
+
         <table>
+
           <thead>
             <tr>
               <th>Item</th>
@@ -173,29 +274,59 @@
               <th>Qty</th>
             </tr>
           </thead>
-          <tbody id="cart-body">
-            <!-- Cart items will be added here dynamically -->
-          </tbody>
+
+          <tbody id="cart-body"></tbody>
+
           <tfoot>
+
             <tr>
-              <td><strong>Total price</strong></td>
-              <td  colspan="2" id="total-price">0</td>
+
+              <td>
+                <strong>
+                  Total price
+                </strong>
+              </td>
+
+              <td
+                colspan="2"
+                id="total-price"
+              >
+                0
+              </td>
+
             </tr>
+
           </tfoot>
+
         </table>
 
-          <button class="payment" type="button">Pay Now</button>
+
+        <button
+          class="payment"
+          type="button"
+        >
+          Pay Now
+        </button>
 
       </div>
 
     </div>
 
 
+    <!-- CART BUTTON -->
     <div>
-      <button class="cartbutton">🛒cart</button>
+
+      <button
+        class="cartbutton"
+        type="button"
+      >
+        🛒 Cart
+      </button>
+
     </div>
 
   </div>
+
 
   <script src="scripts/saveAdd.js"></script>
 

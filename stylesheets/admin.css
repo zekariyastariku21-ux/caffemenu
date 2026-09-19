@@ -1,0 +1,60 @@
+/* ================================================================
+   PROFILE BUTTON — RESTORED / PROFESSIONAL
+   ================================================================ */
+
+.admin-header .admin-actions .profile-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    min-width: 82px !important;
+    min-height: 40px;
+
+    padding: 9px 15px !important;
+
+    background: #ffffff !important;
+    color: #4a2f22 !important;
+
+    border: 1px solid #d8c3aa !important;
+    border-radius: 10px !important;
+
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    line-height: 1;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 2px 7px rgba(74, 47, 34, 0.10);
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
+}
+
+.admin-header .admin-actions .profile-btn:hover {
+    background: #f8f0e7 !important;
+    color: #3f281d !important;
+
+    border-color: #b99572 !important;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 5px 14px rgba(74, 47, 34, 0.15);
+}
+
+.admin-header .admin-actions .profile-btn:active {
+    transform: translateY(0);
+    box-shadow:
+        0 2px 6px rgba(74, 47, 34, 0.10);
+}
+
+.admin-header .admin-actions .profile-btn:focus-visible {
+    outline: 3px solid rgba(185, 149, 114, 0.30);
+    outline-offset: 2px;
+}

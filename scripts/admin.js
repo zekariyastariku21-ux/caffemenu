@@ -2,6 +2,7 @@ let currentRestaurant = null;
 let foods = {};
 
 let restaurantProfile = {
+    logo: '',
     phone_numbers: [],
     addresses: []
 };
@@ -236,7 +237,7 @@ function showMessage(text, type = 'success') {
         </div>
 
         <div class="admin-center-message-text">
-            ${text}
+            ${escapeHtmlForAdmin(text)}
         </div>
     `;
 
@@ -375,6 +376,609 @@ function showMessage(text, type = 'success') {
             }, 300);
 
         }, 3000);
+
+}
+
+
+/* ================================================================
+   PROFESSIONAL CONFIRMATION MODAL
+================================================================ */
+
+function showAdminConfirm({
+    title = 'Are you sure?',
+    message = 'This action cannot be undone.',
+    confirmText = 'Confirm',
+    cancelText = 'Cancel',
+    icon = '⚠'
+} = {}) {
+
+    return new Promise(resolve => {
+
+        const existing =
+            document.getElementById(
+                'adminConfirmModal'
+            );
+
+        if (existing) {
+            existing.remove();
+        }
+
+        let finished = false;
+
+        const modal =
+            document.createElement('div');
+
+        modal.id =
+            'adminConfirmModal';
+
+        modal.setAttribute(
+            'role',
+            'dialog'
+        );
+
+        modal.setAttribute(
+            'aria-modal',
+            'true'
+        );
+
+        modal.setAttribute(
+            'aria-labelledby',
+            'adminConfirmTitle'
+        );
+
+        modal.innerHTML = `
+
+            <div class="admin-confirm-card">
+
+                <div class="admin-confirm-icon">
+                    ${icon}
+                </div>
+
+                <div class="admin-confirm-content">
+
+                    <h2 id="adminConfirmTitle">
+                        ${escapeHtmlForAdmin(title)}
+                    </h2>
+
+                    <p id="adminConfirmMessage">
+                        ${escapeHtmlForAdmin(message)}
+                    </p>
+
+                </div>
+
+                <div class="admin-confirm-actions">
+
+                    <button
+                        type="button"
+                        class="admin-confirm-cancel"
+                        id="adminConfirmCancel"
+                    >
+                        ${escapeHtmlForAdmin(cancelText)}
+                    </button>
+
+                    <button
+                        type="button"
+                        class="admin-confirm-danger"
+                        id="adminConfirmOk"
+                    >
+                        ${escapeHtmlForAdmin(confirmText)}
+                    </button>
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        if (
+            !document.getElementById(
+                'admin-confirm-style'
+            )
+        ) {
+
+            const style =
+                document.createElement('style');
+
+            style.id =
+                'admin-confirm-style';
+
+            style.textContent = `
+
+                #adminConfirmModal {
+                    position: fixed;
+                    inset: 0;
+
+                    z-index: 1000002;
+
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+
+                    padding: 20px;
+
+                    background:
+                        rgba(24, 17, 13, 0.62);
+
+                    backdrop-filter:
+                        blur(7px);
+
+                    -webkit-backdrop-filter:
+                        blur(7px);
+
+                    opacity: 0;
+                    visibility: hidden;
+
+                    transition:
+                        opacity 0.22s ease,
+                        visibility 0.22s ease;
+
+                    font-family:
+                        Arial,
+                        Helvetica,
+                        sans-serif;
+                }
+
+                #adminConfirmModal.visible {
+                    opacity: 1;
+                    visibility: visible;
+                }
+
+                body.admin-confirm-active {
+                    overflow: hidden;
+                }
+
+                .admin-confirm-card {
+
+                    width: min(
+                        100%,
+                        440px
+                    );
+
+                    padding: 30px;
+
+                    background:
+                        linear-gradient(
+                            180deg,
+                            #ffffff 0%,
+                            #fffdfb 100%
+                        );
+
+                    border:
+                        1px solid
+                        rgba(74, 47, 34, 0.10);
+
+                    border-radius: 24px;
+
+                    box-shadow:
+                        0 30px 90px
+                        rgba(0, 0, 0, 0.30);
+
+                    text-align: center;
+
+                    transform:
+                        translateY(18px)
+                        scale(0.96);
+
+                    transition:
+                        transform 0.25s ease;
+                }
+
+                #adminConfirmModal.visible
+                .admin-confirm-card {
+
+                    transform:
+                        translateY(0)
+                        scale(1);
+
+                }
+
+                .admin-confirm-icon {
+
+                    width: 68px;
+                    height: 68px;
+
+                    margin:
+                        0 auto 20px;
+
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+
+                    border-radius: 50%;
+
+                    background:
+                        linear-gradient(
+                            145deg,
+                            #fff4df,
+                            #ffe1a8
+                        );
+
+                    border:
+                        1px solid
+                        #f2c978;
+
+                    color: #9a5a00;
+
+                    font-size: 30px;
+
+                    box-shadow:
+                        0 8px 24px
+                        rgba(180, 120, 30, 0.15);
+                }
+
+                .admin-confirm-content h2 {
+
+                    margin:
+                        0 0 10px;
+
+                    color:
+                        #34251e;
+
+                    font-size: 22px;
+
+                    font-weight: 800;
+
+                    letter-spacing:
+                        -0.2px;
+                }
+
+                .admin-confirm-content p {
+
+                    margin:
+                        0 auto;
+
+                    max-width: 350px;
+
+                    color:
+                        #71645d;
+
+                    font-size: 15px;
+
+                    font-weight: 500;
+
+                    line-height: 1.6;
+                }
+
+                .admin-confirm-actions {
+
+                    display: flex;
+
+                    justify-content: center;
+
+                    gap: 12px;
+
+                    margin-top: 28px;
+                }
+
+                .admin-confirm-actions button {
+
+                    min-height: 46px;
+
+                    padding:
+                        0 20px;
+
+                    border-radius: 12px;
+
+                    border: 1px solid transparent;
+
+                    font-family: inherit;
+
+                    font-size: 14px;
+
+                    font-weight: 750;
+
+                    cursor: pointer;
+
+                    transition:
+                        transform 0.18s ease,
+                        box-shadow 0.18s ease,
+                        background 0.18s ease;
+                }
+
+                .admin-confirm-actions button:hover {
+
+                    transform:
+                        translateY(-1px);
+
+                }
+
+                .admin-confirm-actions button:active {
+
+                    transform:
+                        translateY(0);
+
+                }
+
+                .admin-confirm-cancel {
+
+                    background:
+                        #f5f1ee;
+
+                    border-color:
+                        #ded5cf !important;
+
+                    color:
+                        #4b3a30;
+
+                }
+
+                .admin-confirm-cancel:hover {
+
+                    background:
+                        #ebe5e0;
+
+                    box-shadow:
+                        0 5px 14px
+                        rgba(60, 40, 30, 0.10);
+
+                }
+
+                .admin-confirm-danger {
+
+                    background:
+                        linear-gradient(
+                            135deg,
+                            #b83b32,
+                            #962c25
+                        );
+
+                    color:
+                        #ffffff;
+
+                    box-shadow:
+                        0 6px 16px
+                        rgba(150, 44, 37, 0.22);
+
+                }
+
+                .admin-confirm-danger:hover {
+
+                    box-shadow:
+                        0 9px 22px
+                        rgba(150, 44, 37, 0.30);
+
+                }
+
+                .admin-confirm-actions button:focus-visible {
+
+                    outline:
+                        3px solid
+                        rgba(74, 47, 34, 0.22);
+
+                    outline-offset:
+                        2px;
+                }
+
+                @media (max-width: 520px) {
+
+                    #adminConfirmModal {
+
+                        padding:
+                            16px;
+
+                    }
+
+                    .admin-confirm-card {
+
+                        padding:
+                            26px 20px;
+
+                        border-radius:
+                            20px;
+
+                    }
+
+                    .admin-confirm-icon {
+
+                        width: 60px;
+                        height: 60px;
+
+                        font-size: 27px;
+
+                        margin-bottom:
+                            16px;
+
+                    }
+
+                    .admin-confirm-content h2 {
+
+                        font-size:
+                            20px;
+
+                    }
+
+                    .admin-confirm-content p {
+
+                        font-size:
+                            14px;
+
+                    }
+
+                    .admin-confirm-actions {
+
+                        flex-direction:
+                            column-reverse;
+
+                        gap:
+                            10px;
+
+                    }
+
+                    .admin-confirm-actions button {
+
+                        width:
+                            100%;
+
+                    }
+
+                }
+
+                @media (prefers-reduced-motion: reduce) {
+
+                    #adminConfirmModal,
+                    .admin-confirm-card,
+                    .admin-confirm-actions button {
+
+                        transition:
+                            none !important;
+
+                    }
+
+                }
+
+            `;
+
+            document.head.appendChild(style);
+
+        }
+
+
+        document.body.appendChild(
+            modal
+        );
+
+        document.body.classList.add(
+            'admin-confirm-active'
+        );
+
+
+        const cancelButton =
+            document.getElementById(
+                'adminConfirmCancel'
+            );
+
+        const confirmButton =
+            document.getElementById(
+                'adminConfirmOk'
+            );
+
+
+        const previousActiveElement =
+            document.activeElement;
+
+
+        function close(result) {
+
+            if (finished) {
+                return;
+            }
+
+            finished = true;
+
+            document.body.classList.remove(
+                'admin-confirm-active'
+            );
+
+            modal.classList.remove(
+                'visible'
+            );
+
+            document.removeEventListener(
+                'keydown',
+                handleKeydown
+            );
+
+            setTimeout(() => {
+
+                if (modal) {
+                    modal.remove();
+                }
+
+                if (
+                    previousActiveElement &&
+                    typeof previousActiveElement.focus ===
+                        'function'
+                ) {
+
+                    try {
+                        previousActiveElement.focus();
+                    } catch (error) {
+                        // Ignore focus restoration errors.
+                    }
+
+                }
+
+                resolve(result);
+
+            }, 220);
+
+        }
+
+
+        function handleKeydown(event) {
+
+            if (event.key === 'Escape') {
+
+                event.preventDefault();
+
+                close(false);
+
+                return;
+            }
+
+            if (
+                event.key === 'Enter' &&
+                document.activeElement !==
+                    cancelButton
+            ) {
+
+                event.preventDefault();
+
+                close(true);
+
+            }
+
+        }
+
+
+        cancelButton?.addEventListener(
+            'click',
+            () => close(false)
+        );
+
+
+        confirmButton?.addEventListener(
+            'click',
+            () => close(true)
+        );
+
+
+        modal.addEventListener(
+            'click',
+            event => {
+
+                if (
+                    event.target === modal
+                ) {
+
+                    close(false);
+
+                }
+
+            }
+        );
+
+
+        document.addEventListener(
+            'keydown',
+            handleKeydown
+        );
+
+
+        requestAnimationFrame(() => {
+
+            modal.classList.add(
+                'visible'
+            );
+
+            if (cancelButton) {
+                cancelButton.focus();
+            }
+
+        });
+
+    });
 
 }
 
@@ -617,6 +1221,11 @@ async function loadRestaurantMenu() {
 
         restaurantProfile = {
 
+            logo:
+                typeof data.profile.logo === 'string'
+                    ? data.profile.logo
+                    : '',
+
             phone_numbers:
                 Array.isArray(
                     data.profile.phone_numbers
@@ -633,11 +1242,23 @@ async function loadRestaurantMenu() {
 
         };
 
+    } else {
+
+        restaurantProfile = {
+
+            logo: '',
+
+            phone_numbers: [],
+
+            addresses: []
+
+        };
+
     }
 
     console.log(
-        'foods loaded:',
-        foods
+        'Restaurant profile loaded:',
+        restaurantProfile
     );
 
     return foods;
@@ -706,8 +1327,25 @@ function renderCurrentMenu() {
             div.className =
                 'menu-item';
 
-            div.textContent =
-                `${item.name || ''} - ${item.price || 0} ETB`;
+            const special =
+                item.isDaySpecial === true
+                    ? `
+                        <span class="menu-item-day-special">
+                            ⭐ DAY SPECIAL
+                        </span>
+                    `
+                    : '';
+
+            div.innerHTML = `
+                ${escapeHtmlForAdmin(
+                    item.name || ''
+                )}
+                -
+                ${escapeHtmlForAdmin(
+                    item.price || 0
+                )} ETB
+                ${special}
+            `;
 
             categoryBox.appendChild(
                 div
@@ -1102,39 +1740,198 @@ function populateSelectedItemFields() {
         );
 
     if (name) {
-
         name.value =
             item.name || '';
-
     }
 
     if (price) {
-
         price.value =
             item.price ?? '';
-
     }
 
     if (ingredient) {
-
         ingredient.value =
             item.ingridient ||
             item.ingredient ||
             '';
-
     }
 
     if (editCategory) {
-
         editCategory.value =
             selected.category;
-
     }
 
     if (available) {
-
         available.checked =
             item.isAvailable !== false;
+    }
+
+    renderEditItemImage(item);
+}
+
+
+/* ================================================================
+   EDIT ITEM IMAGE
+================================================================ */
+
+function renderEditItemImage(item) {
+
+    const image =
+        document.getElementById(
+            'editItemImagePreviewImg'
+        );
+
+    const placeholder =
+        document.getElementById(
+            'editItemImagePlaceholder'
+        );
+
+    if (!image || !placeholder) {
+        return;
+    }
+
+    const src =
+        typeof item?.image === 'string'
+            ? item.image.trim()
+            : '';
+
+    if (src) {
+
+        image.src = src;
+        image.style.display = 'block';
+
+        placeholder.style.display = 'none';
+
+    } else {
+
+        image.removeAttribute('src');
+        image.style.display = 'none';
+
+        placeholder.style.display = 'flex';
+
+    }
+}
+
+
+function handleEditItemImageChange(event) {
+
+    const file =
+        event.target.files &&
+        event.target.files[0];
+
+    if (!file) {
+        return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+
+        showMessage(
+            'Please choose an image file.',
+            'error'
+        );
+
+        event.target.value = '';
+
+        return;
+    }
+
+    const maxSize =
+        5 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+
+        showMessage(
+            'Item image must be smaller than 5 MB.',
+            'error'
+        );
+
+        event.target.value = '';
+
+        return;
+    }
+
+    const image =
+        document.getElementById(
+            'editItemImagePreviewImg'
+        );
+
+    const placeholder =
+        document.getElementById(
+            'editItemImagePlaceholder'
+        );
+
+    if (!image || !placeholder) {
+        return;
+    }
+
+    const reader =
+        new FileReader();
+
+    reader.onload =
+        event => {
+
+            image.src =
+                event.target.result;
+
+            image.style.display =
+                'block';
+
+            placeholder.style.display =
+                'none';
+
+        };
+
+    reader.onerror =
+        () => {
+
+            showMessage(
+                'Could not preview the selected image.',
+                'error'
+            );
+
+            event.target.value = '';
+
+        };
+
+    reader.readAsDataURL(file);
+
+}
+
+
+function clearEditItemImage() {
+
+    const input =
+        document.getElementById(
+            'editItemImage'
+        );
+
+    const image =
+        document.getElementById(
+            'editItemImagePreviewImg'
+        );
+
+    const placeholder =
+        document.getElementById(
+            'editItemImagePlaceholder'
+        );
+
+    if (input) {
+        input.value = '';
+    }
+
+    if (image) {
+
+        image.removeAttribute('src');
+
+        image.style.display =
+            'none';
+
+    }
+
+    if (placeholder) {
+
+        placeholder.style.display =
+            'flex';
 
     }
 
@@ -1154,9 +1951,7 @@ function clearEditFields() {
             document.getElementById(id);
 
         if (element) {
-
             element.value = '';
-
         }
 
     });
@@ -1167,11 +1962,10 @@ function clearEditFields() {
         );
 
     if (available) {
-
         available.checked = false;
-
     }
 
+    clearEditItemImage();
 }
 
 
@@ -1481,8 +2275,6 @@ async function updateSelectedCategory() {
 
         refreshExistingItemsSelect();
 
-        renderCurrentMenu();
-
         const categoryManager =
             document.getElementById(
                 'existingCategorySelect'
@@ -1520,6 +2312,8 @@ async function updateSelectedCategory() {
         }
 
         refreshExistingItemsSelect();
+
+        renderCurrentMenu();
 
         showMessage(
             `Category renamed to "${newCategory}". Click Save Menu to save it.`,
@@ -1818,34 +2612,60 @@ async function updateSelectedItem() {
     const index =
         selected.index;
 
-    const newName =
+    const nameElement =
         document.getElementById(
             'editItemName'
-        )?.value.trim();
-
-    const newPrice =
-        Number(
-            document.getElementById(
-                'editItemPrice'
-            )?.value
         );
 
-    const newIngredient =
+    const priceElement =
+        document.getElementById(
+            'editItemPrice'
+        );
+
+    const ingredientElement =
         document.getElementById(
             'editItemIngredient'
-        )?.value.trim() ||
-        '';
+        );
 
-    const newCategory =
+    const categoryElement =
         document.getElementById(
             'editItemCategory'
-        )?.value ||
-        oldCategory;
+        );
 
-    const available =
+    const availableElement =
         document.getElementById(
             'editItemAvailable'
         );
+
+    const imageElement =
+        document.getElementById(
+            'editItemImage'
+        );
+
+    const newName =
+        nameElement
+            ? nameElement.value.trim()
+            : '';
+
+    const newPrice =
+        Number(
+            priceElement
+                ? priceElement.value
+                : ''
+        );
+
+    const newIngredient =
+        ingredientElement
+            ? ingredientElement.value.trim()
+            : '';
+
+    const newCategory =
+        categoryElement?.value ||
+        oldCategory;
+
+    const newImageFile =
+        imageElement?.files?.[0] ||
+        null;
 
     if (!newName) {
 
@@ -1857,9 +2677,7 @@ async function updateSelectedItem() {
         return;
     }
 
-    if (
-        !Number.isFinite(newPrice)
-    ) {
+    if (!Number.isFinite(newPrice)) {
 
         showMessage(
             'Please enter a valid price.',
@@ -1869,19 +2687,53 @@ async function updateSelectedItem() {
         return;
     }
 
+    if (newImageFile) {
+
+        if (
+            !newImageFile.type.startsWith(
+                'image/'
+            )
+        ) {
+
+            showMessage(
+                'Please choose a valid image file.',
+                'error'
+            );
+
+            return;
+        }
+
+        if (
+            newImageFile.size >
+            5 * 1024 * 1024
+        ) {
+
+            showMessage(
+                'Item image must be smaller than 5 MB.',
+                'error'
+            );
+
+            return;
+        }
+
+    }
+
     showAdminLoading(
-        'Updating item...'
+        newImageFile
+            ? 'Preparing new image...'
+            : 'Updating item...'
     );
 
     try {
 
-        await new Promise(
-            resolve =>
-                setTimeout(
-                    resolve,
-                    450
-                )
-        );
+        if (newImageFile) {
+
+            item.image =
+                await readImageFile(
+                    newImageFile
+                );
+
+        }
 
         item.name =
             newName;
@@ -1893,9 +2745,10 @@ async function updateSelectedItem() {
             newIngredient;
 
         item.isAvailable =
-            available
-                ? available.checked
+            availableElement
+                ? availableElement.checked
                 : true;
+
 
         if (
             newCategory &&
@@ -1909,7 +2762,8 @@ async function updateSelectedItem() {
 
             if (!foods[newCategory]) {
 
-                foods[newCategory] = [];
+                foods[newCategory] =
+                    [];
 
             }
 
@@ -1918,6 +2772,7 @@ async function updateSelectedItem() {
             );
 
         }
+
 
         updateAdminCategoryOptions();
 
@@ -1969,7 +2824,11 @@ async function updateSelectedItem() {
         renderCurrentMenu();
 
         showMessage(
-            `"${item.name}" updated. Click Save Menu to save it.`,
+            `"${item.name}" updated. ${
+                newImageFile
+                    ? 'Image replaced. '
+                    : ''
+            }Click Save Menu to save it.`,
             'success'
         );
 
@@ -2326,7 +3185,7 @@ async function refreshAdminMenu() {
 
 
 /* ================================================================
-   PROFILE
+   LOAD RESTAURANT PROFILE
 ================================================================ */
 
 async function loadRestaurantProfile() {
@@ -2401,6 +3260,11 @@ async function loadRestaurantProfile() {
 
     restaurantProfile = {
 
+        logo:
+            typeof data.profile?.logo === 'string'
+                ? data.profile.logo
+                : '',
+
         phone_numbers:
             Array.isArray(
                 data.profile?.phone_numbers
@@ -2418,6 +3282,218 @@ async function loadRestaurantProfile() {
     };
 
     return restaurantProfile;
+
+}
+
+
+/* ================================================================
+   RENDER PROFILE LOGO
+================================================================ */
+
+function renderProfileLogo() {
+
+    const preview =
+        document.getElementById('profileLogoPreview');
+
+    const image =
+        document.getElementById('profileLogoImage');
+
+    const placeholder =
+        document.getElementById('profileLogoPlaceholder');
+
+    const removeButton =
+        document.getElementById('profileLogoRemoveBtn');
+
+    const logo =
+        typeof restaurantProfile.logo === 'string'
+            ? restaurantProfile.logo.trim()
+            : '';
+
+    const validLogo =
+        logo.startsWith('data:image/');
+
+
+    if (image) {
+
+        if (validLogo) {
+
+            image.src = logo;
+
+            image.style.display = 'block';
+
+        } else {
+
+            image.removeAttribute('src');
+
+            image.style.display = 'none';
+
+        }
+    }
+
+
+    if (placeholder) {
+
+        placeholder.style.display =
+            validLogo ? 'none' : 'flex';
+
+    }
+
+
+    if (removeButton) {
+
+        removeButton.style.display =
+            validLogo ? 'inline-flex' : 'none';
+
+    }
+
+
+    if (preview) {
+
+        preview.classList.toggle(
+            'has-logo',
+            validLogo
+        );
+
+    }
+
+}
+
+
+/* ================================================================
+   HANDLE LOGO FILE
+================================================================ */
+
+async function handleProfileLogoChange(event) {
+
+    const file =
+        event.target.files &&
+        event.target.files[0];
+
+    if (!file) {
+        return;
+    }
+
+    if (
+        !file.type.startsWith('image/')
+    ) {
+
+        showMessage(
+            'Please choose an image file.',
+            'error'
+        );
+
+        event.target.value = '';
+
+        return;
+    }
+
+    const maxSize =
+        5 * 1024 * 1024;
+
+    if (
+        file.size > maxSize
+    ) {
+
+        showMessage(
+            'Logo image must be smaller than 5 MB.',
+            'error'
+        );
+
+        event.target.value = '';
+
+        return;
+    }
+
+    showAdminLoading(
+        'Preparing logo...'
+    );
+
+    try {
+
+        const logo =
+            await readImageFile(file);
+
+        if (
+            !logo ||
+            !logo.startsWith('data:image/')
+        ) {
+
+            throw new Error(
+                'The selected logo could not be processed.'
+            );
+
+        }
+
+        restaurantProfile.logo =
+            logo;
+
+        renderProfileLogo();
+
+        showMessage(
+            'Logo selected. Click Save Profile to save it.',
+            'success'
+        );
+
+    } catch (error) {
+
+        console.error(
+            'Logo selection error:',
+            error
+        );
+
+        showMessage(
+            error.message ||
+            'Could not load the logo.',
+            'error'
+        );
+
+    } finally {
+
+        event.target.value = '';
+
+        hideAdminLoading(150);
+
+    }
+
+}
+
+
+/* ================================================================
+   REMOVE LOGO
+================================================================ */
+
+function removeProfileLogo() {
+
+    if (
+        !restaurantProfile.logo
+    ) {
+
+        showMessage(
+            'There is no logo to remove.',
+            'error'
+        );
+
+        return;
+    }
+
+    if (
+        !confirm(
+            'Remove the restaurant logo?'
+        )
+    ) {
+
+        return;
+    }
+
+    restaurantProfile.logo =
+        '';
+
+    renderProfileLogo();
+
+    showMessage(
+        'Logo removed. Click Save Profile to apply the change.',
+        'success'
+    );
 
 }
 
@@ -2463,6 +3539,8 @@ async function openProfileModal() {
                 'Restaurant Profile';
 
         }
+
+        renderProfileLogo();
 
         renderProfilePhones();
 
@@ -2563,6 +3641,12 @@ function renderProfilePhones() {
             row.className =
                 'profile-entry';
 
+            const fields =
+                document.createElement('div');
+
+            fields.className =
+                'profile-entry-fields';
+
             const input =
                 document.createElement('input');
 
@@ -2580,6 +3664,8 @@ function renderProfilePhones() {
 
             input.dataset.index =
                 String(index);
+
+            fields.appendChild(input);
 
             const deleteButton =
                 document.createElement('button');
@@ -2607,7 +3693,7 @@ function renderProfilePhones() {
                 }
             );
 
-            row.appendChild(input);
+            row.appendChild(fields);
 
             row.appendChild(
                 deleteButton
@@ -2704,6 +3790,12 @@ function renderProfileLocations() {
             row.className =
                 'profile-entry profile-location-entry';
 
+            const fields =
+                document.createElement('div');
+
+            fields.className =
+                'profile-entry-fields';
+
             const nameInput =
                 document.createElement('input');
 
@@ -2740,6 +3832,14 @@ function renderProfileLocations() {
             urlInput.dataset.index =
                 String(index);
 
+            fields.appendChild(
+                nameInput
+            );
+
+            fields.appendChild(
+                urlInput
+            );
+
             const deleteButton =
                 document.createElement('button');
 
@@ -2766,11 +3866,11 @@ function renderProfileLocations() {
                 }
             );
 
-            row.appendChild(nameInput);
+            row.appendChild(fields);
 
-            row.appendChild(urlInput);
-
-            row.appendChild(deleteButton);
+            row.appendChild(
+                deleteButton
+            );
 
             list.appendChild(row);
 
@@ -2925,6 +4025,24 @@ async function saveRestaurantProfile() {
 
     }
 
+    const logo =
+        typeof restaurantProfile.logo === 'string'
+            ? restaurantProfile.logo
+            : '';
+
+    if (
+        logo &&
+        !logo.startsWith('data:image/')
+    ) {
+
+        showMessage(
+            'The restaurant logo is invalid.',
+            'error'
+        );
+
+        return;
+    }
+
     showAdminLoading(
         'Saving profile...'
     );
@@ -2961,6 +4079,9 @@ async function saveRestaurantProfile() {
 
                     body:
                         JSON.stringify({
+
+                            logo:
+                                logo,
 
                             phone_numbers:
                                 phoneNumbers,
@@ -3024,6 +4145,11 @@ async function saveRestaurantProfile() {
 
         restaurantProfile = {
 
+            logo:
+                typeof data.profile?.logo === 'string'
+                    ? data.profile.logo
+                    : logo,
+
             phone_numbers:
                 phoneNumbers,
 
@@ -3031,6 +4157,8 @@ async function saveRestaurantProfile() {
                 addresses
 
         };
+
+        renderProfileLogo();
 
         showMessage(
             data.message ||
@@ -3071,6 +4199,1639 @@ async function saveRestaurantProfile() {
         hideAdminLoading(150);
 
     }
+
+}
+
+
+/* ================================================================
+   DAY SPECIAL - MAXIMUM 5
+================================================================ */
+
+const MAX_DAY_SPECIALS = 5;
+
+
+/* ================================================================
+   GET ALL DAY SPECIALS
+================================================================ */
+
+function getDaySpecialItems() {
+
+    const specials = [];
+
+    Object.keys(foods).forEach(category => {
+
+        const items =
+            Array.isArray(foods[category])
+                ? foods[category]
+                : [];
+
+        items.forEach((item, index) => {
+
+            if (
+                item &&
+                item.isDaySpecial === true
+            ) {
+
+                specials.push({
+                    category: category,
+                    index: index,
+                    item: item
+                });
+
+            }
+
+        });
+
+    });
+
+    return specials;
+}
+
+
+/* ================================================================
+   GET ONE DAY SPECIAL
+   Compatibility helper
+================================================================ */
+
+function getDaySpecialItem() {
+
+    const specials =
+        getDaySpecialItems();
+
+    return specials.length
+        ? {
+            category: specials[0].category,
+            item: specials[0].item
+        }
+        : null;
+}
+
+
+/* ================================================================
+   OPEN DAY SPECIAL MODAL
+================================================================ */
+
+function openDaySpecialModal() {
+
+    const existing =
+        document.getElementById(
+            'daySpecialModal'
+        );
+
+    if (existing) {
+        existing.remove();
+    }
+
+    const specials =
+        getDaySpecialItems();
+
+    const modal =
+        document.createElement('div');
+
+    modal.id =
+        'daySpecialModal';
+
+    modal.className =
+        'day-special-modal-overlay active';
+
+    modal.innerHTML = `
+
+        <div class="day-special-modal">
+
+            <div class="day-special-modal-header">
+
+                <div class="day-special-modal-title">
+
+                    <div class="day-special-icon">
+                        ⭐
+                    </div>
+
+                    <div>
+
+                        <h2>
+                            Day Specials
+                        </h2>
+
+                        <p>
+                            Choose up to ${MAX_DAY_SPECIALS} items
+                            to feature today.
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <button
+                    type="button"
+                    class="day-special-close"
+                    id="daySpecialCloseBtn"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="day-special-modal-body">
+
+                <div class="day-special-counter"
+                     id="daySpecialCounter">
+
+                    ⭐ ${specials.length}
+                    / ${MAX_DAY_SPECIALS}
+                    Day Specials Selected
+
+                </div>
+
+
+                <div class="day-special-field">
+
+                    <label for="daySpecialCategory">
+                        Choose Category
+                    </label>
+
+                    <select id="daySpecialCategory">
+
+                        <option value="">
+                            Select category
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="day-special-field">
+
+                    <label for="daySpecialItem">
+                        Choose Item
+                    </label>
+
+                    <select
+                        id="daySpecialItem"
+                        disabled
+                    >
+
+                        <option value="">
+                            Select category first
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div
+                    id="daySpecialPreview"
+                    class="day-special-preview"
+                >
+                </div>
+
+
+                <div
+                    id="daySpecialCurrentList"
+                    class="day-special-current-list"
+                >
+                </div>
+
+            </div>
+
+
+            <div class="day-special-modal-footer">
+
+                <button
+                    type="button"
+                    id="daySpecialRemoveBtn"
+                    class="day-special-remove-btn"
+                    ${specials.length ? '' : 'disabled'}
+                >
+                    Remove Selected Special
+                </button>
+
+                <div class="day-special-footer-right">
+
+                    <button
+                        type="button"
+                        id="daySpecialCancelBtn"
+                        class="day-special-cancel-btn"
+                    >
+                        Close
+                    </button>
+
+                    <button
+                        type="button"
+                        id="daySpecialSaveBtn"
+                        class="day-special-save-btn"
+                        disabled
+                    >
+                        ⭐ Add Day Special
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+    `;
+
+    document.body.appendChild(
+        modal
+    );
+
+
+    const categorySelect =
+        document.getElementById(
+            'daySpecialCategory'
+        );
+
+    const itemSelect =
+        document.getElementById(
+            'daySpecialItem'
+        );
+
+    const saveButton =
+        document.getElementById(
+            'daySpecialSaveBtn'
+        );
+
+    const removeButton =
+        document.getElementById(
+            'daySpecialRemoveBtn'
+        );
+
+
+    Object.keys(foods).forEach(
+        category => {
+
+            const items =
+                Array.isArray(
+                    foods[category]
+                )
+                    ? foods[category]
+                    : [];
+
+            if (!items.length) {
+                return;
+            }
+
+            const option =
+                document.createElement(
+                    'option'
+                );
+
+            option.value =
+                category;
+
+            option.textContent =
+                category;
+
+            categorySelect.appendChild(
+                option
+            );
+
+        }
+    );
+
+
+    categorySelect.addEventListener(
+        'change',
+        () => {
+
+            populateDaySpecialItems(
+                categorySelect.value
+            );
+
+        }
+    );
+
+
+    itemSelect.addEventListener(
+        'change',
+        () => {
+
+            const category =
+                categorySelect.value;
+
+            const index =
+                Number(
+                    itemSelect.value
+                );
+
+            const items =
+                Array.isArray(
+                    foods[category]
+                )
+                    ? foods[category]
+                    : [];
+
+            const item =
+                items[index];
+
+            renderDaySpecialPreview(
+                item
+            );
+
+            if (saveButton) {
+
+                saveButton.disabled =
+                    !item;
+
+            }
+
+            updateDaySpecialRemoveButton();
+
+        }
+    );
+
+
+    document
+        .getElementById(
+            'daySpecialCloseBtn'
+        )
+        ?.addEventListener(
+            'click',
+            closeDaySpecialModal
+        );
+
+
+    document
+        .getElementById(
+            'daySpecialCancelBtn'
+        )
+        ?.addEventListener(
+            'click',
+            closeDaySpecialModal
+        );
+
+
+    modal.addEventListener(
+        'click',
+        event => {
+
+            if (
+                event.target === modal
+            ) {
+
+                closeDaySpecialModal();
+
+            }
+
+        }
+    );
+
+
+    if (saveButton) {
+
+        saveButton.addEventListener(
+            'click',
+            saveDaySpecial
+        );
+
+    }
+
+
+    if (removeButton) {
+
+        removeButton.addEventListener(
+            'click',
+            removeDaySpecial
+        );
+
+    }
+
+
+    renderCurrentDaySpecialList();
+
+    updateDaySpecialCounter();
+
+    updateDaySpecialRemoveButton();
+
+}
+
+
+/* ================================================================
+   POPULATE ITEMS
+================================================================ */
+
+function populateDaySpecialItems(
+    category
+) {
+
+    const itemSelect =
+        document.getElementById(
+            'daySpecialItem'
+        );
+
+    if (!itemSelect) {
+        return;
+    }
+
+    itemSelect.innerHTML =
+        '<option value="">Select item</option>';
+
+    itemSelect.disabled =
+        !category;
+
+    const saveButton =
+        document.getElementById(
+            'daySpecialSaveBtn'
+        );
+
+    if (saveButton) {
+
+        saveButton.disabled =
+            true;
+
+    }
+
+    if (!category) {
+
+        renderDaySpecialPreview(
+            null
+        );
+
+        updateDaySpecialRemoveButton();
+
+        return;
+
+    }
+
+
+    const items =
+        Array.isArray(
+            foods[category]
+        )
+            ? foods[category]
+            : [];
+
+
+    items.forEach(
+        (item, index) => {
+
+            const option =
+                document.createElement(
+                    'option'
+                );
+
+            option.value =
+                String(index);
+
+            option.textContent =
+                item.name ||
+                'Unnamed item';
+
+            itemSelect.appendChild(
+                option
+            );
+
+        }
+    );
+
+
+    renderDaySpecialPreview(
+        null
+    );
+
+    updateDaySpecialRemoveButton();
+
+}
+
+
+/* ================================================================
+   UPDATE COUNTER
+================================================================ */
+
+function updateDaySpecialCounter() {
+
+    const counter =
+        document.getElementById(
+            'daySpecialCounter'
+        );
+
+    if (!counter) {
+        return;
+    }
+
+    const count =
+        getDaySpecialItems().length;
+
+    counter.innerHTML = `
+        ⭐ <strong>${count}</strong>
+        / ${MAX_DAY_SPECIALS}
+        Day Specials Selected
+    `;
+
+
+    if (count >= MAX_DAY_SPECIALS) {
+
+        counter.classList.add(
+            'limit-reached'
+        );
+
+    } else {
+
+        counter.classList.remove(
+            'limit-reached'
+        );
+
+    }
+
+}
+
+
+/* ================================================================
+   CURRENT SPECIALS LIST
+================================================================ */
+
+function renderCurrentDaySpecialList() {
+
+    const container =
+        document.getElementById(
+            'daySpecialCurrentList'
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const specials =
+        getDaySpecialItems();
+
+    if (!specials.length) {
+
+        container.innerHTML = `
+            <div class="day-special-no-current">
+                No Day Specials selected yet.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    container.innerHTML = `
+
+        <div class="day-special-current-heading">
+            Current Day Specials
+        </div>
+
+        <div class="day-special-current-items">
+
+            ${specials.map(
+                (special, number) => {
+
+                    const item =
+                        special.item;
+
+                    const image =
+                        typeof item.image === 'string' &&
+                        item.image.trim()
+                            ? item.image
+                            : '';
+
+                    return `
+
+                        <div
+                            class="day-special-current-item"
+                            data-special-category="${escapeAttributeForAdmin(
+                                special.category
+                            )}"
+                            data-special-index="${special.index}"
+                        >
+
+                            <div
+                                class="day-special-current-number"
+                            >
+                                ${number + 1}
+                            </div>
+
+                            <div
+                                class="day-special-current-image"
+                            >
+
+                                ${
+                                    image
+                                        ? `
+                                            <img
+                                                src="${escapeAttributeForAdmin(
+                                                    image
+                                                )}"
+                                                alt="${escapeAttributeForAdmin(
+                                                    item.name || ''
+                                                )}"
+                                            >
+                                        `
+                                        : `
+                                            <span>⭐</span>
+                                        `
+                                }
+
+                            </div>
+
+                            <div
+                                class="day-special-current-info"
+                            >
+
+                                <strong>
+                                    ${escapeHtmlForAdmin(
+                                        item.name ||
+                                        'Unnamed item'
+                                    )}
+                                </strong>
+
+                                <small>
+                                    ${escapeHtmlForAdmin(
+                                        special.category
+                                    )}
+                                    •
+                                    ${escapeHtmlForAdmin(
+                                        item.price ?? 0
+                                    )} ETB
+                                </small>
+
+                            </div>
+
+                            <button
+                                type="button"
+                                class="day-special-remove-one"
+                                data-category="${escapeAttributeForAdmin(
+                                    special.category
+                                )}"
+                                data-index="${special.index}"
+                                title="Remove this Day Special"
+                            >
+                                ×
+                            </button>
+
+                        </div>
+
+                    `;
+
+                }
+            ).join('')}
+
+        </div>
+    `;
+
+
+    container
+        .querySelectorAll(
+            '.day-special-remove-one'
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                'click',
+                async event => {
+
+                    event.preventDefault();
+
+                    const category =
+                        button.dataset.category;
+
+                    const index =
+                        Number(
+                            button.dataset.index
+                        );
+
+                    await removeSpecificDaySpecial(
+                        category,
+                        index
+                    );
+
+                }
+            );
+
+        });
+
+}
+
+
+/* ================================================================
+   REMOVE BUTTON STATE
+================================================================ */
+
+function updateDaySpecialRemoveButton() {
+
+    const button =
+        document.getElementById(
+            'daySpecialRemoveBtn'
+        );
+
+    if (!button) {
+        return;
+    }
+
+    const categorySelect =
+        document.getElementById(
+            'daySpecialCategory'
+        );
+
+    const itemSelect =
+        document.getElementById(
+            'daySpecialItem'
+        );
+
+    const selectedCategory =
+        categorySelect?.value || '';
+
+    const selectedIndex =
+        itemSelect?.value ?? '';
+
+    let selectedItem = null;
+
+    if (
+        selectedCategory &&
+        selectedIndex !== ''
+    ) {
+
+        const items =
+            Array.isArray(
+                foods[selectedCategory]
+            )
+                ? foods[selectedCategory]
+                : [];
+
+        selectedItem =
+            items[Number(selectedIndex)];
+
+    }
+
+
+    if (
+        selectedItem &&
+        selectedItem.isDaySpecial === true
+    ) {
+
+        button.disabled = false;
+
+        button.textContent =
+            'Remove Selected Special';
+
+        return;
+
+    }
+
+
+    button.disabled =
+        true;
+
+    button.textContent =
+        'Select a Current Special';
+
+}
+
+
+/* ================================================================
+   PREVIEW
+================================================================ */
+
+function renderDaySpecialPreview(
+    item
+) {
+
+    const preview =
+        document.getElementById(
+            'daySpecialPreview'
+        );
+
+    if (!preview) {
+        return;
+    }
+
+    if (!item) {
+
+        preview.innerHTML = `
+
+            <div class="day-special-empty">
+                Select a menu item to see its preview.
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    const image =
+        typeof item.image === 'string' &&
+        item.image.trim()
+            ? item.image
+            : '';
+
+    const ingredient =
+        item.ingridient ||
+        item.ingredient ||
+        '';
+
+
+    preview.innerHTML = `
+
+        <div class="day-special-preview-card">
+
+            <div class="day-special-preview-image">
+
+                ${
+                    image
+                        ? `
+                            <img
+                                src="${escapeAttributeForAdmin(
+                                    image
+                                )}"
+                                alt="${escapeAttributeForAdmin(
+                                    item.name || ''
+                                )}"
+                            >
+                        `
+                        : `
+                            <div class="day-special-empty">
+                                No image
+                            </div>
+                        `
+                }
+
+            </div>
+
+
+            <div class="day-special-preview-info">
+
+                <h3>
+                    ${escapeHtmlForAdmin(
+                        item.name ||
+                        'Unnamed item'
+                    )}
+                </h3>
+
+                <p class="special-price">
+
+                    ${escapeHtmlForAdmin(
+                        item.price ?? 0
+                    )} ETB
+
+                </p>
+
+                <p class="special-ingredient">
+
+                    ${escapeHtmlForAdmin(
+                        ingredient ||
+                        'No ingredient description'
+                    )}
+
+                </p>
+
+
+                ${
+                    item.isDaySpecial === true
+                        ? `
+                            <span class="day-special-current">
+                                ⭐ CURRENT DAY SPECIAL
+                            </span>
+                        `
+                        : ''
+                }
+
+            </div>
+
+        </div>
+
+    `;
+
+}
+
+
+/* ================================================================
+   SAVE / ADD DAY SPECIAL
+================================================================ */
+
+async function saveDaySpecial() {
+
+    const categorySelect =
+        document.getElementById(
+            'daySpecialCategory'
+        );
+
+    const itemSelect =
+        document.getElementById(
+            'daySpecialItem'
+        );
+
+    if (
+        !categorySelect ||
+        !itemSelect ||
+        !categorySelect.value ||
+        itemSelect.value === ''
+    ) {
+
+        showMessage(
+            'Please choose a menu item first.',
+            'error'
+        );
+
+        return;
+
+    }
+
+
+    const category =
+        categorySelect.value;
+
+    const index =
+        Number(
+            itemSelect.value
+        );
+
+    const items =
+        Array.isArray(
+            foods[category]
+        )
+            ? foods[category]
+            : [];
+
+    const selectedItem =
+        items[index];
+
+
+    if (!selectedItem) {
+
+        showMessage(
+            'The selected menu item could not be found.',
+            'error'
+        );
+
+        return;
+
+    }
+
+
+    if (
+        selectedItem.isDaySpecial === true
+    ) {
+
+        showMessage(
+            `"${selectedItem.name}" is already a Day Special.`,
+            'error'
+        );
+
+        return;
+
+    }
+
+
+    const currentSpecials =
+        getDaySpecialItems();
+
+    if (
+        currentSpecials.length >=
+        MAX_DAY_SPECIALS
+    ) {
+
+        showMessage(
+            `You can have a maximum of ${MAX_DAY_SPECIALS} Day Specials.`,
+            'error'
+        );
+
+        return;
+
+    }
+
+
+    const saveButton =
+        document.getElementById(
+            'daySpecialSaveBtn'
+        );
+
+    if (saveButton) {
+
+        saveButton.disabled =
+            true;
+
+    }
+
+
+    showAdminLoading(
+        'Adding Day Special...'
+    );
+
+
+    try {
+
+        selectedItem.isDaySpecial =
+            true;
+
+
+        await saveMenuDataSilently();
+
+
+        renderCurrentMenu();
+
+        renderCurrentDaySpecialList();
+
+        updateDaySpecialCounter();
+
+        updateDaySpecialRemoveButton();
+
+
+        if (itemSelect) {
+
+            itemSelect.value =
+                '';
+
+        }
+
+        renderDaySpecialPreview(
+            null
+        );
+
+
+        if (
+            getDaySpecialItems().length >=
+            MAX_DAY_SPECIALS
+        ) {
+
+            if (saveButton) {
+
+                saveButton.disabled =
+                    true;
+
+            }
+
+            showMessage(
+                `Maximum of ${MAX_DAY_SPECIALS} Day Specials reached.`,
+                'success'
+            );
+
+        } else {
+
+            showMessage(
+                `"${selectedItem.name}" added as a Day Special.`,
+                'success'
+            );
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            'Save Day Special error:',
+            error
+        );
+
+
+        delete selectedItem.isDaySpecial;
+
+
+        renderCurrentMenu();
+
+        renderCurrentDaySpecialList();
+
+        updateDaySpecialCounter();
+
+
+        showMessage(
+            error.message ||
+            'Could not save Day Special.',
+            'error'
+        );
+
+    } finally {
+
+        if (
+            saveButton &&
+            getDaySpecialItems().length <
+                MAX_DAY_SPECIALS
+        ) {
+
+            saveButton.disabled =
+                false;
+
+        }
+
+        hideAdminLoading();
+
+    }
+
+}
+
+
+/* ================================================================
+   REMOVE SELECTED DAY SPECIAL
+================================================================ */
+
+async function removeDaySpecial() {
+
+    const categorySelect =
+        document.getElementById(
+            'daySpecialCategory'
+        );
+
+    const itemSelect =
+        document.getElementById(
+            'daySpecialItem'
+        );
+
+    if (
+        !categorySelect ||
+        !itemSelect ||
+        !categorySelect.value ||
+        itemSelect.value === ''
+    ) {
+
+        showMessage(
+            'Select a current Day Special first.',
+            'error'
+        );
+
+        return;
+
+    }
+
+
+    const category =
+        categorySelect.value;
+
+    const index =
+        Number(
+            itemSelect.value
+        );
+
+    const items =
+        Array.isArray(
+            foods[category]
+        )
+            ? foods[category]
+            : [];
+
+    const item =
+        items[index];
+
+
+    if (
+        !item ||
+        item.isDaySpecial !== true
+    ) {
+
+        showMessage(
+            'The selected item is not a Day Special.',
+            'error'
+        );
+
+        return;
+
+    }
+
+
+    /* =========================================================
+       PROFESSIONAL CONFIRMATION
+    ========================================================= */
+
+    const itemName =
+        item.name ||
+        'this item';
+
+    const confirmed =
+        await showAdminConfirm({
+
+            title:
+                'Remove Day Special?',
+
+            message:
+                `"${itemName}" will be removed from today's Day Specials.`,
+
+            confirmText:
+                'Remove Special',
+
+            cancelText:
+                'Keep Special',
+
+            icon:
+                '⭐'
+
+        });
+
+
+    if (!confirmed) {
+
+        return;
+
+    }
+
+
+    const removeButton =
+        document.getElementById(
+            'daySpecialRemoveBtn'
+        );
+
+    if (removeButton) {
+
+        removeButton.disabled =
+            true;
+
+    }
+
+
+    showAdminLoading(
+        'Removing Day Special...'
+    );
+
+
+    try {
+
+        item.isDaySpecial =
+            false;
+
+
+        await saveMenuDataSilently();
+
+
+        renderCurrentMenu();
+
+        renderCurrentDaySpecialList();
+
+        updateDaySpecialCounter();
+
+        updateDaySpecialRemoveButton();
+
+        renderDaySpecialPreview(
+            null
+        );
+
+
+        itemSelect.value =
+            '';
+
+
+        showMessage(
+            `"${itemName}" removed from Day Specials.`,
+            'success'
+        );
+
+    } catch (error) {
+
+        console.error(
+            'Remove Day Special error:',
+            error
+        );
+
+
+        item.isDaySpecial =
+            true;
+
+
+        renderCurrentMenu();
+
+        renderCurrentDaySpecialList();
+
+        updateDaySpecialCounter();
+
+
+        showMessage(
+            error.message ||
+            'Could not remove Day Special.',
+            'error'
+        );
+
+    } finally {
+
+        hideAdminLoading();
+
+    }
+
+}
+
+
+/* ================================================================
+   REMOVE ONE SPECIFIC DAY SPECIAL
+================================================================ */
+
+async function removeSpecificDaySpecial(
+    category,
+    index
+) {
+
+    const items =
+        Array.isArray(
+            foods[category]
+        )
+            ? foods[category]
+            : [];
+
+    const item =
+        items[index];
+
+
+    if (
+        !item ||
+        item.isDaySpecial !== true
+    ) {
+
+        showMessage(
+            'Day Special could not be found.',
+            'error'
+        );
+
+        return;
+
+    }
+
+
+    /* =========================================================
+       PROFESSIONAL CONFIRMATION
+    ========================================================= */
+
+    const itemName =
+        item.name ||
+        'this item';
+
+    const confirmed =
+        await showAdminConfirm({
+
+            title:
+                'Remove Day Special?',
+
+            message:
+                `"${itemName}" will be removed from today's Day Specials.`,
+
+            confirmText:
+                'Remove Special',
+
+            cancelText:
+                'Keep Special',
+
+            icon:
+                '⭐'
+
+        });
+
+
+    if (!confirmed) {
+
+        return;
+
+    }
+
+
+    showAdminLoading(
+        'Removing Day Special...'
+    );
+
+
+    try {
+
+        item.isDaySpecial =
+            false;
+
+
+        await saveMenuDataSilently();
+
+
+        renderCurrentMenu();
+
+        renderCurrentDaySpecialList();
+
+        updateDaySpecialCounter();
+
+        updateDaySpecialRemoveButton();
+
+
+        const itemSelect =
+            document.getElementById(
+                'daySpecialItem'
+            );
+
+        if (itemSelect) {
+
+            itemSelect.value =
+                '';
+
+        }
+
+
+        renderDaySpecialPreview(
+            null
+        );
+
+
+        showMessage(
+            `"${itemName}" removed from Day Specials.`,
+            'success'
+        );
+
+    } catch (error) {
+
+        console.error(
+            'Remove specific Day Special error:',
+            error
+        );
+
+
+        item.isDaySpecial =
+            true;
+
+
+        renderCurrentMenu();
+
+        renderCurrentDaySpecialList();
+
+        updateDaySpecialCounter();
+
+
+        showMessage(
+            error.message ||
+            'Could not remove Day Special.',
+            'error'
+        );
+
+    } finally {
+
+        hideAdminLoading();
+
+    }
+
+}
+
+
+/* ================================================================
+   SAVE MENU SILENTLY
+================================================================ */
+
+async function saveMenuDataSilently() {
+
+    if (!currentRestaurant) {
+
+        throw new Error(
+            'Restaurant information is not available.'
+        );
+
+    }
+
+
+    const response =
+        await fetch(
+            '/api/admin/menu/' +
+            encodeURIComponent(
+                currentRestaurant.slug
+            ),
+            {
+                method: 'POST',
+
+                headers: {
+                    'Content-Type':
+                        'application/json'
+                },
+
+                credentials:
+                    'same-origin',
+
+                body:
+                    JSON.stringify({
+                        menu: foods
+                    })
+            }
+        );
+
+
+    let data = {};
+
+    try {
+
+        data =
+            await response.json();
+
+    } catch (error) {
+
+        data = {};
+
+    }
+
+
+    if (
+        response.status === 401 ||
+        response.status === 403
+    ) {
+
+        window.location.replace(
+            '/admin.html'
+        );
+
+        throw new Error(
+            data.message ||
+            'Your admin session has expired.'
+        );
+
+    }
+
+
+    if (
+        !response.ok ||
+        !data.ok
+    ) {
+
+        throw new Error(
+            data.message ||
+            'Failed to save menu.'
+        );
+
+    }
+
+
+    return data;
+
+}
+
+
+/* ================================================================
+   CLOSE DAY SPECIAL MODAL
+================================================================ */
+
+function closeDaySpecialModal() {
+
+    const modal =
+        document.getElementById(
+            'daySpecialModal'
+        );
+
+    if (modal) {
+
+        modal.classList.remove(
+            'active'
+        );
+
+        setTimeout(
+            () => {
+
+                if (modal) {
+                    modal.remove();
+                }
+
+            },
+            200
+        );
+
+    }
+
+}
+
+
+/* ================================================================
+   ESCAPE HTML
+================================================================ */
+
+function escapeHtmlForAdmin(value) {
+
+    return String(value ?? '')
+        .replace(
+            /&/g,
+            '&amp;'
+        )
+        .replace(
+            /</g,
+            '&lt;'
+        )
+        .replace(
+            />/g,
+            '&gt;'
+        )
+        .replace(
+            /"/g,
+            '&quot;'
+        )
+        .replace(
+            /'/g,
+            '&#039;'
+        );
+
+}
+
+
+/* ================================================================
+   ESCAPE ATTRIBUTE
+================================================================ */
+
+function escapeAttributeForAdmin(value) {
+
+    return String(value ?? '')
+        .replace(
+            /&/g,
+            '&amp;'
+        )
+        .replace(
+            /"/g,
+            '&quot;'
+        )
+        .replace(
+            /'/g,
+            '&#039;'
+        )
+        .replace(
+            /</g,
+            '&lt;'
+        )
+        .replace(
+            />/g,
+            '&gt;'
+        );
 
 }
 
@@ -3189,10 +5950,25 @@ document.addEventListener(
                 'profileSaveBtn'
             );
 
+        const profileLogoInput =
+            document.getElementById(
+                'profileLogoInput'
+            );
 
-        /* ============================================================
+        const profileLogoRemoveBtn =
+            document.getElementById(
+                'profileLogoRemoveBtn'
+            );
+
+        const editItemImage =
+            document.getElementById(
+                'editItemImage'
+            );
+
+
+        /* =========================================================
            REFRESH
-        ============================================================ */
+        ========================================================= */
 
         if (refreshBtn) {
 
@@ -3204,9 +5980,9 @@ document.addEventListener(
         }
 
 
-        /* ============================================================
+        /* =========================================================
            PROFILE
-        ============================================================ */
+        ========================================================= */
 
         if (profileBtn) {
 
@@ -3263,9 +6039,46 @@ document.addEventListener(
         }
 
 
-        /* ============================================================
-           CLOSE PROFILE BY CLICKING OUTSIDE
-        ============================================================ */
+        /* =========================================================
+           EDIT ITEM IMAGE
+        ========================================================= */
+
+        if (editItemImage) {
+
+            editItemImage.addEventListener(
+                'change',
+                handleEditItemImageChange
+            );
+
+        }
+
+
+        /* =========================================================
+           PROFILE LOGO
+        ========================================================= */
+
+        if (profileLogoInput) {
+
+            profileLogoInput.addEventListener(
+                'change',
+                handleProfileLogoChange
+            );
+
+        }
+
+        if (profileLogoRemoveBtn) {
+
+            profileLogoRemoveBtn.addEventListener(
+                'click',
+                removeProfileLogo
+            );
+
+        }
+
+
+        /* =========================================================
+           PROFILE MODAL CLICK OUTSIDE
+        ========================================================= */
 
         const profileModal =
             document.getElementById(
@@ -3293,9 +6106,9 @@ document.addEventListener(
         }
 
 
-        /* ============================================================
-           ESCAPE KEY
-        ============================================================ */
+        /* =========================================================
+           ESC KEY
+        ========================================================= */
 
         document.addEventListener(
             'keydown',
@@ -3305,6 +6118,30 @@ document.addEventListener(
                     event.key === 'Escape'
                 ) {
 
+                    const confirmModal =
+                        document.getElementById(
+                            'adminConfirmModal'
+                        );
+
+                    if (confirmModal) {
+
+                        return;
+
+                    }
+
+                    const daySpecialModal =
+                        document.getElementById(
+                            'daySpecialModal'
+                        );
+
+                    if (daySpecialModal) {
+
+                        closeDaySpecialModal();
+
+                        return;
+
+                    }
+
                     closeProfileModal();
 
                 }
@@ -3313,30 +6150,23 @@ document.addEventListener(
         );
 
 
-        /* ============================================================
+        /* =========================================================
            DAY SPECIAL
-        ============================================================ */
+        ========================================================= */
 
         if (daySpecialBtn) {
 
             daySpecialBtn.addEventListener(
                 'click',
-                () => {
-
-                    showMessage(
-                        'Day Special feature is coming next.',
-                        'success'
-                    );
-
-                }
+                openDaySpecialModal
             );
 
         }
 
 
-        /* ============================================================
+        /* =========================================================
            LOGOUT
-        ============================================================ */
+        ========================================================= */
 
         if (logoutBtn) {
 
@@ -3348,9 +6178,9 @@ document.addEventListener(
         }
 
 
-        /* ============================================================
-           START DASHBOARD
-        ============================================================ */
+        /* =========================================================
+           START ADMIN
+        ========================================================= */
 
         checkCafeAdminAccess();
 
