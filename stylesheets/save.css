@@ -1,11 +1,29 @@
+/* ================================================================
+   GLOBAL
+   ================================================================ */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #f5efe6;
+    font-family: Arial, sans-serif;
+    color: #3b2a20;
+}
 
 
-
-/* ========================================
+/* ================================================================
    SUPER ADMIN PROFESSIONAL HEADER
-======================================== */
+   ================================================================ */
 
-.super-admin-header{
+.super-admin-header {
     position: fixed;
     top: 0;
     left: 0;
@@ -19,37 +37,37 @@
 
     padding: 0 18px;
 
-    background: rgba(255,255,255,0.96);
-
+    background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(12px);
 
-    box-shadow: 0 4px 18px rgba(0,0,0,.08);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
 
     z-index: 9999;
 }
 
 .header-left,
-.header-right{
+.header-right {
     width: 80px;
+
     display: flex;
     align-items: center;
 }
 
-.header-left{
+.header-left {
     justify-content: flex-start;
 }
 
-.header-right{
+.header-right {
     justify-content: flex-end;
 }
 
-.header-center{
+.header-center {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
 }
 
-.header-center h2{
+.header-center h2 {
     margin: 0;
 
     color: #4a2f22;
@@ -57,12 +75,12 @@
     font-size: 1.4rem;
     font-weight: 700;
 
-    letter-spacing: .5px;
+    letter-spacing: 0.5px;
 
     white-space: nowrap;
 }
 
-.header-icon-btn{
+.header-icon-btn {
     width: 42px;
     height: 42px;
 
@@ -81,1529 +99,1703 @@
     align-items: center;
     justify-content: center;
 
-    transition: .25s ease;
+    transition: 0.25s ease;
 }
 
-.header-icon-btn:hover{
+.header-icon-btn:hover {
     transform: translateY(-2px);
     background: #5d3b2a;
 }
 
-.admin-panel{
-    padding-top: 90px !important;
+
+/* ================================================================
+   RESTAURANT ADMIN TOP HEADER — FIXED
+   ================================================================ */
+
+.admin-header {
+    position: fixed;
+
+    top: 0;
+    left: 0;
+    right: 0;
+
+    width: 100%;
+
+    min-height: 72px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 12px 24px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f8eee2 0%,
+            #ffffff 55%,
+            #f5e8d8 100%
+        );
+
+    border-bottom: 1px solid #d8c3aa;
+
+    box-shadow:
+        0 3px 12px rgba(0, 0, 0, 0.10);
+
+    z-index: 1000;
 }
 
-.cartbutton{
-  position: fixed;
-  bottom: 2px;
-  right: 150px;
-  left: 150px;
-  background-color: rgb(116, 58, 1);
-  color: white;
-  border: none;
-  border-radius: 20px;
-  padding: 5px 20px;
-  font-weight: bolder;
-  font-size: 15px;
+
+/* Café name */
+
+.admin-header .restaurant-name {
+    margin: 0;
+
+    color: #4a2f22;
+
+    font-size: 20px;
+    font-weight: 800;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.head{
-    position: fixed;
+
+
+/* Right-side actions */
+
+.admin-header .admin-actions {
     display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    flex-wrap: nowrap;
+}
+
+
+/* Header action buttons */
+
+.admin-header .admin-actions button {
+    width: auto !important;
+
+    min-width: auto !important;
+
+    min-height: 40px;
+
+    margin: 0 !important;
+
+    padding: 8px 14px;
+
+    border: 1px solid #d8c3aa;
+
+    border-radius: 8px;
+
+    background: #ffffff;
+
+    color: #4a2f22;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    white-space: nowrap;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.admin-header .admin-actions button:hover {
+    border-color: #743a01;
+
+    color: #743a01;
+
+    transform: translateY(-1px);
+}
+
+
+/* Refresh */
+
+.admin-header .admin-actions .refresh-btn,
+.admin-header .admin-actions .admin-refresh-btn {
+    background: #4a2f22;
+
+    color: #ffffff;
+
+    border-color: #4a2f22;
+}
+
+.admin-header .admin-actions .refresh-btn:hover,
+.admin-header .admin-actions .admin-refresh-btn:hover {
+    background: #5d3b2a;
+
+    color: #ffffff;
+}
+
+
+/* Profile */
+
+.admin-header .admin-actions .profile-btn {
+    background: #ffffff;
+
+    color: #4a2f22;
+}
+
+
+/* Day Special */
+
+.admin-header .admin-actions .day-special-btn {
+    background: #743a01;
+
+    color: #ffffff;
+
+    border-color: #743a01;
+}
+
+.admin-header .admin-actions .day-special-btn:hover {
+    background: #5d2e00;
+
+    color: #ffffff;
+}
+
+
+/* Logout */
+
+.admin-header .admin-actions .logout-btn {
+    background: transparent;
+
+    color: #7a3025;
+
+    border-color: #d8b8b0;
+}
+
+.admin-header .admin-actions .logout-btn:hover {
+    background: #f8e9e6;
+
+    color: #8f2f2f;
+
+    border-color: #b97b72;
+}
+
+
+/* ================================================================
+   CONTENT BELOW FIXED ADMIN HEADER
+   ================================================================ */
+
+.dashboard-page {
+    width: 95%;
+    max-width: 1200px;
+
+    margin: 0 auto;
+
+    padding-top: 95px;
+    padding-bottom: 30px;
+}
+
+
+/* Admin panel box */
+
+.admin-panel-box {
+    background: #ffffff;
+
+    border-radius: 14px;
+
+    padding: 25px;
+
+    box-shadow:
+        0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+
+/* ================================================================
+   OLD ADMIN PANEL SUPPORT
+   ================================================================ */
+
+.admin-panel {
+    position: relative;
+
+    width: min(100%, 950px);
+
+    margin: 20px auto;
+
+    padding: 28px;
+
+    background: #fffdf9;
+
+    border-radius: 20px;
+
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.25);
+
+    border: 1px solid #eadbc8;
+
+    box-sizing: border-box;
+
+    max-height: none;
+}
+
+
+/* Modal admin panels */
+
+#ownerDashboardModal .admin-panel,
+#adminPanelModal .admin-panel {
+    max-height: calc(100vh - 40px);
+
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+
+/* ================================================================
+   ADMIN TOP
+   ================================================================ */
+
+.admin-top {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 15px;
+
+    margin-bottom: 25px;
+
+    flex-wrap: wrap;
+}
+
+.admin-top h1 {
+    margin: 0;
+}
+
+.restaurant-name {
+    margin-top: 6px;
+
+    color: #777;
+}
+
+
+/* ================================================================
+   GENERAL ADMIN BUTTONS
+   ================================================================ */
+
+.logout-btn,
+.refresh-btn,
+.admin-btn {
+    width: auto;
+
+    border: none;
+
+    border-radius: 8px;
+
+    padding: 10px 16px;
+
+    cursor: pointer;
+
+    font-weight: bold;
+}
+
+.logout-btn {
+    background: #8f2f2f;
+    color: white;
+}
+
+.refresh-btn {
+    background: #4a2f22;
+    color: white;
+}
+
+.admin-btn {
+    background: #4a2f22;
+    color: white;
+
+    margin-right: 8px;
+    margin-top: 8px;
+}
+
+.danger-btn {
+    background: #a22;
+}
+
+
+/* ================================================================
+   ADMIN SECTIONS
+   ================================================================ */
+
+.section {
+    border-top: 1px solid #eee;
+
+    padding-top: 20px;
+
+    margin-top: 20px;
+}
+
+.section h3 {
+    margin-top: 0;
+}
+
+.form-row {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 8px;
+
+    align-items: center;
+}
+
+input,
+select {
+    padding: 8px;
+
+    border: 1px solid #ccc;
+
+    border-radius: 6px;
+}
+
+select:disabled {
+    background: #f2f2f2;
+
+    color: #999;
+
+    cursor: not-allowed;
+}
+
+
+/* ================================================================
+   DAY SPECIAL / ITEM SELECTION
+   ================================================================ */
+
+.item-selection-box {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(220px, 1fr));
+
+    gap: 15px;
+
+    margin-bottom: 15px;
+}
+
+.selection-field {
+    display: flex;
+
     flex-direction: column;
-    top: 0px;
-    left: 0px;
-    right: 0px;
+
+    gap: 6px;
+}
+
+.selection-field label {
+    font-weight: bold;
+
+    font-size: 14px;
+}
+
+.selection-field select {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    min-height: 40px;
+}
+
+.edit-fields {
+    margin-top: 15px;
+}
+
+
+/* ================================================================
+   MENU LIST
+   ================================================================ */
+
+.menu-list {
+    margin-top: 20px;
+}
+
+.menu-category {
+    margin-bottom: 25px;
+}
+
+.menu-category h4 {
+    margin-bottom: 10px;
+
+    text-transform: capitalize;
+}
+
+.menu-item {
+    border: 1px solid #ddd;
+
+    border-radius: 8px;
+
+    padding: 10px;
+
+    margin-bottom: 8px;
+}
+
+
+/* ================================================================
+   MESSAGE
+   ================================================================ */
+
+#message {
+    margin-top: 15px;
+
+    padding: 10px;
+
+    border-radius: 7px;
+
+    display: none;
+}
+
+.success {
+    display: block !important;
+
+    background: #e5f4e5;
+
+    color: #236b23;
+}
+
+.error {
+    display: block !important;
+
+    background: #f8e0e0;
+
+    color: #9a2222;
+}
+
+
+/* ================================================================
+   ADMIN GRID
+   ================================================================ */
+
+.admin-grid {
+    display: grid;
+
+    gap: 15px;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+}
+
+
+/* ================================================================
+   CUSTOMER MENU OLD HEADER
+   ================================================================ */
+
+.head {
+    position: fixed;
+
+    display: flex;
+
+    flex-direction: column;
+
+    top: 0;
+    left: 0;
+    right: 0;
+
     height: 90px;
-    background-color:rgb(240, 231, 220);
+
+    background-color: rgb(240, 231, 220);
+
     color: rgb(202, 39, 39);
+
     font-weight: bolder;
+
     font-size: 25px;
+
     border-bottom: 2px solid rgb(88, 3, 25);
+
     z-index: 120;
 }
-.top{
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  padding: 0 15px;
+
+.top {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    width: 100%;
+
+    padding: 0 15px;
 }
+
 .name {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  justify-content: center;
-  font-weight: bold;
-  margin-top: 10px;
-  margin-left: 30px;
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    text-align: center;
+
+    justify-content: center;
+
+    font-weight: bold;
+
+    margin-top: 10px;
+
+    margin-left: 30px;
 }
+
 .sync-status {
-  text-align: center;
-  font-size: 12px;
-  color: #7a3a00;
-  font-weight: 600;
-  margin-top: 2px;
+    text-align: center;
+
+    font-size: 12px;
+
+    color: #7a3a00;
+
+    font-weight: 600;
+
+    margin-top: 2px;
 }
 
-/* Styling for active category button */
+
+/* ================================================================
+   CATEGORY ACTIVE BUTTON
+   ================================================================ */
+
 #categoryButtons button.active {
-  background-color: #8B4513; /* Brown background */
-  color: #ffffff;            /* White text */
-  border-color: #5C2E0B;     /* Optional dark brown border */
+    background-color: #8b4513;
+
+    color: #ffffff;
+
+    border-color: #5c2e0b;
 }
 
 
+/* ================================================================
+   CUSTOMER MENU FILTER
+   ================================================================ */
 
-.auth-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(20, 15, 10, 0.72);
+.filter-bar {
+    position: sticky !important;
 
-  display: none;
-  align-items: center;
-  justify-content: center;
+    top: 0 !important;
 
-  z-index: 3000;
+    left: auto !important;
 
-  padding: 25px 15px;
-  overflow-y: auto;
-  overflow-x: hidden;
+    width: 100%;
 
-  box-sizing: border-box;
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+    padding: 10px 15px 12px;
+
+    background-color: rgb(240, 232, 223);
+
+    z-index: 100;
+
+    height: auto !important;
+
+    max-height: none !important;
+
+    overflow: visible !important;
+
+    box-shadow:
+        0 2px 7px rgba(0, 0, 0, 0.08);
 }
 
 
+/* Search */
+
+#searchInput {
+    width: 100%;
+
+    border: 1px solid #d2b48c;
+
+    border-radius: 999px;
+
+    padding: 8px 12px;
+
+    outline: none;
+
+    font-size: 14px;
+}
 
 
-.auth-overlay.show {
-  display: flex;
+/* Category buttons */
+
+.buttons {
+    display: flex;
+
+    flex-direction: row;
+
+    overflow-x: auto;
+
+    white-space: nowrap;
+
+    gap: 10px;
+
+    padding-bottom: 2px;
 }
-.auth-card, .admin-panel {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-  padding: 20px;
-  width: min(100%, 500px);
-}
-.auth-card input,
-.auth-card button,
-.admin-panel input,
-.admin-panel select,
-.admin-panel textarea,
-.admin-panel button {
-  width: 100%;
-  margin-top: 10px;
-  border-radius: 8px;
-  border: 1px solid #d2b48c;
-  padding: 8px 10px;
-}
-.auth-btn,
-.admin-panel button,
-.logout-btn {
-  background: rgb(116, 58, 1);
-  color: white;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-}
-.close-auth {
-  margin-top: 10px;
-  width: 100%;
-  border: none;
-  background: #eee;
-  padding: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.admin-panel {
-  width: min(100%, 900px);
-  margin: 115px auto 20px;
-}
-.admin-grid {
-  display: grid;
-  gap: 15px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.admin-section {
-  background: #faf3e7;
-  border-radius: 12px;
-  padding: 14px;
-}
-.admin-actions {
-  display: flex;
-  gap: 8px;
-}
-.admin-actions button {
-  flex: 1;
-}
-.admin-status {
-  min-height: 20px;
-  color: #7a3a00;
-  font-weight: 600;
-}
-.logout-btn {
-  margin-top: 12px;
-  padding: 8px 12px;
-}
-.filter-bar{
-  position: fixed;
-  top: 91px;
-  left: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 15px 12px;
-  background-color: rgb(240, 232, 223);
-  z-index: 100;
-}
-#searchInput{
-  width: 100%;
-  border: 1px solid #d2b48c;
-  border-radius: 999px;
-  padding: 8px 12px;
-  outline: none;
-  font-size: 14px;
-}
-.buttons{
-  display: flex;
-  flex-direction: row;
-  overflow-x: auto;
-  white-space: nowrap;
-  gap: 10px;
-  padding-bottom: 2px;
-  
-}
+
 .buttons button {
     border-radius: 20px;
+
     background-color: whitesmoke;
+
     color: black;
+
     border: none;
+
     flex-shrink: 0;
+
     white-space: nowrap;
+
     font-size: 18px;
+
     padding: 6px 15px;
+
     cursor: pointer;
+
     transition: all 0.2s ease;
 }
+
 .buttons button.active {
     background-color: rgb(116, 58, 1);
+
     color: white;
-    box-shadow: 0 4px 8px rgba(116, 58, 1, 0.2);
+
+    box-shadow:
+        0 4px 8px rgba(116, 58, 1, 0.2);
 }
-.container{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 5px;
-  row-gap: 5px;
-  border-right: 1px solid red;
-  background-color: #f2f2f2;
-  margin-top: 215px;
-  padding: 5px 5px;
-  margin-bottom: 200px;
+
+
+/* ================================================================
+   CUSTOMER MENU GRID
+   ================================================================ */
+
+.container {
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    column-gap: 5px;
+
+    row-gap: 5px;
+
+    background-color: #f2f2f2;
+
+    margin-top: 0 !important;
+
+    padding: 5px;
+
+    margin-bottom: 200px;
 }
-@media (max-width: 700px) {
-  .admin-grid {
-    grid-template-columns: 1fr;
-  }
+
+
+/* ================================================================
+   FOOD CARDS
+   ================================================================ */
+
+.empty-state {
+    grid-column: 1 / -1;
+
+    text-align: center;
+
+    padding: 20px;
+
+    color: #7a3a00;
+
+    font-weight: 600;
 }
-.empty-state{
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 20px;
-  color: #7a3a00;
-  font-weight: 600;
+
+.foodd {
+    border: 1px solid #d0c1a5;
+
+    border-radius: 12px;
+
+    padding: 10px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #eef8e4 0%,
+            #f7efe3 100%
+        );
+
+    display: flex;
+
+    flex-direction: column;
+
+    box-shadow:
+        0 4px 10px rgba(0, 0, 0, 0.08);
 }
-.foodd{
-  border: 1px solid #d0c1a5;
-  border-radius: 12px;
-  padding: 10px;
-  background: linear-gradient(135deg, #eef8e4 0%, #f7efe3 100%);
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+
+.divimage {
+    width: 100%;
 }
-.divimage{
-  width: 100%;
+
+.image {
+    width: 100%;
+
+    border-radius: 10px;
+
+    object-fit: cover;
+
+    height: 140px;
 }
-.image{
-  width: 100%;
-  border-radius: 10px;
-  object-fit: cover;
-  height: 140px;
-}
+
 .divinfo {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+    margin-top: 8px;
 }
+
 .divinfo p {
-  margin: 0;
-  color: #4b2a0a;
-  font-weight: 600;
+    margin: 0;
+
+    color: #4b2a0a;
+
+    font-weight: 600;
 }
+
 .ingredient {
-  font-size: 13px;
-  color: #6b4a2d;
-  font-weight: 500;
-  line-height: 1.4;
+    font-size: 13px;
+
+    color: #6b4a2d;
+
+    font-weight: 500;
+
+    line-height: 1.4;
 }
-.info2{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+
+.info2 {
+    display: grid;
+
+    grid-template-columns: 2fr 1fr;
+
+    align-items: center;
+
+    gap: 10px;
 }
+
 .info2 p {
-  margin: 0;
-  color: #8a3d00;
-  font-weight: 700;
+    margin: 0;
+
+    color: #8a3d00;
+
+    font-weight: 700;
 }
-.addbutton, .login{
-  background-color: rgb(116, 58, 1);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-weight: 600;
-  cursor: pointer;
+
+
+/* ================================================================
+   ADD BUTTON
+   ================================================================ */
+
+.addbutton,
+.login {
+    background-color: rgb(116, 58, 1);
+
+    color: white;
+
+    border: none;
+
+    border-radius: 8px;
+
+    padding: 8px 12px;
+
+    font-weight: 600;
+
+    cursor: pointer;
 }
+
 .addbutton:hover {
-  background-color: rgb(88, 44, 1);
+    background-color: rgb(88, 44, 1);
 }
-.cart table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 10px;
-  flex-shrink: 0;
+
+
+/* ================================================================
+   CART
+   ================================================================ */
+
+.cartbutton {
+    position: fixed;
+
+    bottom: 2px;
+
+    right: 150px;
+    left: 150px;
+
+    background-color: rgb(116, 58, 1);
+
+    color: white;
+
+    border: none;
+
+    border-radius: 20px;
+
+    padding: 5px 20px;
+
+    font-weight: bolder;
+
+    font-size: 15px;
+
+    z-index: 1000;
 }
-.cart th,
-.cart td {
-  border: 1px solid #f7f6f5;
-  padding: 2px;
-  text-align: left;
-}
-.cart thead {
-  background-color: rgb(255, 255, 255);
-  color: rgb(116, 58, 1);
-}
-.cart th {
-  font-weight: 700;
-}
-.cart tbody tr:nth-child(even) {
-  background-color: rgb(34, 34, 34);
-}
-.cart {
-  padding: 10px;
-}
-.cart-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.save-load-btn {
-  border: none;
-  border-radius: 999px;
-  padding: 6px 12px;
-  background: #f4d8b8;
-  color: #7a3a00;
-  font-weight: 700;
-  cursor: pointer;
-}
-.save-load-btn:hover {
-  background: #f1c48c;
-}
+
 .container2 {
-  background-color: rgb(34, 34, 34);
-  color: rgb(235, 243, 234);
-  position: fixed;
-  bottom: -300px;
-  left: 50px;
-  right: 50px;
-  transition: bottom 0.9s ease;
-  border-radius: 20px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    background-color: rgb(34, 34, 34);
+
+    color: rgb(235, 243, 234);
+
+    position: fixed;
+
+    bottom: -300px;
+
+    left: 50px;
+    right: 50px;
+
+    transition: bottom 0.9s ease;
+
+    border-radius: 20px;
+
+    box-shadow:
+        0 10px 25px rgba(0, 0, 0, 0.25);
+
+    z-index: 1500;
 }
 
 .container2.open {
-  bottom: 15px;
+    bottom: 15px;
 }
-.minus{
-  background-color: rgb(206, 73, 73);
-  border: none;
-  border-radius: 5px;
-  color: white;
-  cursor: pointer;
-  padding: 1px 4px;
+
+.minus {
+    background-color: rgb(206, 73, 73);
+
+    border: none;
+
+    border-radius: 5px;
+
+    color: white;
+
+    cursor: pointer;
+
+    padding: 1px 4px;
 }
-.plus{
-  background-color: rgb(17, 109, 14);
-  border: none;
-  border-radius: 5px;
-  color: white;
-  cursor: pointer;
-  padding: 1px 4px;
+
+.plus {
+    background-color: rgb(17, 109, 14);
+
+    border: none;
+
+    border-radius: 5px;
+
+    color: white;
+
+    cursor: pointer;
+
+    padding: 1px 4px;
 }
+
 .qty-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 8px;
 }
-.info2{
-  display: grid;
-  grid-template-columns: 2fr 1fr;
+
+
+/* ================================================================
+   CART TABLE
+   ================================================================ */
+
+.cart {
+    padding: 10px;
 }
+
+.cart table {
+    width: 100%;
+
+    border-collapse: collapse;
+
+    margin-top: 10px;
+
+    flex-shrink: 0;
+}
+
+.cart th,
+.cart td {
+    border: 1px solid #f7f6f5;
+
+    padding: 2px;
+
+    text-align: left;
+}
+
+.cart thead {
+    background-color: white;
+
+    color: rgb(116, 58, 1);
+}
+
+.cart th {
+    font-weight: 700;
+}
+
+.cart tbody tr:nth-child(even) {
+    background-color: rgb(34, 34, 34);
+}
+
+.cart-actions {
+    display: flex;
+
+    justify-content: flex-end;
+
+    gap: 8px;
+
+    margin-bottom: 8px;
+}
+
+.save-load-btn {
+    border: none;
+
+    border-radius: 999px;
+
+    padding: 6px 12px;
+
+    background: #f4d8b8;
+
+    color: #7a3a00;
+
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.save-load-btn:hover {
+    background: #f1c48c;
+}
+
+
+/* ================================================================
+   IMAGE VIEWER
+   ================================================================ */
 
 .image-viewer {
-  display: none;
+    display: none;
 
-  position: fixed;
-  inset: 0;
+    position: fixed;
 
-  background: rgba(0,0,0,0.8);
+    inset: 0;
 
-  justify-content: center;
-  align-items: center;
+    background: rgba(0, 0, 0, 0.8);
 
-  z-index: 2000;
+    justify-content: center;
+
+    align-items: center;
+
+    z-index: 2000;
 }
-
 
 .image-viewer img {
-  max-width: 90%;
-  max-height: 90%;
+    max-width: 90%;
 
-  border-radius: 15px;
+    max-height: 90%;
+
+    border-radius: 15px;
 }
-
 
 .close-image {
-  position: absolute;
+    position: absolute;
 
-  top: 20px;
-  right: 20px;
+    top: 20px;
+    right: 20px;
 
-  width: 45px;
-  height: 45px;
+    width: 45px;
+    height: 45px;
 
-  border-radius: 50%;
-  border: none;
+    border-radius: 50%;
 
-  background: white;
-  color: red;
+    border: none;
 
-  font-size: 25px;
-  cursor: pointer;
+    background: white;
+
+    color: red;
+
+    font-size: 25px;
+
+    cursor: pointer;
 }
-
 
 .image-viewer.show {
-  display: flex;
+    display: flex;
 }
-.payment{
-  background-color: green;
-  color: white;
-  font: bold;
-  padding: 12px 20px;
-  border-radius: 10px;
-  margin-top: 10px;
-  border: none;
-  cursor: pointer;
-  font-weight: 700;
+
+
+/* ================================================================
+   PAYMENT
+   ================================================================ */
+
+.payment {
+    background-color: green;
+
+    color: white;
+
+    padding: 12px 20px;
+
+    border-radius: 10px;
+
+    margin-top: 10px;
+
+    border: none;
+
+    cursor: pointer;
+
+    font-weight: 700;
 }
+
 .payment-overlay {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.65);
-  z-index: 3500;
+    position: fixed;
+
+    inset: 0;
+
+    display: none;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgba(0, 0, 0, 0.65);
+
+    z-index: 3500;
 }
+
 .payment-overlay.show {
-  display: flex;
+    display: flex;
 }
+
 .payment-card {
-  position: relative;
-  width: min(100%, 430px);
-  padding: 24px;
-  border-radius: 16px;
-  background: #fffdf9;
-  color: #332013;
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+    position: relative;
+
+    width: min(100%, 430px);
+
+    padding: 24px;
+
+    border-radius: 16px;
+
+    background: #fffdf9;
+
+    color: #332013;
+
+    box-shadow:
+        0 12px 35px rgba(0, 0, 0, 0.3);
 }
+
 .payment-card h2 {
-  margin: 0 30px 8px 0;
+    margin: 0 30px 8px 0;
 }
+
 .payment-total {
-  margin: 0 0 18px;
-  color: #6b4a2d;
+    margin: 0 0 18px;
+
+    color: #6b4a2d;
 }
+
 .payment-total strong {
-  color: #8a3d00;
+    color: #8a3d00;
 }
+
 .payment-options {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 10px;
 }
+
 .payment-option {
-  min-height: 52px;
-  border: 1px solid #d2b48c;
-  border-radius: 9px;
-  background: #f7efe3;
-  color: #4b2a0a;
-  font-weight: 700;
-  cursor: pointer;
+    min-height: 52px;
+
+    border: 1px solid #d2b48c;
+
+    border-radius: 9px;
+
+    background: #f7efe3;
+
+    color: #4b2a0a;
+
+    font-weight: 700;
+
+    cursor: pointer;
 }
+
 .payment-option:hover,
 .payment-option:focus-visible {
-  background: #dff0d2;
-  outline: 2px solid #743a01;
-  outline-offset: 2px;
+    background: #dff0d2;
+
+    outline: 2px solid #743a01;
+
+    outline-offset: 2px;
 }
+
 .payment-option.selected {
-  background: #743a01;
-  color: white;
-  border-color: #743a01;
+    background: #743a01;
+
+    color: white;
+
+    border-color: #743a01;
 }
+
 .payment-form {
-  display: grid;
-  gap: 8px;
-  margin-top: 18px;
+    display: grid;
+
+    gap: 8px;
+
+    margin-top: 18px;
 }
+
 .payment-form label {
-  color: #6b4a2d;
-  font-size: 14px;
-  font-weight: 700;
+    color: #6b4a2d;
+
+    font-size: 14px;
+
+    font-weight: 700;
 }
+
 .payment-form input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 11px 12px;
-  border: 1px solid #d2b48c;
-  border-radius: 8px;
-  font-size: 16px;
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 11px 12px;
+
+    border: 1px solid #d2b48c;
+
+    border-radius: 8px;
+
+    font-size: 16px;
 }
+
 .payment-submit {
-  margin-top: 5px;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  background: #743a01;
-  color: white;
-  font-weight: 700;
-  cursor: pointer;
+    margin-top: 5px;
+
+    padding: 12px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background: #743a01;
+
+    color: white;
+
+    font-weight: 700;
+
+    cursor: pointer;
 }
+
 .payment-submit:disabled {
-  cursor: wait;
-  opacity: 0.65;
+    cursor: wait;
+
+    opacity: 0.65;
 }
+
 .payment-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 50%;
-  background: #eee;
-  color: #743a01;
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
+    position: absolute;
+
+    top: 12px;
+    right: 12px;
+
+    width: 32px;
+    height: 32px;
+
+    border: none;
+
+    border-radius: 50%;
+
+    background: #eee;
+
+    color: #743a01;
+
+    font-size: 24px;
+
+    line-height: 1;
+
+    cursor: pointer;
 }
+
 .payment-message {
-  min-height: 22px;
-  margin: 16px 0 0;
-  color: #276414;
-  font-weight: 600;
-}
-@media (max-width: 420px) {
-  .payment-options {
-    grid-template-columns: 1fr;
-  }
+    min-height: 22px;
+
+    margin: 16px 0 0;
+
+    color: #276414;
+
+    font-weight: 600;
 }
 
 
+/* ================================================================
+   AUTH OVERLAY
+   ================================================================ */
 
-/* Centered Toast Notifications Overlay */
-#toast-container {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 99999;
-  pointer-events: none;
-}
-
-.toast-message {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 280px;
-  max-width: 450px;
-  padding: 16px 24px;
-  background-color: #2b1d0c;
-  color: #ffffff;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  animation: toastFadeIn 0.3s ease-out forwards;
-}
-
-.toast-success {
-  border-left: 6px solid #2ea043;
-}
-
-.toast-error {
-  border-left: 6px solid #da3633;
-}
-
-.toast-loading {
-  border-left: 6px solid #d97706;
-}
-
-/* Spinner Animation */
-.toast-spinner {
-  width: 20px;
-  height: 20px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  animation: toastSpin 0.8s linear infinite;
-}
-
-.toast-hide {
-  animation: toastFadeOut 0.3s ease-in forwards;
-}
-
-@keyframes toastFadeIn {
-  from { opacity: 0; transform: scale(0.85); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes toastFadeOut {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(0.85); }
-}
-
-@keyframes toastSpin {
-  to { transform: rotate(360deg); }
-}
-
-
-/* =========================================================
-   PROFESSIONAL ADMIN / SUPER ADMIN DASHBOARDS
-   ========================================================= */
-
-/* Make the entire modal scrollable */
 .auth-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(20, 15, 10, 0.72);
+    position: fixed;
 
-  display: none;
-  align-items: flex-start;
-  justify-content: center;
+    inset: 0;
 
-  z-index: 3000;
+    background: rgba(20, 15, 10, 0.72);
 
-  padding: 25px 15px;
-  overflow-y: auto;
-  overflow-x: hidden;
+    display: none;
 
-  box-sizing: border-box;
+    align-items: flex-start;
+
+    justify-content: center;
+
+    z-index: 3000;
+
+    padding: 25px 15px;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    box-sizing: border-box;
 }
 
 .auth-overlay.show {
-  display: flex;
+    display: flex;
 }
 
-/* ---------------------------------------------------------
-   ADMIN PANELS
-   --------------------------------------------------------- */
+.auth-card {
+    background: white;
 
-.admin-panel {
-  position: relative;
+    border-radius: 16px;
 
-  width: min(100%, 950px);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.2);
 
-  margin: 20px auto;
-  padding: 28px;
+    padding: 20px;
 
-  background: #fffdf9;
-  border-radius: 20px;
-
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.25);
-
-  border: 1px solid #eadbc8;
-
-  box-sizing: border-box;
-
-  /* Important for scrolling */
-  max-height: none;
+    width: min(100%, 500px);
 }
 
-/* Make the panel itself scrollable on smaller screens */
-#ownerDashboardModal .admin-panel,
-#adminPanelModal .admin-panel {
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
-  overflow-x: hidden;
+.auth-card input,
+.auth-card button {
+    width: 100%;
+
+    margin-top: 10px;
+
+    border-radius: 8px;
+
+    border: 1px solid #d2b48c;
+
+    padding: 8px 10px;
 }
 
-/* Custom scrollbar */
-#ownerDashboardModal .admin-panel::-webkit-scrollbar,
-#adminPanelModal .admin-panel::-webkit-scrollbar {
-  width: 8px;
+.auth-btn {
+    background: rgb(116, 58, 1);
+
+    color: white;
+
+    border: none;
+
+    cursor: pointer;
+
+    font-weight: 600;
 }
 
-#ownerDashboardModal .admin-panel::-webkit-scrollbar-track,
-#adminPanelModal .admin-panel::-webkit-scrollbar-track {
-  background: #f4eee6;
-  border-radius: 10px;
+.close-auth {
+    margin-top: 10px;
+
+    width: 100%;
+
+    border: none;
+
+    background: #eee;
+
+    padding: 8px;
+
+    border-radius: 8px;
+
+    cursor: pointer;
 }
 
-#ownerDashboardModal .admin-panel::-webkit-scrollbar-thumb,
-#adminPanelModal .admin-panel::-webkit-scrollbar-thumb {
-  background: #b8895b;
-  border-radius: 10px;
+
+/* ================================================================
+   TOAST
+   ================================================================ */
+
+#toast-container {
+    position: fixed;
+
+    top: 50%;
+    left: 50%;
+
+    transform: translate(-50%, -50%);
+
+    z-index: 99999;
+
+    pointer-events: none;
 }
 
-#ownerDashboardModal .admin-panel::-webkit-scrollbar-thumb:hover,
-#adminPanelModal .admin-panel::-webkit-scrollbar-thumb:hover {
-  background: #743a01;
+.toast-message {
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    min-width: 280px;
+
+    max-width: 450px;
+
+    padding: 16px 24px;
+
+    background-color: #2b1d0c;
+
+    color: #ffffff;
+
+    font-size: 16px;
+
+    font-weight: 600;
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.35);
+
+    border: 1px solid rgba(255, 255, 255, 0.15);
+
+    animation: toastFadeIn 0.3s ease-out forwards;
 }
 
-/* ---------------------------------------------------------
-   DASHBOARD HEADER
-   --------------------------------------------------------- */
+.toast-success {
+    border-left: 6px solid #2ea043;
+}
+
+.toast-error {
+    border-left: 6px solid #da3633;
+}
+
+.toast-loading {
+    border-left: 6px solid #d97706;
+}
+
+.toast-spinner {
+    width: 20px;
+    height: 20px;
+
+    border: 3px solid rgba(255, 255, 255, 0.3);
+
+    border-top-color: #ffffff;
+
+    border-radius: 50%;
+
+    animation: toastSpin 0.8s linear infinite;
+}
+
+.toast-hide {
+    animation: toastFadeOut 0.3s ease-in forwards;
+}
+
+@keyframes toastFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes toastFadeOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+}
+
+@keyframes toastSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* ================================================================
+   OWNER / SUPER ADMIN DASHBOARD
+   ================================================================ */
 
 .dashboard-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+    display: flex;
 
-  margin-bottom: 22px;
-  padding-bottom: 18px;
+    align-items: center;
 
-  border-bottom: 1px solid #eadbc8;
+    justify-content: center;
+
+    gap: 20px;
+
+    margin-bottom: 22px;
+
+    padding-bottom: 18px;
+
+    border-bottom: 1px solid #eadbc8;
 }
 
 .dashboard-header h3 {
-  margin: 0;
-  color: #3b2414;
-  font-size: 26px;
-  font-weight: 800;
+    margin: 0;
+
+    color: #3b2414;
+
+    font-size: 26px;
+
+    font-weight: 800;
 }
 
 .dashboard-header p {
-  margin: 6px 0 0;
-  color: #806b58;
-  font-size: 14px;
-  font-weight: 500;
+    margin: 6px 0 0;
+
+    color: #806b58;
+
+    font-size: 14px;
+
+    font-weight: 500;
 }
 
-/* ---------------------------------------------------------
-   RESTAURANT STATISTICS
-   --------------------------------------------------------- */
+
+/* Statistics */
 
 .restaurant-stats {
-  display: grid;
+    display: grid;
 
-  grid-template-columns:
-    repeat(3, minmax(0, 1fr));
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
 
-  gap: 16px;
+    gap: 16px;
 
-  margin-bottom: 28px;
+    margin-bottom: 28px;
 }
 
 .stat-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+    display: flex;
 
-  min-height: 105px;
+    align-items: center;
 
-  padding: 18px;
+    gap: 14px;
 
-  background: linear-gradient(
-    135deg,
-    #fffaf3,
-    #f6eadb
-  );
+    min-height: 105px;
 
-  border: 1px solid #ead7c0;
-  border-radius: 16px;
+    padding: 18px;
 
-  box-shadow:
-    0 6px 18px rgba(80, 45, 15, 0.08);
+    background:
+        linear-gradient(
+            135deg,
+            #fffaf3,
+            #f6eadb
+        );
 
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    border: 1px solid #ead7c0;
+
+    border-radius: 16px;
+
+    box-shadow:
+        0 6px 18px rgba(80, 45, 15, 0.08);
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
+    transform: translateY(-2px);
 
-  box-shadow:
-    0 10px 25px rgba(80, 45, 15, 0.13);
+    box-shadow:
+        0 10px 25px rgba(80, 45, 15, 0.13);
 }
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
+    width: 48px;
+    height: 48px;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    display: flex;
 
-  flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
 
-  border-radius: 14px;
+    flex-shrink: 0;
 
-  background: #743a01;
-  color: white;
+    border-radius: 14px;
 
-  font-size: 22px;
-  font-weight: 800;
+    background: #743a01;
+
+    color: white;
+
+    font-size: 22px;
+
+    font-weight: 800;
 }
 
 .stat-label {
-  color: #806b58;
+    color: #806b58;
 
-  font-size: 13px;
-  font-weight: 700;
+    font-size: 13px;
 
-  margin-bottom: 5px;
+    font-weight: 700;
+
+    margin-bottom: 5px;
 }
 
 .stat-number {
-  color: #3b2414;
+    color: #3b2414;
 
-  font-size: 30px;
-  font-weight: 800;
+    font-size: 30px;
 
-  line-height: 1;
+    font-weight: 800;
+
+    line-height: 1;
 }
 
-/* Active restaurant */
 .active-stat .stat-icon {
-  background: #287a3e;
+    background: #287a3e;
 }
 
-/* Disabled restaurant */
 .disabled-stat .stat-icon {
-  background: #9b3d32;
+    background: #9b3d32;
 }
 
-/* ---------------------------------------------------------
-   RESTAURANT MANAGEMENT TITLE
-   --------------------------------------------------------- */
 
-.dashboard-section-title {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-
-  gap: 10px;
-
-  margin-bottom: 14px;
-
-  border-bottom: 1px solid #eadbc8;
-  padding-bottom: 10px;
-}
-
-.dashboard-section-title h4 {
-  margin: 0;
-
-  color: #3b2414;
-
-  font-size: 19px;
-  font-weight: 800;
-}
-
-.dashboard-section-title span {
-  color: #8c7967;
-
-  font-size: 12px;
-}
-
-/* ---------------------------------------------------------
-   RESTAURANT CARDS
-   --------------------------------------------------------- */
+/* ================================================================
+   OWNER CAFE LIST
+   ================================================================ */
 
 .owner-cafe-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+    display: flex;
 
-  margin-bottom: 24px;
+    flex-direction: column;
+
+    gap: 12px;
+
+    margin-bottom: 24px;
 }
 
 .owner-cafe-list > div {
-  position: relative;
+    position: relative;
 
-  background: #ffffff;
+    background: #ffffff;
 
-  border: 1px solid #eadbc8 !important;
-  border-radius: 14px !important;
+    border: 1px solid #eadbc8 !important;
 
-  padding: 18px !important;
-  margin: 0 !important;
+    border-radius: 14px !important;
 
-  box-shadow:
-    0 4px 12px rgba(80, 45, 15, 0.06);
+    padding: 18px !important;
 
-  transition:
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+    margin: 0 !important;
+
+    box-shadow:
+        0 4px 12px rgba(80, 45, 15, 0.06);
 }
 
 .owner-cafe-list > div:hover {
-  transform: translateY(-1px);
+    transform: translateY(-1px);
 
-  box-shadow:
-    0 8px 20px rgba(80, 45, 15, 0.10);
+    box-shadow:
+        0 8px 20px rgba(80, 45, 15, 0.10);
 }
 
-/* Restaurant name */
 .owner-cafe-list strong {
-  display: inline-block;
+    display: inline-block;
 
-  color: #3b2414;
-
-  font-size: 18px;
-
-  margin-bottom: 5px;
-}
-
-/* Buttons inside restaurant cards */
-.owner-cafe-list button {
-  width: auto !important;
-
-  margin-top: 10px !important;
-  margin-right: 6px;
-
-  padding: 8px 13px !important;
-
-  border-radius: 8px !important;
-
-  font-size: 13px;
-}
-
-/* ---------------------------------------------------------
-   CREATE RESTAURANT SECTION
-   --------------------------------------------------------- */
-
-#ownerDashboardModal .admin-panel > div[style*="margin-top:16px"] {
-  margin-top: 24px !important;
-
-  padding: 20px;
-
-  background: #faf3e7;
-
-  border: 1px solid #eadbc8;
-  border-radius: 14px;
-}
-
-#ownerDashboardModal .admin-panel h4 {
-  color: #3b2414;
-  font-size: 18px;
-  margin-top: 0;
-}
-
-/* Form inputs */
-#ownerDashboardModal input,
-#adminPanelModal input,
-#adminPanelModal select,
-#adminPanelModal textarea {
-  box-sizing: border-box;
-
-  background: #fff;
-
-  border: 1px solid #d9c4aa;
-
-  color: #3b2414;
-
-  outline: none;
-
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-#ownerDashboardModal input:focus,
-#adminPanelModal input:focus,
-#adminPanelModal select:focus,
-#adminPanelModal textarea:focus {
-  border-color: #743a01;
-
-  box-shadow:
-    0 0 0 3px rgba(116, 58, 1, 0.10);
-}
-
-/* Dashboard buttons */
-#ownerDashboardModal button:not(.close-image),
-#adminPanelModal button:not(.close-image) {
-  cursor: pointer;
-
-  transition:
-    background 0.2s ease,
-    transform 0.15s ease;
-}
-
-#ownerDashboardModal button:not(.close-image):hover,
-#adminPanelModal button:not(.close-image):hover {
-  transform: translateY(-1px);
-}
-
-#ownerDashboardModal button:not(.close-image):active,
-#adminPanelModal button:not(.close-image):active {
-  transform: translateY(0);
-}
-
-/* ---------------------------------------------------------
-   ADMIN EDITOR
-   --------------------------------------------------------- */
-
-#adminPanelModal .admin-panel {
-  width: min(100%, 1000px);
-}
-
-#adminPanelModal #adminEditorContainer {
-  margin-top: 18px;
-}
-
-#adminPanelModal #adminEditorContainer > div {
-  background: #faf7f2;
-  border: 1px solid #eadbc8 !important;
-  border-radius: 14px;
-  padding: 16px !important;
-}
-
-/* ---------------------------------------------------------
-   CLOSE BUTTON
-   --------------------------------------------------------- */
-
-#ownerDashboardModal .close-image,
-#adminPanelModal .close-image {
-  position: sticky !important;
-
-  float: right;
-
-  top: 0;
-  right: 0;
-
-  width: 36px !important;
-  height: 36px !important;
-
-  z-index: 20;
-
-  background: #f4eee6;
-  color: #743a01;
-
-  font-size: 20px;
-}
-
-/* ---------------------------------------------------------
-   MOBILE
-   --------------------------------------------------------- */
-
-@media (max-width: 700px) {
-
-  .auth-overlay {
-    padding: 10px;
-  }
-
-  .admin-panel {
-    width: 100%;
-
-    margin: 10px auto;
-
-    padding: 18px;
-
-    border-radius: 16px;
-  }
-
-  #ownerDashboardModal .admin-panel,
-  #adminPanelModal .admin-panel {
-    max-height: calc(100vh - 20px);
-  }
-
-  .dashboard-header h3 {
-    font-size: 22px;
-  }
-
-  .restaurant-stats {
-    grid-template-columns: 1fr;
-
-    gap: 10px;
-  }
-
-  .stat-card {
-    min-height: 82px;
-
-    padding: 14px;
-  }
-
-  .stat-number {
-    font-size: 26px;
-  }
-
-  .dashboard-section-title {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .owner-cafe-list button {
-    width: 100% !important;
-
-    margin-right: 0;
-  }
-}
-
-/* ---------------------------------------------------------
-   VERY SMALL PHONES
-   --------------------------------------------------------- */
-
-@media (max-width: 420px) {
-
-  .admin-panel {
-    padding: 14px;
-  }
-
-  .dashboard-header h3 {
-    font-size: 20px;
-  }
-
-  .stat-card {
-    min-height: 75px;
-  }
-
-  .stat-icon {
-    width: 42px;
-    height: 42px;
+    color: #3b2414;
 
     font-size: 18px;
-  }
 
-  .stat-number {
-    font-size: 24px;
-  }
+    margin-bottom: 5px;
+}
+
+.owner-cafe-list button {
+    width: auto !important;
+
+    margin-top: 10px !important;
+
+    margin-right: 6px;
+
+    padding: 8px 13px !important;
+
+    border-radius: 8px !important;
+
+    font-size: 13px;
 }
 
 
-/* =========================================================
-   SUPER ADMIN - PROFESSIONAL NOTIFICATIONS / FORMS
-   ========================================================= */
-
-/* Top notification area */
-.owner-top-notification {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-20px);
-  width: min(92%, 620px);
-  padding: 15px 20px;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 12px 35px rgba(0,0,0,0.20);
-  border: 1px solid #e6e6e6;
-  z-index: 10000;
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.25s ease;
-}
-
-.owner-top-notification.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
-}
-
-.owner-top-notification.success {
-  border-left: 5px solid #198754;
-}
-
-.owner-top-notification.error {
-  border-left: 5px solid #dc3545;
-}
-
-.owner-top-notification.warning {
-  border-left: 5px solid #d39e00;
-}
-
-.owner-top-notification.info {
-  border-left: 5px solid #743a01;
-}
-
-.owner-notification-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.owner-notification-icon {
-  font-size: 22px;
-  line-height: 1;
-}
-
-.owner-notification-text {
-  flex: 1;
-}
-
-.owner-notification-title {
-  font-weight: 700;
-  font-size: 15px;
-  margin-bottom: 3px;
-}
-
-.owner-notification-message {
-  font-size: 14px;
-  color: #666;
-  line-height: 1.4;
-}
-
-.owner-notification-close {
-  background: none !important;
-  color: #777 !important;
-  border: none !important;
-  width: auto !important;
-  margin: 0 !important;
-  padding: 0 4px !important;
-  font-size: 20px;
-  cursor: pointer;
-}
-
-
-/* =========================================================
-   TOP ACTION FORM
-   ========================================================= */
-
-.owner-action-panel {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-25px);
-  width: min(94%, 650px);
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
-
-  background: #ffffff;
-  border-radius: 18px;
-  box-shadow: 0 18px 50px rgba(0,0,0,0.25);
-  border: 1px solid #e5e5e5;
-
-  padding: 24px;
-  z-index: 9999;
-
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.25s ease;
-}
-
-.owner-action-panel.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
-}
-
-.owner-action-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
-}
-
-.owner-action-header h3 {
-  margin: 0;
-  color: #3b2108;
-  font-size: 20px;
-}
-
-.owner-action-close {
-  width: auto !important;
-  margin: 0 !important;
-  padding: 5px 9px !important;
-  background: #f3f3f3 !important;
-  color: #555 !important;
-  border: none !important;
-  border-radius: 8px !important;
-  cursor: pointer;
-}
-
-.owner-action-close:hover {
-  background: #e7e7e7 !important;
-}
-
-.owner-action-panel label {
-  display: block;
-  font-weight: 600;
-  font-size: 13px;
-  margin: 12px 0 6px;
-  color: #444;
-}
-
-.owner-action-panel input,
-.owner-action-panel select {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 11px 13px;
-  border: 1px solid #d7d7d7;
-  border-radius: 10px;
-  font-size: 14px;
-  outline: none;
-}
-
-.owner-action-panel input:focus,
-.owner-action-panel select:focus {
-  border-color: #743a01;
-  box-shadow: 0 0 0 3px rgba(116,58,1,0.10);
-}
-
-.owner-action-buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.owner-action-buttons button {
-  flex: 1;
-  width: auto !important;
-  margin: 0 !important;
-  padding: 11px 16px !important;
-  border-radius: 10px !important;
-}
-
-.owner-primary-btn {
-  background: #743a01 !important;
-  color: white !important;
-  border: none !important;
-}
-
-.owner-secondary-btn {
-  background: #f1f1f1 !important;
-  color: #444 !important;
-  border: none !important;
-}
-
-.owner-danger-btn {
-  background: #b42318 !important;
-  color: white !important;
-  border: none !important;
-}
-
-
-/* =========================================================
-   MOBILE
-   ========================================================= */
-
-@media (max-width: 600px) {
-
-  .owner-top-notification {
-    top: 10px;
-    width: calc(100% - 20px);
-  }
-
-  .owner-action-panel {
-    top: 10px;
-    width: calc(100% - 20px);
-    padding: 18px;
-    max-height: calc(100vh - 20px);
-  }
-
-  .owner-action-buttons {
-    flex-direction: column;
-  }
-
-  .owner-action-buttons button {
-    width: 100% !important;
-  }
-}
-
-/* =========================================================
-   CLICKABLE RESTAURANT STAT FILTERS
-   ========================================================= */
-
-.stat-filter {
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  font-family: inherit;
-  border: 2px solid transparent;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.stat-filter:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.12);
-}
-
-.stat-filter:active {
-  transform: translateY(-1px);
-}
-
-.stat-filter.selected {
-  border-color: #743a01;
-  box-shadow:
-    0 0 0 3px rgba(116,58,1,0.12),
-    0 12px 28px rgba(0,0,0,0.12);
-}
-
-.owner-empty-state {
-  padding: 35px 20px;
-  text-align: center;
-  color: #777;
-  background: #fafafa;
-  border: 1px dashed #d8d8d8;
-  border-radius: 14px;
-  font-size: 15px;
-}
-
-
-/* Restaurant status */
+/* ================================================================
+   STATUS
+   ================================================================ */
 
 .owner-cafe-status {
-  display: inline-block;
-  margin-top: 7px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: capitalize;
+    display: inline-block;
+
+    margin-top: 7px;
+
+    padding: 4px 10px;
+
+    border-radius: 20px;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    text-transform: capitalize;
 }
 
 .owner-cafe-status.active {
-  background: #e8f7ee;
-  color: #147a3d;
+    background: #e8f7ee;
+
+    color: #147a3d;
 }
 
 .owner-cafe-status.disabled {
-  background: #fceaea;
-  color: #a61b1b;
+    background: #fceaea;
+
+    color: #a61b1b;
+}
+
+.status-active {
+    color: #198754;
+
+    font-weight: 700;
+}
+
+.status-disabled {
+    color: #dc3545;
+
+    font-weight: 700;
 }
 
 
+/* ================================================================
+   SEARCH / RESTAURANT TABLE
+   ================================================================ */
 
-/* =========================================================
-   CREATE CAFE DASHBOARD BUTTON
-   ========================================================= */
-
-.dashboard-header {
-  display: flex;
-  align-items: center;
-  justify-content:center;
-  gap: 20px;
-}
-
-.create-cafe-dashboard-btn {
-  width: auto !important;
-  margin-left: 10px;
-  padding: 11px 18px !important;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-
-  border: none !important;
-  border-radius: 10px !important;
-
-  background: #743a01 !important;
-  color: #fff !important;
-
-  font-size: 14px;
-  font-weight: 700;
-
-  cursor: pointer;
-
-  box-shadow:
-    0 5px 14px rgba(116,58,1,0.22);
-
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
-}
-
-.create-cafe-dashboard-btn span {
-  font-size: 20px;
-  line-height: 1;
-}
-
-.create-cafe-dashboard-btn:hover {
-  background: #5d2e00 !important;
-
-  transform: translateY(-2px);
-
-  box-shadow:
-    0 8px 20px rgba(116,58,1,0.28);
-}
-
-.create-cafe-dashboard-btn:active {
-  transform: translateY(0);
-}
-
-
-/* Mobile */
-@media (max-width: 600px) {
-
-  .dashboard-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .create-cafe-dashboard-btn {
-    width: 100% !important;
-  }
-}
-
-
-/* Small refresh buttons */
-.admin-refresh-btn,
-#ownerRefreshBtn {
-  width: auto !important;
-  min-width: 0 !important;
-  padding: 6px 10px !important;
-  font-size: 13px !important;
-  line-height: 1.2;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.admin-refresh-btn:disabled,
-#ownerRefreshBtn:disabled {
-  opacity: 0.7;
-  cursor: wait;
-}
-
-
-/* Center Admin Login lower on the screen */
-#adminLoginModal .auth-card {
-  margin-top: 150px;
-}
-
-/* ==========================================
-   RESTAURANT SEARCH
-========================================== */
-
-.restaurant-search-bar{
+.restaurant-search-bar {
     position: sticky;
+
     top: 85px;
 
     z-index: 100;
@@ -1613,7 +1805,7 @@
     padding: 10px 0;
 }
 
-.restaurant-search-bar input{
+.restaurant-search-bar input {
     width: 100%;
 
     padding: 12px 15px;
@@ -1623,16 +1815,11 @@
     border-radius: 10px;
 
     font-size: 15px;
-
-    box-sizing: border-box;
 }
 
-/* ==========================================
-   TABLE HEADER
-========================================== */
-
-.restaurant-table-header{
+.restaurant-table-header {
     position: sticky;
+
     top: 145px;
 
     z-index: 99;
@@ -1660,11 +1847,7 @@
     margin-bottom: 10px;
 }
 
-/* ==========================================
-   RESTAURANT ROW
-========================================== */
-
-.owner-cafe-row{
+.owner-cafe-row {
     display: grid;
 
     grid-template-columns:
@@ -1683,34 +1866,17 @@
 
     border-radius: 12px;
 
-    box-shadow: 0 2px 10px rgba(0,0,0,.05);
+    box-shadow:
+        0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-.owner-cafe-row:hover{
+.owner-cafe-row:hover {
     transform: translateY(-1px);
 
-    transition: .2s;
+    transition: 0.2s;
 }
 
-/* ==========================================
-   STATUS
-========================================== */
-
-.status-active{
-    color: #198754;
-    font-weight: 700;
-}
-
-.status-disabled{
-    color: #dc3545;
-    font-weight: 700;
-}
-
-/* ==========================================
-   OPEN BUTTON
-========================================== */
-
-.open-cafe-btn{
+.open-cafe-btn {
     border: none;
 
     background: #4a2f22;
@@ -1726,6 +1892,838 @@
     font-weight: 600;
 }
 
-.open-cafe-btn:hover{
-    background: #5f3b2a;
+
+/* ================================================================
+   CREATE CAFE
+   ================================================================ */
+
+.create-cafe-dashboard-btn {
+    width: auto !important;
+
+    margin-left: 10px;
+
+    padding: 11px 18px !important;
+
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    border: none !important;
+
+    border-radius: 10px !important;
+
+    background: #743a01 !important;
+
+    color: #fff !important;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 5px 14px rgba(116, 58, 1, 0.22);
+}
+
+.create-cafe-dashboard-btn span {
+    font-size: 20px;
+
+    line-height: 1;
+}
+
+
+/* ================================================================
+   REFRESH BUTTONS
+   ================================================================ */
+
+.admin-refresh-btn,
+#ownerRefreshBtn {
+    width: auto !important;
+
+    min-width: 0 !important;
+
+    padding: 6px 10px !important;
+
+    font-size: 13px !important;
+
+    line-height: 1.2;
+
+    border-radius: 6px;
+
+    cursor: pointer;
+}
+
+.admin-refresh-btn:disabled,
+#ownerRefreshBtn:disabled {
+    opacity: 0.7;
+
+    cursor: wait;
+}
+
+
+/* ================================================================
+   NOTIFICATIONS
+   ================================================================ */
+
+.owner-top-notification {
+    position: fixed;
+
+    top: 20px;
+
+    left: 50%;
+
+    transform:
+        translateX(-50%)
+        translateY(-20px);
+
+    width: min(92%, 620px);
+
+    padding: 15px 20px;
+
+    border-radius: 14px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 12px 35px rgba(0, 0, 0, 0.20);
+
+    border: 1px solid #e6e6e6;
+
+    z-index: 10000;
+
+    opacity: 0;
+
+    pointer-events: none;
+
+    transition: all 0.25s ease;
+}
+
+.owner-top-notification.show {
+    opacity: 1;
+
+    transform:
+        translateX(-50%)
+        translateY(0);
+
+    pointer-events: auto;
+}
+
+.owner-notification-content {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 12px;
+}
+
+.owner-notification-icon {
+    font-size: 22px;
+
+    line-height: 1;
+}
+
+.owner-notification-text {
+    flex: 1;
+}
+
+.owner-notification-title {
+    font-weight: 700;
+
+    font-size: 15px;
+
+    margin-bottom: 3px;
+}
+
+.owner-notification-message {
+    font-size: 14px;
+
+    color: #666;
+
+    line-height: 1.4;
+}
+
+
+/* ================================================================
+   TOP ACTION PANEL
+   ================================================================ */
+
+.owner-action-panel {
+    position: fixed;
+
+    top: 20px;
+
+    left: 50%;
+
+    transform:
+        translateX(-50%)
+        translateY(-25px);
+
+    width: min(94%, 650px);
+
+    max-height: calc(100vh - 40px);
+
+    overflow-y: auto;
+
+    background: #ffffff;
+
+    border-radius: 18px;
+
+    box-shadow:
+        0 18px 50px rgba(0, 0, 0, 0.25);
+
+    border: 1px solid #e5e5e5;
+
+    padding: 24px;
+
+    z-index: 9999;
+
+    opacity: 0;
+
+    pointer-events: none;
+
+    transition: all 0.25s ease;
+}
+
+.owner-action-panel.show {
+    opacity: 1;
+
+    transform:
+        translateX(-50%)
+        translateY(0);
+
+    pointer-events: auto;
+}
+
+.owner-action-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 18px;
+}
+
+.owner-action-header h3 {
+    margin: 0;
+
+    color: #3b2108;
+
+    font-size: 20px;
+}
+
+.owner-action-close {
+    width: auto !important;
+
+    margin: 0 !important;
+
+    padding: 5px 9px !important;
+
+    background: #f3f3f3 !important;
+
+    color: #555 !important;
+
+    border: none !important;
+
+    border-radius: 8px !important;
+
+    cursor: pointer;
+}
+
+.owner-action-panel label {
+    display: block;
+
+    font-weight: 600;
+
+    font-size: 13px;
+
+    margin: 12px 0 6px;
+
+    color: #444;
+}
+
+.owner-action-panel input,
+.owner-action-panel select {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 11px 13px;
+
+    border: 1px solid #d7d7d7;
+
+    border-radius: 10px;
+
+    font-size: 14px;
+
+    outline: none;
+}
+
+.owner-action-buttons {
+    display: flex;
+
+    gap: 10px;
+
+    margin-top: 20px;
+}
+
+.owner-action-buttons button {
+    flex: 1;
+
+    width: auto !important;
+
+    margin: 0 !important;
+
+    padding: 11px 16px !important;
+
+    border-radius: 10px !important;
+}
+
+.owner-primary-btn {
+    background: #743a01 !important;
+
+    color: white !important;
+
+    border: none !important;
+}
+
+.owner-secondary-btn {
+    background: #f1f1f1 !important;
+
+    color: #444 !important;
+
+    border: none !important;
+}
+
+.owner-danger-btn {
+    background: #b42318 !important;
+
+    color: white !important;
+
+    border: none !important;
+}
+
+
+/* ================================================================
+   CUSTOMER MENU HEADER
+   ================================================================ */
+
+.menu-profile-header {
+    position: relative;
+
+    width: 100%;
+
+    box-sizing: border-box;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f8eee2 0%,
+            #ffffff 52%,
+            #f5e8d8 100%
+        );
+
+    border-bottom: 1px solid #d8c3aa;
+
+    box-shadow:
+        0 3px 12px rgba(0, 0, 0, 0.08);
+
+    padding: 18px 25px;
+
+    z-index: 110;
+}
+
+.menu-brand-row {
+    width: 100%;
+
+    max-width: 1200px;
+
+    margin: 0 auto;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 16px;
+}
+
+.menu-profile-image {
+    width: 76px;
+    height: 76px;
+
+    flex: 0 0 76px;
+
+    overflow: hidden;
+}
+
+.menu-profile-image img {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: cover;
+
+    border-radius: 50%;
+
+    border: 3px solid #743a01;
+
+    box-shadow:
+        0 3px 10px rgba(0, 0, 0, 0.15);
+}
+
+.menu-brand-info {
+    flex: 1;
+
+    min-width: 0;
+}
+
+.menu-brand-info h1 {
+    margin: 0 0 7px 0 !important;
+
+    padding: 0 !important;
+
+    color: #4a2f22;
+
+    font-size: 1.65rem;
+
+    line-height: 1.15;
+
+    font-weight: 800;
+
+    letter-spacing: 0.6px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    height: auto !important;
+}
+
+.menu-contact-row {
+    display: flex;
+
+    align-items: center;
+
+    gap: 22px;
+
+    flex-wrap: wrap;
+}
+
+.menu-contact-link {
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 5px;
+
+    padding: 0;
+
+    margin: 0;
+
+    background: none !important;
+
+    border: none !important;
+
+    border-radius: 0 !important;
+
+    box-shadow: none !important;
+
+    color: #5d4637;
+
+    text-decoration: none;
+
+    cursor: pointer;
+
+    transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.menu-contact-link:hover {
+    color: #743a01;
+
+    transform: translateY(-1px);
+}
+
+.contact-icon {
+    font-size: 15px;
+
+    line-height: 1;
+}
+
+.contact-text {
+    display: inline-flex;
+
+    align-items: baseline;
+
+    gap: 6px;
+}
+
+.contact-text strong {
+    font-size: 12px;
+
+    font-weight: 700;
+
+    color: #5a4030;
+
+    white-space: nowrap;
+}
+
+.contact-text small {
+    font-size: 9px;
+
+    color: #947d69;
+
+    white-space: nowrap;
+}
+
+.menu-day-special {
+    flex: 0 0 auto;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    min-height: 34px;
+
+    padding: 7px 18px;
+
+    margin: 0;
+
+    border: none;
+
+    border-radius: 18px;
+
+    background: #743a01;
+
+    color: #ffffff;
+
+    font-size: 11px;
+
+    font-weight: 800;
+
+    letter-spacing: 0.4px;
+
+    white-space: nowrap;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 3px 8px rgba(116, 58, 1, 0.20);
+}
+
+.menu-day-special:hover {
+    background: #5d2e00;
+
+    transform: translateY(-1px);
+}
+
+
+/* ================================================================
+   LOGIN MODAL
+   ================================================================ */
+
+#adminLoginModal .auth-card {
+    margin-top: 150px;
+}
+
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+
+@media (max-width: 800px) {
+
+    .menu-profile-header {
+        padding: 16px 18px;
+    }
+
+    .menu-brand-row {
+        gap: 12px;
+    }
+
+    .menu-profile-image {
+        width: 68px;
+        height: 68px;
+
+        flex-basis: 68px;
+    }
+
+    .menu-brand-info h1 {
+        font-size: 1.45rem;
+    }
+
+    .menu-contact-row {
+        gap: 14px;
+    }
+
+    .contact-text strong {
+        font-size: 11px;
+    }
+
+    .menu-day-special {
+        padding: 7px 14px;
+
+        font-size: 10px;
+    }
+}
+
+
+@media (max-width: 700px) {
+
+    .admin-header {
+        min-height: 64px;
+
+        padding: 9px 12px;
+    }
+
+    .admin-header .restaurant-name {
+        font-size: 16px;
+    }
+
+    .admin-header .admin-actions {
+        gap: 5px;
+    }
+
+    .admin-header .admin-actions button {
+        min-height: 36px;
+
+        padding: 7px 9px;
+
+        font-size: 11px;
+    }
+
+    .admin-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .item-selection-box {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-page {
+        width: 92%;
+    }
+
+    .admin-panel-box {
+        padding: 18px;
+    }
+
+    .form-row {
+        flex-direction: column;
+
+        align-items: stretch;
+    }
+
+    .form-row input,
+    .form-row select {
+        width: 100%;
+    }
+
+    .admin-btn {
+        width: 100%;
+
+        margin-right: 0;
+    }
+
+    .restaurant-stats {
+        grid-template-columns: 1fr;
+
+        gap: 10px;
+    }
+
+    .stat-card {
+        min-height: 82px;
+
+        padding: 14px;
+    }
+
+    .stat-number {
+        font-size: 26px;
+    }
+
+    .owner-cafe-list button {
+        width: 100% !important;
+
+        margin-right: 0;
+    }
+
+    .menu-profile-header {
+        padding: 14px 12px;
+    }
+
+    .menu-brand-row {
+        gap: 10px;
+    }
+
+    .menu-profile-image {
+        width: 60px;
+        height: 60px;
+
+        flex-basis: 60px;
+    }
+
+    .menu-brand-info h1 {
+        font-size: 1.25rem;
+
+        margin-bottom: 5px !important;
+    }
+
+    .menu-contact-row {
+        gap: 8px 12px;
+    }
+
+    .contact-icon {
+        font-size: 13px;
+    }
+
+    .contact-text {
+        gap: 3px;
+    }
+
+    .contact-text strong {
+        font-size: 9px;
+    }
+
+    .contact-text small {
+        font-size: 8px;
+    }
+
+    .menu-day-special {
+        min-height: 30px;
+
+        padding: 6px 10px;
+
+        font-size: 9px;
+    }
+}
+
+
+@media (max-width: 600px) {
+
+    .admin-header {
+        min-height: 62px;
+
+        padding: 8px 10px;
+    }
+
+    .admin-header .restaurant-name {
+        font-size: 14px;
+
+        max-width: 130px;
+    }
+
+    .admin-header .admin-actions button {
+        min-height: 34px;
+
+        padding: 6px 8px;
+
+        font-size: 10px;
+    }
+
+    .owner-action-panel {
+        top: 10px;
+
+        width: calc(100% - 20px);
+
+        padding: 18px;
+
+        max-height: calc(100vh - 20px);
+    }
+
+    .owner-action-buttons {
+        flex-direction: column;
+    }
+
+    .owner-action-buttons button {
+        width: 100% !important;
+    }
+}
+
+
+@media (max-width: 500px) {
+
+    .admin-header {
+        min-height: 58px;
+
+        padding: 7px 8px;
+    }
+
+    .admin-header .restaurant-name {
+        font-size: 12px;
+
+        max-width: 100px;
+    }
+
+    .admin-header .admin-actions {
+        gap: 4px;
+    }
+
+    .admin-header .admin-actions button {
+        min-height: 32px;
+
+        padding: 5px 6px;
+
+        font-size: 9px;
+    }
+}
+
+
+@media (max-width: 430px) {
+
+    .menu-profile-header {
+        padding: 12px 9px;
+    }
+
+    .menu-brand-row {
+        gap: 8px;
+    }
+
+    .menu-profile-image {
+        width: 52px;
+        height: 52px;
+
+        flex-basis: 52px;
+    }
+
+    .menu-brand-info h1 {
+        font-size: 1.08rem;
+
+        letter-spacing: 0.3px;
+    }
+
+    .menu-contact-row {
+        gap: 5px 9px;
+    }
+
+    .contact-icon {
+        font-size: 11px;
+    }
+
+    .contact-text strong {
+        font-size: 8px;
+    }
+
+    .contact-text small {
+        display: none;
+    }
+
+    .menu-day-special {
+        padding: 5px 8px;
+
+        font-size: 8px;
+    }
+
+    .payment-options {
+        grid-template-columns: 1fr;
+    }
 }
