@@ -1,498 +1,800 @@
 <!DOCTYPE html>
-
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-<title>Admin Login - Caffe Menu</title>
+    <title>Admin Login - Caffe Menu</title>
 
-<style>
+    <style>
 
-    *{
-        margin:0;
-        padding:0;
-        box-sizing:border-box;
-    }
-
-    body{
-        min-height:100vh;
-
-        display:flex;
-        align-items:center;
-        justify-content:center;
-
-        font-family:"Segoe UI", Arial, sans-serif;
-
-        background:
-            linear-gradient(
-                135deg,
-                #f5f1eb,
-                #ead9c7
-            );
-
-        color:#2b211b;
-    }
-
-    .login-container{
-        width:100%;
-        max-width:420px;
-
-        padding:20px;
-    }
-
-    .login-card{
-        background:white;
-
-        padding:35px;
-
-        border-radius:24px;
-
-        box-shadow:
-            0 15px 45px rgba(0,0,0,0.12);
-
-        border:1px solid #eee5db;
-    }
-
-    .logo{
-        width:70px;
-        height:70px;
-
-        margin:0 auto 15px;
-
-        display:block;
-
-        object-fit:cover;
-
-        border-radius:50%;
-
-        border:3px solid white;
-
-        box-shadow:
-            0 5px 20px rgba(0,0,0,0.15);
-    }
-
-    h1{
-        text-align:center;
-
-        color:#5b3200;
-
-        font-size:27px;
-
-        margin-bottom:6px;
-    }
-
-    .subtitle{
-        text-align:center;
-
-        color:#888;
-
-        font-size:13px;
-
-        margin-bottom:28px;
-    }
-
-    .form-group{
-        margin-bottom:18px;
-    }
-
-    label{
-        display:block;
-
-        margin-bottom:7px;
-
-        color:#4b382a;
-
-        font-size:13px;
-
-        font-weight:700;
-    }
-
-    input{
-        width:100%;
-
-        padding:13px 14px;
-
-        border:1px solid #ddd2c7;
-
-        border-radius:12px;
-
-        outline:none;
-
-        background:#faf8f5;
-
-        color:#2b211b;
-
-        font-size:14px;
-
-        transition:
-            border .2s ease,
-            box-shadow .2s ease;
-    }
-
-    input:focus{
-        border-color:#8b4513;
-
-        box-shadow:
-            0 0 0 3px rgba(139,69,19,0.10);
-    }
-
-    .login-btn{
-        width:100%;
-
-        border:none;
-
-        padding:14px;
-
-        border-radius:13px;
-
-        background:
-            linear-gradient(
-                135deg,
-                #9b5319,
-                #5b3200
-            );
-
-        color:white;
-
-        font-size:14px;
-
-        font-weight:800;
-
-        cursor:pointer;
-
-        box-shadow:
-            0 7px 18px rgba(91,50,0,0.22);
-
-        transition:
-            transform .2s ease,
-            box-shadow .2s ease;
-    }
-
-    .login-btn:hover{
-        transform:translateY(-2px);
-
-        box-shadow:
-            0 10px 24px rgba(91,50,0,0.30);
-    }
-
-    .login-btn:disabled{
-        opacity:.6;
-
-        cursor:not-allowed;
-
-        transform:none;
-    }
-
-    .message{
-        display:none;
-
-        margin-bottom:18px;
-
-        padding:11px 13px;
-
-        border-radius:10px;
-
-        font-size:13px;
-
-        text-align:center;
-    }
-
-    .message.error{
-        display:block;
-
-        background:#fff0f0;
-
-        color:#a33;
-
-        border:1px solid #f0cccc;
-    }
-
-    .back-link{
-        display:block;
-
-        margin-top:20px;
-
-        text-align:center;
-
-        color:#8b4513;
-
-        text-decoration:none;
-
-        font-size:13px;
-
-        font-weight:600;
-    }
-
-    .back-link:hover{
-        text-decoration:underline;
-    }
-
-    @media(max-width:500px){
-
-        .login-card{
-            padding:28px 22px;
-
-            border-radius:20px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        h1{
-            font-size:24px;
+        body {
+            min-height: 100vh;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            padding: 20px;
+
+            font-family:
+                "Segoe UI",
+                Arial,
+                sans-serif;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #f5f1eb,
+                    #ead9c7
+                );
+
+            color: #2b211b;
         }
 
-    }
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+        }
 
-</style>
+        .login-card {
+            background: #ffffff;
 
+            padding: 35px;
+
+            border-radius: 24px;
+
+            border: 1px solid #eee5db;
+
+            box-shadow:
+                0 15px 45px
+                rgba(0, 0, 0, 0.12);
+        }
+
+        .logo {
+            width: 70px;
+            height: 70px;
+
+            display: block;
+
+            margin:
+                0 auto 15px;
+
+            object-fit: cover;
+
+            border-radius: 50%;
+
+            border: 3px solid #ffffff;
+
+            box-shadow:
+                0 5px 20px
+                rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            margin-bottom: 6px;
+
+            text-align: center;
+
+            color: #5b3200;
+
+            font-size: 27px;
+
+            font-weight: 800;
+        }
+
+        .subtitle {
+            margin-bottom: 28px;
+
+            text-align: center;
+
+            color: #888888;
+
+            font-size: 13px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+
+            margin-bottom: 7px;
+
+            color: #4b382a;
+
+            font-size: 13px;
+
+            font-weight: 700;
+        }
+
+        input {
+            width: 100%;
+
+            padding: 13px 14px;
+
+            border:
+                1px solid #ddd2c7;
+
+            border-radius: 12px;
+
+            outline: none;
+
+            background: #faf8f5;
+
+            color: #2b211b;
+
+            font-size: 14px;
+
+            transition:
+                border-color .2s ease,
+                box-shadow .2s ease,
+                background .2s ease;
+        }
+
+        input:focus {
+            border-color: #8b4513;
+
+            background: #ffffff;
+
+            box-shadow:
+                0 0 0 3px
+                rgba(139, 69, 19, 0.10);
+        }
+
+        .login-btn {
+            width: 100%;
+
+            border: none;
+
+            padding: 14px;
+
+            border-radius: 13px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #9b5319,
+                    #5b3200
+                );
+
+            color: #ffffff;
+
+            font-size: 14px;
+
+            font-weight: 800;
+
+            cursor: pointer;
+
+            box-shadow:
+                0 7px 18px
+                rgba(91, 50, 0, 0.22);
+
+            transition:
+                transform .2s ease,
+                box-shadow .2s ease,
+                opacity .2s ease;
+        }
+
+        .login-btn:hover:not(:disabled) {
+            transform:
+                translateY(-2px);
+
+            box-shadow:
+                0 10px 24px
+                rgba(91, 50, 0, 0.30);
+        }
+
+        .login-btn:disabled {
+            opacity: .65;
+
+            cursor: not-allowed;
+
+            transform: none;
+        }
+
+        .message {
+            display: none;
+
+            margin-bottom: 18px;
+
+            padding: 11px 13px;
+
+            border-radius: 10px;
+
+            font-size: 13px;
+
+            line-height: 1.45;
+
+            text-align: center;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.error {
+            background: #fff0f0;
+
+            color: #a33;
+
+            border:
+                1px solid #f0cccc;
+        }
+
+        .message.success {
+            background: #eef9f1;
+
+            color: #28734b;
+
+            border:
+                1px solid #cfe8d7;
+        }
+
+        .back-link {
+            display: block;
+
+            margin-top: 20px;
+
+            text-align: center;
+
+            color: #8b4513;
+
+            text-decoration: none;
+
+            font-size: 13px;
+
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 500px) {
+
+            body {
+                padding: 14px;
+            }
+
+            .login-card {
+                padding:
+                    28px 22px;
+
+                border-radius: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+        }
+
+    </style>
 
 </head>
+
 
 <body>
 
 <div class="login-container">
 
+    <div class="login-card">
 
-<div class="login-card">
-
-    <img
-        src="image/latte.jpeg"
-        class="logo"
-        alt="Caffe Menu"
-    >
-
-    <h1>Admin Login</h1>
-
-    <p class="subtitle">
-        Sign in to manage your restaurant
-    </p>
-
-    <div id="message" class="message"></div>
-
-    <form id="loginForm">
-
-        <div class="form-group">
-
-            <label for="email">
-                Email
-            </label>
-
-            <input
-                type="email"
-                id="email"
-                placeholder="Enter your email"
-                required
-                autocomplete="username"
-            >
-
-        </div>
-
-
-        <div class="form-group">
-
-            <label for="password">
-                Password
-            </label>
-
-            <input
-                type="password"
-                id="password"
-                placeholder="Enter your password"
-                required
-                autocomplete="current-password"
-            >
-
-        </div>
-
-
-        <button
-            type="submit"
-            class="login-btn"
-            id="loginBtn"
+        <img
+            src="image/latte.jpeg"
+            class="logo"
+            alt="Caffe Menu"
         >
-            Login
-        </button>
 
-    </form>
+        <h1>
+            Admin Login
+        </h1>
+
+        <p class="subtitle">
+            Sign in to manage your restaurant
+        </p>
 
 
-    <a href="company.html" class="back-link">
-        ← Back to Caffe Menu
-    </a>
+        <div
+            id="message"
+            class="message"
+            role="alert"
+            aria-live="polite"
+        ></div>
 
-</div>
+
+        <form id="loginForm">
+
+            <div class="form-group">
+
+                <label for="email">
+                    Email
+                </label>
+
+                <input
+                    type="email"
+                    id="email"
+                    placeholder="Enter your email"
+                    required
+                    autocomplete="username"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="password">
+                    Password
+                </label>
+
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Enter your password"
+                    required
+                    autocomplete="current-password"
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="login-btn"
+                id="loginBtn"
+            >
+                Login
+            </button>
+
+        </form>
+
+
+        <a
+            href="/"
+            class="back-link"
+        >
+            ← Back to Caffe Menu
+        </a>
+
+    </div>
 
 </div>
 
 
 <script>
 
-    const loginForm = document.getElementById('loginForm');
-    const loginBtn = document.getElementById('loginBtn');
-    const message = document.getElementById('message');
+const loginForm =
+    document.getElementById(
+        'loginForm'
+    );
 
-    /*
-     * LOGIN
-     */
 
-    loginForm.addEventListener('submit', async function (event) {
+const loginBtn =
+    document.getElementById(
+        'loginBtn'
+    );
+
+
+const message =
+    document.getElementById(
+        'message'
+    );
+
+
+/* ============================================================
+   SHOW MESSAGE
+   ============================================================ */
+
+function showMessage(
+    text,
+    type = 'error'
+) {
+
+    message.textContent =
+        text || '';
+
+    message.className =
+        `message show ${type}`;
+}
+
+
+/* ============================================================
+   CLEAR OLD LOGIN DATA
+   ============================================================ */
+
+function clearOldAdminSession() {
+
+    localStorage.removeItem(
+        'adminToken'
+    );
+
+    localStorage.removeItem(
+        'adminRole'
+    );
+
+    localStorage.removeItem(
+        'adminRestaurantId'
+    );
+
+    localStorage.removeItem(
+        'adminRestaurantSlug'
+    );
+
+    localStorage.removeItem(
+        'adminRestaurantName'
+    );
+
+    localStorage.removeItem(
+        'selectedRestaurantSlug'
+    );
+}
+
+
+/* ============================================================
+   LOGIN
+   ============================================================ */
+
+loginForm.addEventListener(
+    'submit',
+    async function (event) {
 
         event.preventDefault();
 
+
         const email =
-            document.getElementById('email').value.trim();
+            document
+                .getElementById('email')
+                .value
+                .trim()
+                .toLowerCase();
+
 
         const password =
-            document.getElementById('password').value;
+            document
+                .getElementById('password')
+                .value;
 
-        if (!email || !password) {
 
-            message.textContent =
-                'Please enter your email and password.';
+        if (
+            !email ||
+            !password
+        ) {
 
-            message.style.color = '#a00';
+            showMessage(
+                'Please enter your email and password.',
+                'error'
+            );
 
             return;
         }
 
-        loginBtn.disabled = true;
-        loginBtn.textContent = 'Logging in...';
 
-        message.textContent = '';
+        loginBtn.disabled =
+            true;
+
+        loginBtn.textContent =
+            'Logging in...';
+
+        message.className =
+            'message';
+
+
+        clearOldAdminSession();
+
 
         try {
 
-            const response = await fetch(
-                '/api/admin/login',
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({
-                        email: email,
-                        password: password
-                    })
-                }
-            );
+            const response =
+                await fetch(
+                    '/api/admin/login',
+                    {
+                        method: 'POST',
 
-            const data = await response.json();
+                        headers: {
+                            'Content-Type':
+                                'application/json',
 
-            if (!response.ok || !data.ok) {
+                            'Accept':
+                                'application/json'
+                        },
 
-                message.textContent =
-                    data.message ||
-                    'Login failed.';
+                        credentials:
+                            'same-origin',
 
-                message.style.color = '#a00';
-
-                loginBtn.disabled = false;
-                loginBtn.textContent = 'Login';
-
-                return;
-            }
-
-            /*
-             * Save login information
-             */
-
-            localStorage.setItem(
-                'adminToken',
-                data.token
-            );
-
-            localStorage.setItem(
-                'adminRole',
-                data.role
-            );
-
-            localStorage.setItem(
-                'adminRestaurantId',
-                data.restaurant_id || ''
-            );
-
-            localStorage.setItem(
-                'adminRestaurantSlug',
-                data.restaurant_slug || ''
-            );
-
-            localStorage.setItem(
-                'adminRestaurantName',
-                data.restaurant_name || ''
-            );
-
-            message.textContent =
-                'Login successful. Opening dashboard...';
-
-            message.style.color = 'green';
-
-            /*
-             * SUPER ADMIN
-             */
-
-            if (data.role === 'super_admin') {
-
-                window.location.replace(
-                    '/super-admin.html'
+                        body:
+                            JSON.stringify({
+                                email,
+                                password
+                            })
+                    }
                 );
 
+
+            let data = null;
+
+
+            try {
+
+                data =
+                    await response.json();
+
+            } catch {
+
+                data = null;
+            }
+
+
+            if (
+                !response.ok ||
+                !data ||
+                !data.ok
+            ) {
+
+                showMessage(
+                    data?.message ||
+                    'Invalid email or password.',
+                    'error'
+                );
+
+                loginBtn.disabled =
+                    false;
+
+                loginBtn.textContent =
+                    'Login';
+
                 return;
             }
 
+
+            /* =================================================
+               SAVE AUTHENTICATION INFORMATION
+
+               IMPORTANT:
+               server.js returns camelCase names:
+
+               restaurantId
+               restaurantSlug
+               restaurantName
+               ================================================= */
+
+            if (data.token) {
+
+                localStorage.setItem(
+                    'adminToken',
+                    data.token
+                );
+            }
+
+
+            if (data.role) {
+
+                localStorage.setItem(
+                    'adminRole',
+                    data.role
+                );
+            }
+
+
             /*
-             * CAFE ADMIN
+             * CORRECT:
+             * data.restaurantId
              */
 
             if (
-                data.role === 'cafe_admin' &&
-                data.restaurant_slug
+                data.restaurantId !==
+                    undefined &&
+                data.restaurantId !==
+                    null
             ) {
 
-                window.location.replace(
-                    '/admin-panel.html?restaurant=' +
-                    encodeURIComponent(
-                        data.restaurant_slug
+                localStorage.setItem(
+                    'adminRestaurantId',
+                    String(
+                        data.restaurantId
                     )
+                );
+            }
+
+
+            /*
+             * CORRECT:
+             * data.restaurantSlug
+             */
+
+            if (
+                data.restaurantSlug
+            ) {
+
+                localStorage.setItem(
+                    'adminRestaurantSlug',
+                    data.restaurantSlug
+                );
+
+
+                localStorage.setItem(
+                    'selectedRestaurantSlug',
+                    data.restaurantSlug
+                );
+            }
+
+
+            /*
+             * CORRECT:
+             * data.restaurantName
+             */
+
+            if (
+                data.restaurantName
+            ) {
+
+                localStorage.setItem(
+                    'adminRestaurantName',
+                    data.restaurantName
+                );
+            }
+
+
+            /* =================================================
+               SUPER ADMIN
+               ================================================= */
+
+            if (
+                data.role ===
+                'super_admin'
+            ) {
+
+                showMessage(
+                    'Login successful. Opening Super Admin Dashboard...',
+                    'success'
+                );
+
+
+                setTimeout(
+                    () => {
+
+                        window.location.replace(
+                            '/super-admin-panel.html'
+                        );
+
+                    },
+                    250
                 );
 
                 return;
             }
 
-            /*
-             * Unknown role
-             */
 
-            message.textContent =
-                'Invalid account role.';
+            /* =================================================
+               CAFE ADMIN
+               ================================================= */
 
-            message.style.color = '#a00';
+            if (
+                data.role ===
+                'cafe_admin'
+            ) {
 
-        } catch (error) {
+                /*
+                 * IMPORTANT:
+                 *
+                 * Use camelCase because that is exactly
+                 * what server.js returns.
+                 */
 
-            console.error(
-                'Login error:',
-                error
+                if (
+                    data.restaurantId ===
+                        undefined ||
+                    data.restaurantId ===
+                        null ||
+                    !data.restaurantSlug
+                ) {
+
+                    clearOldAdminSession();
+
+                    showMessage(
+                        'This cafe administrator is not assigned to a restaurant.',
+                        'error'
+                    );
+
+                    loginBtn.disabled =
+                        false;
+
+                    loginBtn.textContent =
+                        'Login';
+
+                    return;
+                }
+
+
+                showMessage(
+                    `Login successful. Opening ${
+                        data.restaurantName ||
+                        'your restaurant'
+                    } dashboard...`,
+                    'success'
+                );
+
+
+                /*
+                 * The server authentication token already
+                 * identifies the restaurant.
+                 *
+                 * Therefore we do NOT put the restaurant
+                 * slug in the URL.
+                 */
+
+                setTimeout(
+                    () => {
+
+                        window.location.replace(
+                            '/admin-panel.html'
+                        );
+
+                    },
+                    250
+                );
+
+                return;
+            }
+
+
+            /* =================================================
+               UNKNOWN ROLE
+               ================================================= */
+
+            clearOldAdminSession();
+
+
+            showMessage(
+                'Invalid account role.',
+                'error'
             );
 
-            message.textContent =
-                'Unable to connect to the server.';
 
-            message.style.color = '#a00';
-
-        } finally {
-
-            loginBtn.disabled = false;
+            loginBtn.disabled =
+                false;
 
             loginBtn.textContent =
                 'Login';
 
+        } catch (error) {
+
+            console.error(
+                '[admin-login] Login error:',
+                error
+            );
+
+
+            showMessage(
+                'Unable to connect to the server. Please try again.',
+                'error'
+            );
+
+
+            loginBtn.disabled =
+                false;
+
+            loginBtn.textContent =
+                'Login';
         }
 
-    });
+    }
+);
 
 </script>
 
-
 </body>
+
 </html>
