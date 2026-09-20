@@ -3120,3 +3120,154 @@ textarea:focus-visible {
         animation-iteration-count: 1 !important;
     }
 }
+
+/* ================================================================
+   ADMIN STATUS POPUP
+   Center-screen success / error / loading message
+   ================================================================ */
+
+.admin-status-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(3px);
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transition:
+        opacity 0.22s ease,
+        visibility 0.22s ease;
+}
+
+.admin-status-popup.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.admin-status-popup-content {
+    min-width: 260px;
+    max-width: min(90vw, 430px);
+
+    padding: 24px 30px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    gap: 12px;
+
+    text-align: center;
+
+    background: rgba(255, 255, 255, 0.98);
+
+    border: 1px solid rgba(0, 0, 0, 0.08);
+
+    border-radius: 18px;
+
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.20),
+        0 5px 20px rgba(0, 0, 0, 0.08);
+
+    transform: translateY(10px) scale(0.96);
+
+    transition:
+        transform 0.22s ease;
+}
+
+.admin-status-popup.show .admin-status-popup-content {
+    transform: translateY(0) scale(1);
+}
+
+.admin-status-icon {
+    width: 48px;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    font-size: 24px;
+    font-weight: 700;
+
+    background: #e8f7ed;
+    color: #18864b;
+}
+
+.admin-status-message {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.45;
+
+    color: #222;
+}
+
+/* Loading state */
+
+.admin-status-popup.loading .admin-status-icon {
+    width: 32px;
+    height: 32px;
+
+    border: 3px solid rgba(0, 0, 0, 0.12);
+    border-top-color: currentColor;
+
+    background: transparent;
+
+    animation: adminStatusSpin 0.75s linear infinite;
+
+    font-size: 0;
+}
+
+.admin-status-popup.loading .admin-status-message {
+    font-weight: 500;
+}
+
+/* Error state */
+
+.admin-status-popup.error .admin-status-icon {
+    background: #fdeaea;
+    color: #c62828;
+}
+
+/* Success state */
+
+.admin-status-popup.success .admin-status-icon {
+    background: #e8f7ed;
+    color: #18864b;
+}
+
+@keyframes adminStatusSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+    .admin-status-popup-content {
+        width: min(90vw, 360px);
+        min-width: 0;
+
+        padding: 22px 20px;
+        border-radius: 16px;
+    }
+
+    .admin-status-message {
+        font-size: 15px;
+    }
+}

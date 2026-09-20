@@ -20,8 +20,13 @@ const pool = new Pool({
     : false,
 
   connectionTimeoutMillis: 15000,
-  idleTimeoutMillis: 10000,
-  query_timeout: 15000,
+
+  // Keep database connections available longer.
+  // This avoids repeatedly creating new PostgreSQL connections.
+  idleTimeoutMillis: 30000,
+
+  // Allow enough time for a slow database response.
+  query_timeout: 30000,
 
   max: 10,
 
@@ -35,6 +40,121 @@ const pool = new Pool({
    ================================================================ */
 
 const menuCache = new Map();
+
+
+
+/* ================================================================
+   WARM PUBLIC MENU CACHE
+   Loads active restaurant menus into memory after startup.
+   This prevents the first customer request from waiting on
+   PostgreSQL's initial connection/query latency.
+   ================================================================ */
+
+async function warmMenuCache() {
+  try {
+    console.log(
+      '[menu:cache] Starting public menu cache warm-up...'
+    );
+
+    const result = await pool.query(`
+      SELECT
+        r.id,
+        r.name,
+        r.slug,
+        r.status,
+
+        md.menu,
+        md.updated_at AS menu_updated_at,
+
+        rp.logo,
+        rp.phone_numbers,
+        rp.addresses,
+        rp.updated_at AS profile_updated_at
+
+      FROM restaurants r
+
+      LEFT JOIN menu_data md
+        ON md.restaurant_id = r.id
+
+      LEFT JOIN restaurant_profiles rp
+        ON rp.restaurant_id = r.id
+
+      WHERE r.status = 'active'
+
+      ORDER BY r.id
+    `);
+
+    let cachedCount = 0;
+
+    for (const row of result.rows) {
+      const responseData = {
+        ok: true,
+
+        restaurant: {
+          id: row.id,
+          name: row.name,
+          slug: row.slug,
+          status: row.status
+        },
+
+        menu:
+          row.menu &&
+          typeof row.menu === 'object'
+            ? row.menu
+            : {},
+
+        menuUpdatedAt:
+          row.menu_updated_at || null,
+
+        profile: {
+          logo:
+            typeof row.logo === 'string'
+              ? row.logo
+              : '',
+
+          phone_numbers:
+            Array.isArray(row.phone_numbers)
+              ? row.phone_numbers
+              : [],
+
+          addresses:
+            Array.isArray(row.addresses)
+              ? row.addresses
+              : [],
+
+          updated_at:
+            row.profile_updated_at || null
+        }
+      };
+
+      menuCache.set(
+        row.slug,
+        responseData
+      );
+
+      cachedCount++;
+
+      console.log(
+        `[menu:cache] Cached: ${row.slug}`
+      );
+    }
+
+    console.log(
+      `[menu:cache] Warm-up complete. Cached ${cachedCount} active restaurant(s).`
+    );
+
+  } catch (error) {
+    console.error(
+      '[menu:cache] Warm-up failed:',
+      error.message
+    );
+
+    console.log(
+      '[menu:cache] Server will continue normally. Menus will load on demand.'
+    );
+  }
+}
+
 
 
 /* ================================================================
@@ -161,9 +281,21 @@ function getTokenFromRequest(req) {
 
 
 function requireOwner(req, res, next) {
+
+  console.log('[auth:owner] Checking owner authentication...');
+
   const token = getTokenFromRequest(req);
 
+  console.log(
+    '[auth:owner] Token exists:',
+    !!token
+  );
+
   if (!token) {
+    console.log(
+      '[auth:owner] No token found.'
+    );
+
     return res.status(401).json({
       ok: false,
       message: 'Authentication required.'
@@ -171,12 +303,33 @@ function requireOwner(req, res, next) {
   }
 
   try {
+
+    console.log(
+      '[auth:owner] Verifying JWT...'
+    );
+
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET
     );
 
+    console.log(
+      '[auth:owner] JWT decoded:',
+      {
+        id: decoded.id,
+        email: decoded.email,
+        role: decoded.role,
+        restaurant_id: decoded.restaurant_id
+      }
+    );
+
     if (decoded.role !== 'super_admin') {
+
+      console.log(
+        '[auth:owner] Role rejected:',
+        decoded.role
+      );
+
       return res.status(403).json({
         ok: false,
         message: 'Super admin access required.'
@@ -185,11 +338,17 @@ function requireOwner(req, res, next) {
 
     req.user = decoded;
 
+    console.log(
+      '[auth:owner] Owner authentication successful.'
+    );
+
     next();
+
   } catch (error) {
+
     console.error(
-      '[auth] Owner token verification failed:',
-      error.message
+      '[auth:owner] JWT verification failed:',
+      error
     );
 
     return res.status(401).json({
@@ -252,28 +411,17 @@ async function requireRestaurantAdmin(
    ================================================================ */
 
 app.get(
-  '/admin-panel.html',
-  requireRestaurantAdmin,
-  (req, res) => {
-    if (req.user.role !== 'cafe_admin') {
-      return res.status(403).send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Access Denied</title>
-        </head>
-        <body>
-          <h1>403 - Access Denied</h1>
-          <p>Restaurant admin access is required.</p>
-        </body>
-        </html>
-      `);
-    }
+    '/admin-panel.html',
+    requireRestaurantAdmin,
+    (req, res) => {
+        if (req.user.role !== 'cafe_admin') {
+            return res.redirect('/admin.html');
+        }
 
-    return res.sendFile(
-      path.join(__dirname, 'admin-panel.html')
-    );
-  }
+        return res.sendFile(
+            path.join(__dirname, 'admin-panel.html')
+        );
+    }
 );
 
 
@@ -470,6 +618,9 @@ app.post(
     }
   }
 );
+
+
+
 
 
 /* ================================================================
@@ -796,102 +947,191 @@ app.put(
    PUBLIC MENU
    ================================================================ */
 
+/* ================================================================
+   PUBLIC MENU
+   GET /api/menu/:slug
+   ================================================================ */
+
 app.get(
   '/api/menu/:slug',
   async (req, res) => {
     try {
       const { slug } = req.params;
 
+      console.log(
+        `[menu:get] Request received for slug: ${slug}`
+      );
+
+      /* ============================================================
+         CACHE
+         ============================================================ */
+
       if (menuCache.has(slug)) {
+        console.log(
+          `[menu:get] Returning cached menu for: ${slug}`
+        );
+
         return res.json(
           menuCache.get(slug)
         );
       }
 
-      const restaurantResult = await pool.query(`
-        SELECT
-          id,
-          name,
-          slug,
-          status
-        FROM restaurants
-        WHERE slug = $1
-        LIMIT 1
-      `, [
-        slug
-      ]);
+      /* ============================================================
+         LOAD EVERYTHING IN ONE DATABASE QUERY
+         ============================================================ */
 
-      if (restaurantResult.rows.length === 0) {
+      console.log(
+        `[menu:get] Loading restaurant, menu and profile for: ${slug}`
+      );
+
+      const result = await pool.query(
+        `
+          SELECT
+            r.id,
+            r.name,
+            r.slug,
+            r.status,
+
+            md.menu,
+            md.updated_at AS menu_updated_at,
+
+            rp.logo,
+            rp.phone_numbers,
+            rp.addresses,
+            rp.updated_at AS profile_updated_at
+
+          FROM restaurants r
+
+          LEFT JOIN menu_data md
+            ON md.restaurant_id = r.id
+
+          LEFT JOIN restaurant_profiles rp
+            ON rp.restaurant_id = r.id
+
+          WHERE r.slug = $1
+
+          LIMIT 1
+        `,
+        [slug]
+      );
+
+      console.log(
+        `[menu:get] Combined database query completed for: ${slug}`
+      );
+
+      /* ============================================================
+         RESTAURANT NOT FOUND
+         ============================================================ */
+
+      if (result.rows.length === 0) {
+        console.log(
+          `[menu:get] Restaurant not found: ${slug}`
+        );
+
         return res.status(404).json({
           ok: false,
           message: 'Restaurant not found.'
         });
       }
 
-      const restaurant =
-        restaurantResult.rows[0];
+      const row = result.rows[0];
 
-      if (restaurant.status !== 'active') {
+      /* ============================================================
+         CHECK RESTAURANT STATUS
+         ============================================================ */
+
+      if (row.status !== 'active') {
+        console.log(
+          `[menu:get] Restaurant is not active: ${slug}`
+        );
+
         return res.status(403).json({
           ok: false,
-          message: 'This restaurant is currently unavailable.'
+          message:
+            'This restaurant is currently unavailable.'
         });
       }
 
-      const menuResult = await pool.query(`
-        SELECT
-          menu,
-          updated_at
-        FROM menu_data
-        WHERE restaurant_id = $1
-        LIMIT 1
-      `, [
-        restaurant.id
-      ]);
+      /* ============================================================
+         RESTAURANT
+         ============================================================ */
 
-      const profileResult = await pool.query(`
-        SELECT
-          logo,
-          phone_numbers,
-          addresses,
-          updated_at
-        FROM restaurant_profiles
-        WHERE restaurant_id = $1
-        LIMIT 1
-      `, [
-        restaurant.id
-      ]);
+      const restaurant = {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        status: row.status
+      };
+
+      /* ============================================================
+         MENU
+         ============================================================ */
+
+      const menu =
+        row.menu &&
+        typeof row.menu === 'object'
+          ? row.menu
+          : {};
+
+      const menuUpdatedAt =
+        row.menu_updated_at || null;
+
+      /* ============================================================
+         PROFILE
+         ============================================================ */
+
+      const profile = {
+        logo:
+          typeof row.logo === 'string'
+            ? row.logo
+            : '',
+
+        phone_numbers:
+          Array.isArray(row.phone_numbers)
+            ? row.phone_numbers
+            : [],
+
+        addresses:
+          Array.isArray(row.addresses)
+            ? row.addresses
+            : [],
+
+        updated_at:
+          row.profile_updated_at || null
+      };
+
+      /* ============================================================
+         BUILD RESPONSE
+         ============================================================ */
 
       const responseData = {
         ok: true,
 
         restaurant,
 
-        menu:
-          menuResult.rows.length > 0
-            ? menuResult.rows[0].menu
-            : {},
+        menu,
 
-        menuUpdatedAt:
-          menuResult.rows.length > 0
-            ? menuResult.rows[0].updated_at
-            : null,
+        menuUpdatedAt,
 
-        profile:
-          profileResult.rows.length > 0
-            ? profileResult.rows[0]
-            : {
-                logo: '',
-                phone_numbers: [],
-                addresses: [],
-                updated_at: null
-              }
+        profile
       };
+
+      /* ============================================================
+         CACHE RESPONSE
+         ============================================================ */
 
       menuCache.set(
         slug,
         responseData
       );
+
+      console.log(
+        `[menu:get] Menu successfully loaded and cached for: ${slug}`
+      );
+
+      /* ============================================================
+         SEND RESPONSE
+         ============================================================ */
 
       return res.json(
         responseData
@@ -899,7 +1139,7 @@ app.get(
 
     } catch (error) {
       console.error(
-        '[menu:get] Error:',
+        '[menu:get] Unexpected error:',
         error
       );
 
@@ -1103,11 +1343,23 @@ app.post(
    GET RESTAURANTS
    ================================================================ */
 
+
+
 app.get(
   '/api/owner/restaurants',
   requireOwner,
   async (req, res) => {
+
+    console.log(
+      '[owner:restaurants] HANDLER STARTED'
+    );
+
     try {
+
+      console.log(
+        '[owner:restaurants] About to query database...'
+      );
+
       const result = await pool.query(`
         SELECT
           id,
@@ -1118,20 +1370,32 @@ app.get(
         ORDER BY id ASC
       `);
 
-      return res.json({
+      console.log(
+        '[owner:restaurants] Database query finished:',
+        result.rows
+      );
+
+      const response = {
         ok: true,
         restaurants: result.rows
-      });
+      };
+
+      console.log(
+        '[owner:restaurants] Sending response...'
+      );
+
+      return res.json(response);
 
     } catch (error) {
+
       console.error(
-        '[owner:restaurants:get] Error:',
+        '[owner:restaurants] ERROR:',
         error
       );
 
       return res.status(500).json({
         ok: false,
-        message: 'Unable to load restaurants.'
+        message: error.message
       });
     }
   }
@@ -2895,6 +3159,8 @@ app.use(
 );
 
 
+
+
 /* ================================================================
    SERVER START
    ================================================================ */
@@ -2903,22 +3169,48 @@ const PORT =
   Number(process.env.PORT) || 10000;
 
 async function startServer() {
-  await ensureDatabaseStructure();
+  try {
+    /* ============================================================
+       DATABASE STRUCTURE
+       ============================================================ */
 
-  app.listen(
-    PORT,
-    '0.0.0.0',
-    () => {
-      console.log(
-        `[server] Caffemenu running on port ${PORT}`
-      );
-    }
-  );
-}
+    await ensureDatabaseStructure();
 
+    /* ============================================================
+       START HTTP SERVER FIRST
+       ============================================================ */
 
-startServer().catch(
-  (error) => {
+    app.listen(
+      PORT,
+      '0.0.0.0',
+      () => {
+        console.log(
+          `[server] Caffemenu running on port ${PORT}`
+        );
+
+        /* ========================================================
+           WARM PUBLIC MENU CACHE IN BACKGROUND
+
+           Do not block the HTTP server while PostgreSQL is warming
+           up. Customers can access the application immediately.
+           ======================================================== */
+
+        warmMenuCache()
+          .then(() => {
+            console.log(
+              '[menu:cache] Background warm-up finished.'
+            );
+          })
+          .catch((error) => {
+            console.error(
+              '[menu:cache] Background warm-up error:',
+              error
+            );
+          });
+      }
+    );
+
+  } catch (error) {
     console.error(
       '[server] Failed to start:',
       error
@@ -2926,4 +3218,9 @@ startServer().catch(
 
     process.exit(1);
   }
-);
+}
+
+
+startServer();
+
+

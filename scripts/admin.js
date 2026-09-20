@@ -16,6 +16,75 @@ let adminLoadingTimer = null;
 const MAX_DAY_SPECIALS = 5;
 
 
+
+/* ================================================================
+   CENTER SCREEN STATUS POPUP
+   ================================================================ */
+
+function showAdminStatus(
+    message = 'Please wait...',
+    type = 'loading',
+    duration = 0
+) {
+    const popup =
+        document.getElementById('adminStatusPopup');
+
+    const icon =
+        document.getElementById('adminStatusIcon');
+
+    const messageElement =
+        document.getElementById('adminStatusMessage');
+
+    if (!popup || !icon || !messageElement) {
+        console.warn(
+            '[admin] Status popup elements not found.'
+        );
+        return;
+    }
+
+    popup.classList.remove(
+        'success',
+        'error',
+        'loading',
+        'show'
+    );
+
+    popup.classList.add(type);
+
+    if (type === 'success') {
+        icon.textContent = '✓';
+    } else if (type === 'error') {
+        icon.textContent = '!';
+    } else {
+        icon.textContent = '';
+    }
+
+    messageElement.textContent = message;
+
+    requestAnimationFrame(() => {
+        popup.classList.add('show');
+    });
+
+    if (duration > 0) {
+        setTimeout(() => {
+            hideAdminStatus();
+        }, duration);
+    }
+}
+
+
+function hideAdminStatus() {
+    const popup =
+        document.getElementById('adminStatusPopup');
+
+    if (!popup) {
+        return;
+    }
+
+    popup.classList.remove('show');
+}
+
+
 /* ================================================================
    BASIC HELPERS
    ================================================================ */
@@ -108,53 +177,116 @@ function hideAdminLoading(delay = 0) {
 
 
 /* ================================================================
-   CENTER MESSAGE
+   CENTERED ADMIN MESSAGE
+   All existing admin messages use the center-screen popup.
    ================================================================ */
 
 function showMessage(message, type = 'success') {
-    let container =
-        document.getElementById('adminMessageContainer');
 
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'adminMessageContainer';
+    let popup =
+        document.getElementById('adminStatusPopup');
 
-        document.body.appendChild(container);
+    let icon =
+        document.getElementById('adminStatusIcon');
+
+    let messageElement =
+        document.getElementById('adminStatusMessage');
+
+    /*
+     * Safety fallback:
+     * If the popup HTML is not available for some reason,
+     * do not break the admin panel.
+     */
+    if (!popup || !icon || !messageElement) {
+        console.warn(
+            '[admin] Center status popup not found:',
+            message
+        );
+
+        return;
     }
 
-    container.innerHTML = '';
+    /*
+     * Convert the old message types to
+     * the new popup types.
+     */
+    let popupType = 'success';
 
-    const messageBox =
-        document.createElement('div');
+    if (
+        type === 'error' ||
+        type === 'danger' ||
+        type === 'failed'
+    ) {
+        popupType = 'error';
+    }
 
-    messageBox.className =
-        `admin-message-popup ${type}`;
+    if (
+        type === 'loading' ||
+        type === 'info'
+    ) {
+        popupType = type === 'loading'
+            ? 'loading'
+            : 'success';
+    }
 
-    messageBox.innerHTML = `
-        <div class="admin-message-icon">
-            ${type === 'error' ? '!' : '✓'}
-        </div>
-        <div class="admin-message-text">
-            ${escapeHtmlForAdmin(message)}
-        </div>
-    `;
+    /*
+     * Clear previous popup states.
+     */
+    popup.classList.remove(
+        'success',
+        'error',
+        'loading',
+        'show'
+    );
 
-    container.appendChild(messageBox);
+    /*
+     * Apply new state.
+     */
+    popup.classList.add(
+        popupType
+    );
 
+    /*
+     * Set icon.
+     */
+    if (popupType === 'success') {
+        icon.textContent = '✓';
+    } else if (popupType === 'error') {
+        icon.textContent = '!';
+    } else {
+        icon.textContent = '';
+    }
+
+    /*
+     * Set message.
+     */
+    messageElement.textContent =
+        message;
+
+    /*
+     * Show popup.
+     */
     requestAnimationFrame(() => {
-        messageBox.classList.add('show');
+        popup.classList.add('show');
     });
 
-    setTimeout(() => {
-        messageBox.classList.remove('show');
+    /*
+     * Automatically hide.
+     */
+    const duration =
+        popupType === 'error'
+            ? 3000
+            : popupType === 'loading'
+                ? 0
+                : 1800;
 
+    if (duration > 0) {
         setTimeout(() => {
-            if (messageBox.parentNode) {
-                messageBox.remove();
-            }
-        }, 300);
-    }, 2600);
+            hideAdminStatus();
+        }, duration);
+    }
 }
+
 
 
 /* ================================================================
@@ -2251,7 +2383,7 @@ async function loadRestaurantProfile() {
 function renderProfileLogo() {
     const image =
         document.getElementById(
-            'profileLogoPreviewImg'
+            'profileLogoImage'
         );
 
     const placeholder =
@@ -2263,28 +2395,19 @@ function renderProfileLogo() {
         return;
     }
 
-    if (
-        restaurantProfile.logo &&
-        restaurantProfile.logo.startsWith(
-            'data:image/'
-        )
-    ) {
-        image.src =
-            restaurantProfile.logo;
+    const logo =
+        typeof restaurantProfile.logo === 'string'
+            ? restaurantProfile.logo.trim()
+            : '';
 
-        image.style.display =
-            'block';
-
-        placeholder.style.display =
-            'none';
+    if (logo) {
+        image.src = logo;
+        image.style.display = 'block';
+        placeholder.style.display = 'none';
     } else {
         image.removeAttribute('src');
-
-        image.style.display =
-            'none';
-
-        placeholder.style.display =
-            'flex';
+        image.style.display = 'none';
+        placeholder.style.display = 'flex';
     }
 }
 
@@ -4150,6 +4273,8 @@ async function saveMenuDataSilently() {
         );
     }
 
+    removeEmptyCategories();
+
     const response =
         await fetch(
             '/api/admin/menu/' +
@@ -4160,25 +4285,23 @@ async function saveMenuDataSilently() {
                 method: 'POST',
 
                 headers: {
-                    'Content-Type':
-                        'application/json'
+                    'Content-Type': 'application/json'
                 },
 
-                credentials:
-                    'same-origin',
+                credentials: 'same-origin',
 
-                body:
-                    JSON.stringify({
-                        menu: foods
-                    })
+                cache: 'no-store',
+
+                body: JSON.stringify({
+                    menu: foods
+                })
             }
         );
 
     let data = {};
 
     try {
-        data =
-            await response.json();
+        data = await response.json();
     } catch (error) {
         data = {};
     }
@@ -4187,9 +4310,7 @@ async function saveMenuDataSilently() {
         response.status === 401 ||
         response.status === 403
     ) {
-        window.location.replace(
-            '/admin.html'
-        );
+        window.location.replace('/admin.html');
 
         throw new Error(
             data.message ||
@@ -4206,6 +4327,18 @@ async function saveMenuDataSilently() {
             'Failed to save menu.'
         );
     }
+
+    /*
+     * The server has accepted the new menu.
+     * Reload the authoritative version from the server.
+     */
+    await loadRestaurantMenu();
+
+    updateAdminCategoryOptions();
+    updateCategoryManager();
+    updateExistingItemCategorySelect();
+    refreshExistingItemsSelect();
+    renderCurrentMenu();
 
     return data;
 }
@@ -4584,3 +4717,92 @@ document.addEventListener(
         checkCafeAdminAccess();
     }
 );
+
+/* ================================================================
+   SILENT CUSTOMER MENU REFRESH
+   Keeps the customer menu synchronized with admin changes.
+   ================================================================ */
+
+let lastCustomerMenuUpdatedAt = '';
+
+async function refreshCustomerMenuSilently() {
+    try {
+        const response = await fetch(
+            `${API_BASE}/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }
+        );
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!data.ok || !data.menu) {
+            return;
+        }
+
+        /*
+         * If the server provides an updated timestamp,
+         * avoid rebuilding the page when nothing changed.
+         */
+        const updatedAt =
+            data.menuUpdatedAt || '';
+
+        if (
+            updatedAt &&
+            updatedAt === lastCustomerMenuUpdatedAt
+        ) {
+            return;
+        }
+
+        lastCustomerMenuUpdatedAt = updatedAt;
+
+        foods = data.menu;
+
+        if (
+            data.profile &&
+            typeof data.profile === 'object'
+        ) {
+            restaurantProfile = {
+                logo:
+                    typeof data.profile.logo === 'string'
+                        ? data.profile.logo
+                        : '',
+
+                phone_numbers:
+                    Array.isArray(
+                        data.profile.phone_numbers
+                    )
+                        ? data.profile.phone_numbers
+                        : [],
+
+                addresses:
+                    Array.isArray(
+                        data.profile.addresses
+                    )
+                        ? data.profile.addresses
+                        : []
+            };
+        }
+
+        /*
+         * Re-render only the menu-related UI.
+         * Do NOT show a loading popup/overlay.
+         */
+        renderRestaurantProfile();
+        renderItems();
+        renderCategoryButtons();
+        setupDaySpecial();
+
+    } catch (error) {
+        console.warn(
+            '[customer] Background menu refresh failed:',
+            error
+        );
+    }
+}
