@@ -1576,7 +1576,7 @@ function openCustomerDaySpecial() {
 
 
                 <div class="customer-day-special-empty-icon">
-                    â­
+                    ⭐
                 </div>
 
 
