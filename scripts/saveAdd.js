@@ -1,4 +1,4 @@
-let cart = [];
+﻿let cart = [];
 
 const STORAGE_KEY = 'simple-cart';
 
@@ -197,11 +197,10 @@ function showRestaurantHeaderLoading() {
         document.getElementById('restaurantLogo');
 
     if (logoElement) {
-        logoElement.src =
-            getRestaurantLoadingLogo();
+        logoElement.removeAttribute('src');
 
         logoElement.alt =
-            'Loading restaurant';
+            'Restaurant logo';
 
         logoElement.classList.add(
             'restaurant-loading-logo'
@@ -268,172 +267,390 @@ function showRestaurantHeaderError() {
         document.getElementById('restaurantLogo');
 
     if (logoElement) {
-        logoElement.classList.remove(
-            'restaurant-loading-logo'
+    logoElement.classList.remove(
+        'restaurant-loading-logo'
+    );
+
+    logoElement.removeAttribute(
+        'aria-busy'
+    );
+
+    logoElement.removeAttribute('src');
+
+    logoElement.alt =
+        'Restaurant Logo';
+
+    logoElement.style.display =
+        'block';
+}
+}
+
+
+async function loadRestaurantLogo() {
+
+    console.log(
+        '[menu:logo] Loading restaurant logo...'
+    );
+
+    try {
+
+        const response = await fetch(
+            `${API_BASE}/api/menu/${encodeURIComponent(CAFE_SLUG)}/logo`,
+            {
+                method: 'GET',
+                cache: 'default',
+                headers: {
+                    'Accept': 'text/plain'
+                }
+            }
         );
 
-        logoElement.removeAttribute(
-            'aria-busy'
+        console.log(
+            '[menu:logo] Server response:',
+            response.status,
+            response.statusText
         );
 
-        logoElement.src =
-            'image/latte.jpeg';
+        if (!response.ok) {
 
-        logoElement.alt =
-            'Restaurant Logo';
+            throw new Error(
+                `Logo request returned HTTP ${response.status}`
+            );
+        }
 
-        logoElement.style.display =
-            'block';
+
+        /* =========================================================
+           LOGO ENDPOINT RETURNS THE BASE64 DATA URI AS TEXT
+           ========================================================= */
+
+        const logo =
+            (await response.text()).trim();
+
+
+        if (!logo) {
+
+            throw new Error(
+                'Restaurant logo is empty.'
+            );
+        }
+
+
+        /* =========================================================
+           VALIDATE LOGO FORMAT
+           ========================================================= */
+
+        if (
+            !logo.startsWith('data:image/')
+        ) {
+
+            throw new Error(
+                'Invalid restaurant logo format.'
+            );
+        }
+
+
+        /* =========================================================
+           SAVE LOGO
+           ========================================================= */
+
+        restaurantProfile.logo = logo;
+
+
+        /* =========================================================
+           UPDATE IMAGE WITHOUT RE-RENDERING THE MENU
+           ========================================================= */
+
+        const logoElement =
+            document.getElementById(
+                'restaurantLogo'
+            );
+
+        if (logoElement) {
+
+            logoElement.src = logo;
+
+            logoElement.alt =
+                'Restaurant Logo';
+
+            logoElement.style.display =
+                'block';
+
+            logoElement.classList.remove(
+                'restaurant-loading-logo'
+            );
+
+            logoElement.removeAttribute(
+                'aria-busy'
+            );
+        }
+
+
+        console.log(
+            '[menu:logo] Restaurant logo loaded successfully.'
+        );
+
+    } catch (error) {
+
+        /*
+         * IMPORTANT:
+         * Logo failure must NOT break the menu.
+         * The white logo board simply remains visible.
+         */
+
+        console.warn(
+            '[menu:logo] Could not load restaurant logo:',
+            error?.message || error
+        );
+
+        restaurantProfile.logo = '';
+
+        const logoElement =
+            document.getElementById(
+                'restaurantLogo'
+            );
+
+        if (logoElement) {
+
+            logoElement.removeAttribute(
+                'src'
+            );
+
+            logoElement.alt =
+                'Restaurant Logo';
+
+            logoElement.style.display =
+                'block';
+
+            logoElement.classList.remove(
+                'restaurant-loading-logo'
+            );
+
+            logoElement.removeAttribute(
+                'aria-busy'
+            );
+        }
     }
 }
 
 
-/* ==========================================================================
-   LOAD MENU FROM SERVER
-   ========================================================================== */
+
 
 async function loadMenuFromServer() {
+    console.log(
+        '[menu:load] Restaurant slug:',
+        CAFE_SLUG
+    );
+
+    console.log(
+        '[menu:load] Request URL:',
+        `${API_BASE}/api/menu/${encodeURIComponent(CAFE_SLUG)}`
+    );
 
     showRestaurantHeaderLoading();
 
     try {
-        const response =
-            await fetch(
-                API_BASE +
-                `/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
-                {
-                    cache: 'no-store'
+
+        /* =========================================================
+           LOAD FAST MENU API
+           ========================================================= */
+
+        const response = await fetch(
+            `${API_BASE}/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
+            {
+                method: 'GET',
+                cache: 'no-store',
+                headers: {
+                    'Accept': 'application/json'
                 }
-            );
+            }
+        );
 
-        const text =
-            await response.text();
+        console.log(
+            '[menu:load] Server response:',
+            response.status,
+            response.statusText
+        );
 
-        let data = null;
+        const data = await response.json();
 
-        try {
-            data = text
-                ? JSON.parse(text)
-                : null;
-        } catch (error) {
-            throw new Error(
-                'Invalid server response: ' + text
-            );
-        }
+        console.log(
+            '[menu:load] API data received:',
+            data
+        );
 
         if (!response.ok) {
             throw new Error(
                 data?.message ||
-                'Failed to fetch menu'
+                `Server returned HTTP ${response.status}`
             );
         }
 
-        /* ------------------------------------------------------------------
-           RESTAURANT INFORMATION
-           ------------------------------------------------------------------ */
+        if (!data || data.ok !== true) {
+            throw new Error(
+                data?.message ||
+                'Invalid restaurant response.'
+            );
+        }
 
-        if (data?.restaurant) {
-            const restaurantName =
-                document.getElementById(
-                    'restaurantName'
-                );
+        if (!data.restaurant) {
+            throw new Error(
+                'Restaurant information is missing.'
+            );
+        }
 
-            if (restaurantName) {
-                restaurantName.textContent =
-                    data.restaurant.name ||
-                    'Cafe Menu';
-            }
+        if (!data.menu || typeof data.menu !== 'object') {
+            throw new Error(
+                'Restaurant menu is missing.'
+            );
+        }
+
+
+        /* =========================================================
+           RESTAURANT NAME
+           ========================================================= */
+
+        const realRestaurantName =
+            String(
+                data.restaurant.name || ''
+            ).trim();
+
+        const restaurantNameElement =
+            document.getElementById(
+                'restaurantName'
+            );
+
+        if (restaurantNameElement) {
+
+            restaurantNameElement.textContent =
+                realRestaurantName ||
+                'Cafe Menu';
+
+            restaurantNameElement.removeAttribute(
+                'aria-busy'
+            );
+
+            restaurantNameElement.classList.remove(
+                'restaurant-loading-name'
+            );
+        }
+
+
+        /* =========================================================
+           PAGE TITLE
+           ========================================================= */
+
+        if (realRestaurantName) {
 
             document.title =
-                `${data.restaurant.name || 'Cafe'} Menu`;
+                `${realRestaurantName} - Cafe Menu`;
         }
 
-        /* ------------------------------------------------------------------
+
+        /* =========================================================
            RESTAURANT PROFILE
-           ------------------------------------------------------------------ */
+           
+           IMPORTANT:
+           The main menu API no longer contains the logo.
+           The logo will be loaded separately below.
+           ========================================================= */
 
-        if (
-            data?.profile &&
-            typeof data.profile === 'object'
-        ) {
-            restaurantProfile = {
-                logo:
-                    typeof data.profile.logo === 'string'
-                        ? data.profile.logo.trim()
-                        : '',
+        restaurantProfile = {
 
-                phone_numbers:
-                    Array.isArray(
-                        data.profile.phone_numbers
-                    )
-                        ? data.profile.phone_numbers
-                        : [],
+            logo: '',
 
-                addresses:
-                    Array.isArray(
-                        data.profile.addresses
-                    )
-                        ? data.profile.addresses
-                        : []
-            };
-        } else {
-            restaurantProfile = {
-                logo: '',
-                phone_numbers: [],
-                addresses: []
-            };
-        }
+            phone_numbers:
+                Array.isArray(
+                    data.profile?.phone_numbers
+                )
+                    ? data.profile.phone_numbers
+                    : [],
 
-        hideRestaurantHeaderLoading();
+            addresses:
+                Array.isArray(
+                    data.profile?.addresses
+                )
+                    ? data.profile.addresses
+                    : []
+        };
+
+
+        /* =========================================================
+           MENU
+           ========================================================= */
+
+        foods = data.menu;
+
+        console.log(
+            '[menu:load] Restaurant loaded:',
+            realRestaurantName
+        );
+
+        console.log(
+            '[menu:load] Menu categories:',
+            Object.keys(foods)
+        );
+
+        console.log(
+            '[menu:load] Menu items:',
+            foods
+        );
+
+
+        /* =========================================================
+           RENDER MENU IMMEDIATELY
+           
+           Do NOT wait for the large logo.
+           ========================================================= */
 
         renderRestaurantProfile();
 
-        /* ------------------------------------------------------------------
-           MENU
-           ------------------------------------------------------------------ */
+        renderItems();
 
-        if (
-            data &&
-            data.menu &&
-            typeof data.menu === 'object' &&
-            !Array.isArray(data.menu)
-        ) {
-            foods = data.menu;
+        renderCategoryButtons();
 
-            console.log(
-                'Loaded menu for:',
-                data.restaurant?.name
-            );
 
-            console.log(
-                'Restaurant profile:',
-                restaurantProfile
-            );
+        /* =========================================================
+           DAY SPECIAL
+           ========================================================= */
 
-            console.log(
-                'Menu:',
-                foods
-            );
+        setupDaySpecial();
 
-            renderItems();
-            renderCategoryButtons();
 
-            /*
-             * setupDaySpecial() is safe to call repeatedly because
-             * it checks data-day-special-ready.
-             */
-            setupDaySpecial();
-        } else {
-            foods = {};
+        /* =========================================================
+           MENU IS READY
+           
+           Hide loading immediately.
+           ========================================================= */
 
-            renderItems();
-            renderCategoryButtons();
-            setupDaySpecial();
-        }
+        hideRestaurantHeaderLoading();
+
+        console.log(
+            '[menu:load] Restaurant menu loaded successfully.'
+        );
+
+
+        /* =========================================================
+           LOAD LARGE RESTAURANT LOGO IN BACKGROUND
+           
+           This does NOT block the menu.
+           If the logo fails, the menu still works.
+           ========================================================= */
+
+        loadRestaurantLogo()
+            .catch(error => {
+
+                console.warn(
+                    '[menu:logo] Background logo loading failed:',
+                    error?.message || error
+                );
+
+            });
+
 
     } catch (error) {
+
         console.error(
-            'Could not load menu from server:',
+            '[menu:load] Could not load restaurant:',
             error
         );
 
@@ -445,14 +662,43 @@ async function loadMenuFromServer() {
             addresses: []
         };
 
+
         showRestaurantHeaderError();
 
         renderRestaurantProfile();
+
         renderItems();
+
         renderCategoryButtons();
+
         setupDaySpecial();
+
+
+        if (error?.name === 'AbortError') {
+
+            console.error(
+                '[menu:load] Restaurant menu request was aborted.'
+            );
+
+        } else {
+
+            console.error(
+                '[menu:load] Restaurant menu request failed:',
+                error?.message || error
+            );
+        }
+
+    } finally {
+
+        hideRestaurantHeaderLoading();
+
     }
 }
+
+
+
+
+
 
 
 /* ==========================================================================
@@ -644,10 +890,10 @@ function renderRestaurantProfile() {
             logoElement.style.display = 'block';
             logoElement.alt = 'Restaurant Logo';
         } else {
-            logoElement.src = 'image/latte.jpeg';
-            logoElement.style.display = 'block';
-            logoElement.alt = 'Restaurant Logo';
-        }
+    logoElement.removeAttribute('src');
+    logoElement.style.display = 'block';
+    logoElement.alt = 'Restaurant Logo';
+}
     }
 
 
@@ -1010,7 +1256,7 @@ function renderItems() {
 
                 const image =
                     food.image ||
-                    'image/latte.jpeg';
+                    '';
 
                 const daySpecial =
                     food.isDaySpecial === true;
@@ -1030,9 +1276,7 @@ function renderItems() {
                         ${
                             daySpecial
                                 ? `
-                                    <div class="menu-item-day-special">
-                                        ⭐ Day Special ⭐
-                                    </div>
+                                    <div class="menu-item-day-special">Day Special</div>
                                 `
                                 : ''
                         }
@@ -1332,7 +1576,7 @@ function openCustomerDaySpecial() {
 
 
                 <div class="customer-day-special-empty-icon">
-                    ⭐
+                    â­
                 </div>
 
 
@@ -1402,7 +1646,7 @@ function openCustomerDaySpecial() {
 
                 const image =
                     item.image ||
-                    'image/latte.jpeg';
+                    '';
 
                 const price =
                     Number(item.price) || 0;
@@ -1628,7 +1872,7 @@ function openCustomerDaySpecial() {
 
 
                     addButton.textContent =
-                        '✓ Added to Cart';
+                        'âœ“ Added to Cart';
 
                     addButton.disabled =
                         true;
@@ -1958,7 +2202,7 @@ function addToCart(
 
 
         button.textContent =
-            '✓ Added';
+            'âœ“ Added';
 
 
         button.disabled =
@@ -2053,7 +2297,7 @@ function renderCart() {
                                             item.name
                                         )}')"
                                     >
-                                        −
+                                        âˆ’
                                     </button>
 
 
@@ -2850,11 +3094,11 @@ window.addEventListener(
  * Every 15 seconds:
  *
  * Admin changes menu
- *        ↓
+ *        â†“
  * Server saves it
- *        ↓
+ *        â†“
  * Customer automatically requests latest data
- *        ↓
+ *        â†“
  * Menu/profile/day-special updates
  *
  * The cart is NOT touched.
@@ -2862,5 +3106,7 @@ window.addEventListener(
 
 setInterval(
     refreshCustomerMenuSilently,
-    15000
+    60000
 );
+
+

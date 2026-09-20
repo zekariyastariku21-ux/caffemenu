@@ -13,25 +13,42 @@ const app = express();
    ================================================================ */
 
 const pool = new Pool({
+
   connectionString: process.env.DATABASE_URL,
 
   ssl: process.env.DATABASE_URL
     ? { rejectUnauthorized: false }
     : false,
 
+  /* ============================================================
+     DATABASE CONNECTION SETTINGS
+     ============================================================ */
+
   connectionTimeoutMillis: 15000,
 
-  // Keep database connections available longer.
-  // This avoids repeatedly creating new PostgreSQL connections.
-  idleTimeoutMillis: 30000,
+  /*
+     Keep idle connections alive so requests can reuse an
+     already-established PostgreSQL connection.
+  */
+  idleTimeoutMillis: 120000,
 
-  // Allow enough time for a slow database response.
+  /*
+     Do not let a normal query remain stuck indefinitely.
+  */
   query_timeout: 30000,
 
+  /*
+     Keep a small pool of reusable connections.
+  */
   max: 10,
 
+  /*
+     TCP keep-alive helps prevent long-lived connections from
+     silently becoming stale.
+  */
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000
+
 });
 
 
@@ -43,6 +60,28 @@ const menuCache = new Map();
 
 
 
+/* ================================================================
+   DATABASE CONNECTION WARM-UP
+   Keeps one PostgreSQL connection ready so the first customer
+   request does not have to wait for the initial DB connection.
+   ================================================================ */
+
+async function warmDatabaseConnection() {
+  try {
+    const start = Date.now();
+
+    await pool.query('SELECT 1');
+
+    console.log(
+      `[db] Database connection warmed up in ${Date.now() - start} ms.`
+    );
+  } catch (error) {
+    console.error(
+      '[db] Database warm-up failed:',
+      error.message
+    );
+  }
+}
 /* ================================================================
    WARM PUBLIC MENU CACHE
    Loads active restaurant menus into memory after startup.
@@ -952,204 +991,333 @@ app.put(
    GET /api/menu/:slug
    ================================================================ */
 
-app.get(
-  '/api/menu/:slug',
-  async (req, res) => {
-    try {
-      const { slug } = req.params;
+/* ================================================================
+   PUBLIC CUSTOMER MENU
+   FAST VERSION
+   - Does NOT load the large Base64 logo
+   - Loads restaurant + menu + contact information
+   - Logo is served separately
+   ================================================================ */
 
+app.get('/api/menu/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    console.log(
+      `[menu:get] Request received for slug: ${slug}`
+    );
+
+    /* ============================================================
+       CACHE
+       ============================================================ */
+
+    if (menuCache.has(slug)) {
       console.log(
-        `[menu:get] Request received for slug: ${slug}`
+        `[menu:get] Returning cached menu for: ${slug}`
       );
-
-      /* ============================================================
-         CACHE
-         ============================================================ */
-
-      if (menuCache.has(slug)) {
-        console.log(
-          `[menu:get] Returning cached menu for: ${slug}`
-        );
-
-        return res.json(
-          menuCache.get(slug)
-        );
-      }
-
-      /* ============================================================
-         LOAD EVERYTHING IN ONE DATABASE QUERY
-         ============================================================ */
-
-      console.log(
-        `[menu:get] Loading restaurant, menu and profile for: ${slug}`
-      );
-
-      const result = await pool.query(
-        `
-          SELECT
-            r.id,
-            r.name,
-            r.slug,
-            r.status,
-
-            md.menu,
-            md.updated_at AS menu_updated_at,
-
-            rp.logo,
-            rp.phone_numbers,
-            rp.addresses,
-            rp.updated_at AS profile_updated_at
-
-          FROM restaurants r
-
-          LEFT JOIN menu_data md
-            ON md.restaurant_id = r.id
-
-          LEFT JOIN restaurant_profiles rp
-            ON rp.restaurant_id = r.id
-
-          WHERE r.slug = $1
-
-          LIMIT 1
-        `,
-        [slug]
-      );
-
-      console.log(
-        `[menu:get] Combined database query completed for: ${slug}`
-      );
-
-      /* ============================================================
-         RESTAURANT NOT FOUND
-         ============================================================ */
-
-      if (result.rows.length === 0) {
-        console.log(
-          `[menu:get] Restaurant not found: ${slug}`
-        );
-
-        return res.status(404).json({
-          ok: false,
-          message: 'Restaurant not found.'
-        });
-      }
-
-      const row = result.rows[0];
-
-      /* ============================================================
-         CHECK RESTAURANT STATUS
-         ============================================================ */
-
-      if (row.status !== 'active') {
-        console.log(
-          `[menu:get] Restaurant is not active: ${slug}`
-        );
-
-        return res.status(403).json({
-          ok: false,
-          message:
-            'This restaurant is currently unavailable.'
-        });
-      }
-
-      /* ============================================================
-         RESTAURANT
-         ============================================================ */
-
-      const restaurant = {
-        id: row.id,
-        name: row.name,
-        slug: row.slug,
-        status: row.status
-      };
-
-      /* ============================================================
-         MENU
-         ============================================================ */
-
-      const menu =
-        row.menu &&
-        typeof row.menu === 'object'
-          ? row.menu
-          : {};
-
-      const menuUpdatedAt =
-        row.menu_updated_at || null;
-
-      /* ============================================================
-         PROFILE
-         ============================================================ */
-
-      const profile = {
-        logo:
-          typeof row.logo === 'string'
-            ? row.logo
-            : '',
-
-        phone_numbers:
-          Array.isArray(row.phone_numbers)
-            ? row.phone_numbers
-            : [],
-
-        addresses:
-          Array.isArray(row.addresses)
-            ? row.addresses
-            : [],
-
-        updated_at:
-          row.profile_updated_at || null
-      };
-
-      /* ============================================================
-         BUILD RESPONSE
-         ============================================================ */
-
-      const responseData = {
-        ok: true,
-
-        restaurant,
-
-        menu,
-
-        menuUpdatedAt,
-
-        profile
-      };
-
-      /* ============================================================
-         CACHE RESPONSE
-         ============================================================ */
-
-      menuCache.set(
-        slug,
-        responseData
-      );
-
-      console.log(
-        `[menu:get] Menu successfully loaded and cached for: ${slug}`
-      );
-
-      /* ============================================================
-         SEND RESPONSE
-         ============================================================ */
 
       return res.json(
-        responseData
+        menuCache.get(slug)
+      );
+    }
+
+    /* ============================================================
+       LOAD RESTAURANT + MENU + SMALL PROFILE DATA
+       IMPORTANT:
+       Do NOT select rp.logo here.
+       The logo is approximately 4.55 MB.
+       ============================================================ */
+
+    console.log(
+      `[menu:get] Loading restaurant and menu for: ${slug}`
+    );
+
+    const result = await pool.query(
+      `
+        SELECT
+          r.id,
+          r.name,
+          r.slug,
+          r.status,
+
+          md.menu,
+          md.updated_at AS menu_updated_at,
+
+          rp.phone_numbers,
+          rp.addresses,
+          rp.updated_at AS profile_updated_at
+
+        FROM restaurants r
+
+        LEFT JOIN menu_data md
+          ON md.restaurant_id = r.id
+
+        LEFT JOIN restaurant_profiles rp
+          ON rp.restaurant_id = r.id
+
+        WHERE r.slug = $1
+
+        LIMIT 1
+      `,
+      [slug]
+    );
+
+    console.log(
+      `[menu:get] Database query completed for: ${slug}`
+    );
+
+    /* ============================================================
+       RESTAURANT NOT FOUND
+       ============================================================ */
+
+    if (result.rows.length === 0) {
+      console.log(
+        `[menu:get] Restaurant not found: ${slug}`
       );
 
-    } catch (error) {
-      console.error(
-        '[menu:get] Unexpected error:',
-        error
-      );
-
-      return res.status(500).json({
+      return res.status(404).json({
         ok: false,
-        message: 'Unable to load menu.'
+        message: 'Restaurant not found.'
       });
     }
+
+    const row = result.rows[0];
+
+    /* ============================================================
+       CHECK RESTAURANT STATUS
+       ============================================================ */
+
+    if (row.status !== 'active') {
+      console.log(
+        `[menu:get] Restaurant is not active: ${slug}`
+      );
+
+      return res.status(403).json({
+        ok: false,
+        message: 'This restaurant is currently unavailable.'
+      });
+    }
+
+    /* ============================================================
+       RESTAURANT
+       ============================================================ */
+
+    const restaurant = {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      status: row.status
+    };
+
+    /* ============================================================
+       MENU
+       ============================================================ */
+
+    const menu =
+      row.menu &&
+      typeof row.menu === 'object'
+        ? row.menu
+        : {};
+
+    const menuUpdatedAt =
+      row.menu_updated_at || null;
+
+    /* ============================================================
+       PROFILE
+       IMPORTANT:
+       Logo is intentionally NOT included here.
+       ============================================================ */
+
+    const profile = {
+      logo: '',
+
+      phone_numbers:
+        Array.isArray(row.phone_numbers)
+          ? row.phone_numbers
+          : [],
+
+      addresses:
+        Array.isArray(row.addresses)
+          ? row.addresses
+          : [],
+
+      updated_at:
+        row.profile_updated_at || null
+    };
+
+    /* ============================================================
+       BUILD RESPONSE
+       ============================================================ */
+
+    const responseData = {
+      ok: true,
+
+      restaurant,
+
+      menu,
+
+      menuUpdatedAt,
+
+      profile
+    };
+
+    /* ============================================================
+       CACHE
+       ============================================================ */
+
+    menuCache.set(
+      slug,
+      responseData
+    );
+
+    console.log(
+      `[menu:get] Menu successfully loaded and cached for: ${slug}`
+    );
+
+    /* ============================================================
+       SEND RESPONSE
+       ============================================================ */
+
+    return res.json(
+      responseData
+    );
+
+  } catch (error) {
+    console.error(
+      '[menu:get] Unexpected error:',
+      error
+    );
+
+    return res.status(500).json({
+      ok: false,
+      message: 'Unable to load menu.'
+    });
   }
-);
+});
+
+
+/* ================================================================
+   PUBLIC RESTAURANT LOGO
+   Loads the large Base64 logo separately.
+   Browser caching prevents repeated downloads.
+   ================================================================ */
+
+app.get('/api/menu/:slug/logo', async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    console.log(
+      `[menu:logo] Request received for slug: ${slug}`
+    );
+
+    /* ============================================================
+       FIND RESTAURANT
+       ============================================================ */
+
+    const restaurantResult = await pool.query(
+      `
+        SELECT
+          id,
+          status
+        FROM restaurants
+        WHERE slug = $1
+        LIMIT 1
+      `,
+      [slug]
+    );
+
+    if (restaurantResult.rows.length === 0) {
+      console.log(
+        `[menu:logo] Restaurant not found: ${slug}`
+      );
+
+      return res.status(404).json({
+        ok: false,
+        message: 'Restaurant not found.'
+      });
+    }
+
+    const restaurant = restaurantResult.rows[0];
+
+    /* ============================================================
+       CHECK STATUS
+       ============================================================ */
+
+    if (restaurant.status !== 'active') {
+      console.log(
+        `[menu:logo] Restaurant is not active: ${slug}`
+      );
+
+      return res.status(403).json({
+        ok: false,
+        message: 'This restaurant is currently unavailable.'
+      });
+    }
+
+    /* ============================================================
+       LOAD LOGO ONLY
+       ============================================================ */
+
+    const logoResult = await pool.query(
+      `
+        SELECT
+          logo
+        FROM restaurant_profiles
+        WHERE restaurant_id = $1
+        LIMIT 1
+      `,
+      [restaurant.id]
+    );
+
+    const logo =
+      logoResult.rows.length > 0 &&
+      typeof logoResult.rows[0].logo === 'string'
+        ? logoResult.rows[0].logo
+        : '';
+
+    /* ============================================================
+       NO LOGO
+       ============================================================ */
+
+    if (!logo) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Restaurant logo not found.'
+      });
+    }
+
+    /* ============================================================
+       CACHE LOGO IN BROWSER
+       ============================================================ */
+
+    res.set(
+      'Cache-Control',
+      'public, max-age=86400, stale-while-revalidate=604800'
+    );
+
+    res.set(
+      'Content-Type',
+      'text/plain; charset=utf-8'
+    );
+
+    console.log(
+      `[menu:logo] Logo successfully loaded for: ${slug}`
+    );
+
+    return res.send(logo);
+
+  } catch (error) {
+    console.error(
+      '[menu:logo] Unexpected error:',
+      error
+    );
+
+    return res.status(500).json({
+      ok: false,
+      message: 'Unable to load restaurant logo.'
+    });
+  }
+});
 
 
 /* ================================================================
@@ -3165,62 +3333,32 @@ app.use(
    SERVER START
    ================================================================ */
 
-const PORT =
-  Number(process.env.PORT) || 10000;
+const PORT = Number(process.env.PORT) || 10000;
 
 async function startServer() {
   try {
-    /* ============================================================
-       DATABASE STRUCTURE
-       ============================================================ */
-
     await ensureDatabaseStructure();
 
-    /* ============================================================
-       START HTTP SERVER FIRST
-       ============================================================ */
+    /*
+       Establish the PostgreSQL connection before accepting
+       customer traffic.
+    */
+    await warmDatabaseConnection();
 
-    app.listen(
-      PORT,
-      '0.0.0.0',
-      () => {
-        console.log(
-          `[server] Caffemenu running on port ${PORT}`
-        );
-
-        /* ========================================================
-           WARM PUBLIC MENU CACHE IN BACKGROUND
-
-           Do not block the HTTP server while PostgreSQL is warming
-           up. Customers can access the application immediately.
-           ======================================================== */
-
-        warmMenuCache()
-          .then(() => {
-            console.log(
-              '[menu:cache] Background warm-up finished.'
-            );
-          })
-          .catch((error) => {
-            console.error(
-              '[menu:cache] Background warm-up error:',
-              error
-            );
-          });
-      }
-    );
+    app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[server] Caffemenu running on port ${PORT}`);
+});
 
   } catch (error) {
-    console.error(
-      '[server] Failed to start:',
-      error
-    );
-
+    console.error('[server] Failed to start:', error);
     process.exit(1);
   }
 }
 
-
 startServer();
+
+
+
+
 
 
