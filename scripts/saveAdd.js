@@ -12,10 +12,7 @@ let restaurantProfile = {
     addresses: []
 };
 
-const API_BASE =
-    (location.port && location.port !== '3000')
-        ? `${location.protocol}//${location.hostname}:3000`
-        : '';
+const API_BASE = '';
 
 /* ==========================================================================
    RESTAURANT SLUG
@@ -126,15 +123,7 @@ function escapeAttribute(value) {
    RESTAURANT HEADER LOADING
    ========================================================================== */
 
-/*
-   This creates a small built-in loading image.
-
-   We use an inline SVG so the loading state does not depend on
-   another image file from the server.
-*/
-
 function getRestaurantLoadingLogo() {
-
     const svg = `
         <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -187,15 +176,7 @@ function getRestaurantLoadingLogo() {
 }
 
 
-/*
-   Put the restaurant header into loading mode.
-
-   This runs BEFORE the server request starts, so the customer
-   never sees an old café name while the new café is loading.
-*/
-
 function showRestaurantHeaderLoading() {
-
     const restaurantName =
         document.getElementById('restaurantName');
 
@@ -212,12 +193,10 @@ function showRestaurantHeaderLoading() {
         );
     }
 
-
     const logoElement =
         document.getElementById('restaurantLogo');
 
     if (logoElement) {
-
         logoElement.src =
             getRestaurantLoadingLogo();
 
@@ -239,18 +218,11 @@ function showRestaurantHeaderLoading() {
 }
 
 
-/*
-   Remove the loading state after the real restaurant
-   information has arrived.
-*/
-
 function hideRestaurantHeaderLoading() {
-
     const restaurantName =
         document.getElementById('restaurantName');
 
     if (restaurantName) {
-
         restaurantName.classList.remove(
             'restaurant-loading-name'
         );
@@ -260,12 +232,10 @@ function hideRestaurantHeaderLoading() {
         );
     }
 
-
     const logoElement =
         document.getElementById('restaurantLogo');
 
     if (logoElement) {
-
         logoElement.classList.remove(
             'restaurant-loading-logo'
         );
@@ -277,20 +247,11 @@ function hideRestaurantHeaderLoading() {
 }
 
 
-/*
-   Error state.
-
-   If the server cannot be reached, we do not leave the customer
-   looking at "Loading..." forever.
-*/
-
 function showRestaurantHeaderError() {
-
     const restaurantName =
         document.getElementById('restaurantName');
 
     if (restaurantName) {
-
         restaurantName.textContent =
             'Cafe Menu';
 
@@ -303,12 +264,10 @@ function showRestaurantHeaderError() {
         );
     }
 
-
     const logoElement =
         document.getElementById('restaurantLogo');
 
     if (logoElement) {
-
         logoElement.classList.remove(
             'restaurant-loading-logo'
         );
@@ -335,86 +294,59 @@ function showRestaurantHeaderError() {
 
 async function loadMenuFromServer() {
 
-    /*
-       IMPORTANT:
-
-       Start loading state BEFORE fetch().
-       This means every refresh begins with:
-
-       Loading...
-       Loading logo...
-
-       and then switches to the real restaurant information.
-    */
-
     showRestaurantHeaderLoading();
 
-
     try {
-
-        const response = await fetch(
-            API_BASE +
-            `/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
-            {
-                cache: 'no-store'
-            }
-        );
-
+        const response =
+            await fetch(
+                API_BASE +
+                `/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
+                {
+                    cache: 'no-store'
+                }
+            );
 
         const text =
             await response.text();
 
-
         let data = null;
 
-
         try {
-
             data = text
                 ? JSON.parse(text)
                 : null;
-
         } catch (error) {
-
             throw new Error(
                 'Invalid server response: ' + text
             );
         }
 
-
         if (!response.ok) {
-
             throw new Error(
                 data?.message ||
                 'Failed to fetch menu'
             );
         }
 
-
         /* ------------------------------------------------------------------
            RESTAURANT INFORMATION
            ------------------------------------------------------------------ */
 
         if (data?.restaurant) {
-
             const restaurantName =
                 document.getElementById(
                     'restaurantName'
                 );
 
-
             if (restaurantName) {
-
                 restaurantName.textContent =
                     data.restaurant.name ||
                     'Cafe Menu';
             }
 
-
             document.title =
                 `${data.restaurant.name || 'Cafe'} Menu`;
         }
-
 
         /* ------------------------------------------------------------------
            RESTAURANT PROFILE
@@ -424,9 +356,7 @@ async function loadMenuFromServer() {
             data?.profile &&
             typeof data.profile === 'object'
         ) {
-
             restaurantProfile = {
-
                 logo:
                     typeof data.profile.logo === 'string'
                         ? data.profile.logo.trim()
@@ -446,31 +376,17 @@ async function loadMenuFromServer() {
                         ? data.profile.addresses
                         : []
             };
-
         } else {
-
             restaurantProfile = {
-
                 logo: '',
-
                 phone_numbers: [],
-
                 addresses: []
             };
         }
 
-
-        /*
-           The real restaurant information has now arrived.
-
-           Remove the loading state BEFORE rendering the real logo.
-        */
-
         hideRestaurantHeaderLoading();
 
-
         renderRestaurantProfile();
-
 
         /* ------------------------------------------------------------------
            MENU
@@ -482,81 +398,221 @@ async function loadMenuFromServer() {
             typeof data.menu === 'object' &&
             !Array.isArray(data.menu)
         ) {
-
             foods = data.menu;
-
 
             console.log(
                 'Loaded menu for:',
                 data.restaurant?.name
             );
 
-
             console.log(
                 'Restaurant profile:',
                 restaurantProfile
             );
-
 
             console.log(
                 'Menu:',
                 foods
             );
 
-
             renderItems();
-
             renderCategoryButtons();
 
+            /*
+             * setupDaySpecial() is safe to call repeatedly because
+             * it checks data-day-special-ready.
+             */
             setupDaySpecial();
-
         } else {
-
             foods = {};
 
             renderItems();
-
             renderCategoryButtons();
-
             setupDaySpecial();
         }
 
-
     } catch (error) {
-
         console.error(
             'Could not load menu from server:',
             error
         );
 
-
         foods = {};
 
-
         restaurantProfile = {
-
             logo: '',
-
             phone_numbers: [],
-
             addresses: []
         };
 
-
-        /*
-           Do not leave "Loading..." forever if the server fails.
-        */
-
         showRestaurantHeaderError();
 
+        renderRestaurantProfile();
+        renderItems();
+        renderCategoryButtons();
+        setupDaySpecial();
+    }
+}
 
+
+/* ==========================================================================
+   SILENT CUSTOMER MENU REFRESH
+   ========================================================================== */
+
+/*
+ * This refresh runs automatically every 15 seconds.
+ *
+ * IMPORTANT:
+ * - It does NOT show the Loading... screen.
+ * - It does NOT clear the customer's cart.
+ * - It does NOT reset the selected category.
+ * - It does NOT reset the search box.
+ * - It does NOT create duplicate Day Special listeners.
+ *
+ * This allows changes made by the restaurant admin to appear
+ * automatically on the customer menu.
+ */
+
+async function refreshCustomerMenuSilently() {
+
+    /*
+     * Do not refresh while the browser tab is hidden.
+     * This prevents unnecessary requests.
+     */
+    if (document.hidden) {
+        return;
+    }
+
+    try {
+        const response =
+            await fetch(
+                API_BASE +
+                `/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
+                {
+                    method: 'GET',
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                }
+            );
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data =
+            await response.json();
+
+        /*
+         * Restaurant name
+         */
+        if (data?.restaurant) {
+            const restaurantName =
+                document.getElementById(
+                    'restaurantName'
+                );
+
+            if (restaurantName) {
+                restaurantName.textContent =
+                    data.restaurant.name ||
+                    'Cafe Menu';
+
+                restaurantName.classList.remove(
+                    'restaurant-loading-name'
+                );
+
+                restaurantName.removeAttribute(
+                    'aria-busy'
+                );
+            }
+
+            document.title =
+                `${data.restaurant.name || 'Cafe'} Menu`;
+        }
+
+        /*
+         * Restaurant profile
+         *
+         * This is important because profile/logo changes
+         * are saved separately from menu_data.
+         */
+        if (
+            data?.profile &&
+            typeof data.profile === 'object'
+        ) {
+            restaurantProfile = {
+                logo:
+                    typeof data.profile.logo === 'string'
+                        ? data.profile.logo.trim()
+                        : '',
+
+                phone_numbers:
+                    Array.isArray(
+                        data.profile.phone_numbers
+                    )
+                        ? data.profile.phone_numbers
+                        : [],
+
+                addresses:
+                    Array.isArray(
+                        data.profile.addresses
+                    )
+                        ? data.profile.addresses
+                        : []
+            };
+        } else {
+            restaurantProfile = {
+                logo: '',
+                phone_numbers: [],
+                addresses: []
+            };
+        }
+
+        /*
+         * Menu
+         */
+        if (
+            data?.menu &&
+            typeof data.menu === 'object' &&
+            !Array.isArray(data.menu)
+        ) {
+            foods = data.menu;
+        } else {
+            foods = {};
+        }
+
+        /*
+         * Re-render current customer view.
+         *
+         * currentCategory and searchTerm are NOT changed,
+         * so the customer stays where they are.
+         */
         renderRestaurantProfile();
 
         renderItems();
 
         renderCategoryButtons();
 
-        setupDaySpecial();
+        /*
+         * Do NOT call setupDaySpecial() repeatedly unless necessary.
+         * updateDaySpecialButtonState() is enough because the event
+         * listener was already installed on first page load.
+         */
+        updateDaySpecialButtonState();
+
+        /*
+         * If the Day Special modal is currently open,
+         * leave it alone. The customer can close it normally.
+         */
+    } catch (error) {
+        /*
+         * Silent refresh errors should not disturb the customer.
+         */
+        console.warn(
+            'Silent menu refresh failed:',
+            error
+        );
     }
 }
 
@@ -576,46 +632,21 @@ function renderRestaurantProfile() {
             'restaurantLogo'
         );
 
-
     const logo =
         typeof restaurantProfile.logo === 'string'
             ? restaurantProfile.logo.trim()
             : '';
 
-
-    const validLogo =
-        logo.startsWith('data:image/');
-
-
     if (logoElement) {
 
-        if (validLogo) {
-
-            logoElement.src =
-                logo;
-
-            logoElement.style.display =
-                'block';
-
-            logoElement.alt =
-                'Restaurant Logo';
-
+        if (logo) {
+            logoElement.src = logo;
+            logoElement.style.display = 'block';
+            logoElement.alt = 'Restaurant Logo';
         } else {
-
-            if (
-                !logoElement.getAttribute('src') ||
-                logoElement.getAttribute('src') === ''
-            ) {
-
-                logoElement.src =
-                    'image/latte.jpeg';
-            }
-
-            logoElement.style.display =
-                'block';
-
-            logoElement.alt =
-                'Restaurant Logo';
+            logoElement.src = 'image/latte.jpeg';
+            logoElement.style.display = 'block';
+            logoElement.alt = 'Restaurant Logo';
         }
     }
 
@@ -629,11 +660,9 @@ function renderRestaurantProfile() {
             'restaurantContactRow'
         );
 
-
     if (!container) {
         return;
     }
-
 
     container.innerHTML = '';
 
@@ -649,25 +678,20 @@ function renderRestaurantProfile() {
             ? restaurantProfile.phone_numbers
             : [];
 
-
     phones.forEach(phone => {
 
         const cleanPhone =
             String(phone || '').trim();
 
-
         if (!cleanPhone) {
             return;
         }
 
-
         const link =
             document.createElement('a');
 
-
         link.className =
             'menu-contact-link';
-
 
         const telNumber =
             cleanPhone.replace(
@@ -675,10 +699,8 @@ function renderRestaurantProfile() {
                 ''
             );
 
-
         link.href =
             `tel:${telNumber}`;
-
 
         link.innerHTML = `
             <span class="contact-icon">
@@ -686,7 +708,6 @@ function renderRestaurantProfile() {
             </span>
 
             <span class="contact-text">
-
                 <strong>
                     ${escapeHtml(cleanPhone)}
                 </strong>
@@ -694,10 +715,8 @@ function renderRestaurantProfile() {
                 <small>
                     Call Us
                 </small>
-
             </span>
         `;
-
 
         container.appendChild(link);
     });
@@ -714,7 +733,6 @@ function renderRestaurantProfile() {
             ? restaurantProfile.addresses
             : [];
 
-
     addresses.forEach(address => {
 
         if (
@@ -724,37 +742,30 @@ function renderRestaurantProfile() {
             return;
         }
 
-
         const name =
             String(
                 address.name || ''
             ).trim();
-
 
         const url =
             String(
                 address.url || ''
             ).trim();
 
-
         if (!name) {
             return;
         }
 
-
         const link =
             document.createElement('a');
 
-
         link.className =
             'menu-contact-link';
-
 
         if (
             url &&
             /^https?:\/\/.+/i.test(url)
         ) {
-
             link.href =
                 url;
 
@@ -769,7 +780,6 @@ function renderRestaurantProfile() {
             link.href =
                 '#';
 
-
             link.addEventListener(
                 'click',
                 event => {
@@ -778,14 +788,12 @@ function renderRestaurantProfile() {
             );
         }
 
-
         link.innerHTML = `
             <span class="contact-icon">
                 📍
             </span>
 
             <span class="contact-text">
-
                 <strong>
                     ${escapeHtml(name)}
                 </strong>
@@ -793,10 +801,8 @@ function renderRestaurantProfile() {
                 <small>
                     Our Location
                 </small>
-
             </span>
         `;
-
 
         container.appendChild(link);
     });
@@ -828,11 +834,9 @@ function renderCategoryButtons() {
             'categoryButtons'
         );
 
-
     if (!container) {
         return;
     }
-
 
     container.innerHTML = '';
 
@@ -844,26 +848,20 @@ function renderCategoryButtons() {
     const allButton =
         document.createElement('button');
 
-
     allButton.textContent =
         'all item';
-
 
     if (
         currentCategory === 'all'
     ) {
-
         allButton.classList.add(
             'active'
         );
     }
 
-
     allButton.onclick = () => {
-
         showCatagories('all');
     };
-
 
     container.appendChild(
         allButton
@@ -877,32 +875,25 @@ function renderCategoryButtons() {
     const categories =
         Object.keys(foods);
 
-
     categories.forEach(category => {
 
         const button =
             document.createElement('button');
 
-
         button.textContent =
             category;
-
 
         if (
             currentCategory === category
         ) {
-
             button.classList.add(
                 'active'
             );
         }
 
-
         button.onclick = () => {
-
             showCatagories(category);
         };
-
 
         container.appendChild(
             button
@@ -920,9 +911,7 @@ function showCatagories(category) {
     currentCategory =
         category;
 
-
     renderItems();
-
     renderCategoryButtons();
 }
 
@@ -938,14 +927,11 @@ function renderItems() {
             '.container'
         );
 
-
     if (!container) {
         return;
     }
 
-
     let items = [];
-
 
     if (currentCategory === 'all') {
 
@@ -981,17 +967,14 @@ function renderItems() {
                 return false;
             }
 
-
             const ingredient =
                 food.ingridient ||
                 food.ingredient ||
                 '';
 
-
             const text =
                 `${food.name || ''} ${ingredient}`
                     .toLowerCase();
-
 
             return text.includes(search);
         });
@@ -1020,17 +1003,14 @@ function renderItems() {
                 const isAvailable =
                     food.isAvailable !== false;
 
-
                 const ingredient =
                     food.ingridient ||
                     food.ingredient ||
                     '';
 
-
                 const image =
                     food.image ||
                     'image/latte.jpeg';
-
 
                 const daySpecial =
                     food.isDaySpecial === true;
@@ -1155,9 +1135,7 @@ function renderItems() {
                 event => {
 
                     event.preventDefault();
-
                     event.stopPropagation();
-
 
                     addToCart(
                         event,
@@ -1184,14 +1162,12 @@ function getDaySpecialItems() {
 
     const specials = [];
 
-
     Object.keys(foods).forEach(category => {
 
         const categoryItems =
             Array.isArray(foods[category])
                 ? foods[category]
                 : [];
-
 
         categoryItems.forEach(item => {
 
@@ -1200,7 +1176,6 @@ function getDaySpecialItems() {
                 typeof item === 'object' &&
                 item.isDaySpecial === true
             ) {
-
                 specials.push({
                     category,
                     item
@@ -1208,7 +1183,6 @@ function getDaySpecialItems() {
             }
         });
     });
-
 
     return specials.slice(
         0,
@@ -1225,7 +1199,6 @@ function getDaySpecialItem() {
 
     const specials =
         getDaySpecialItems();
-
 
     return specials.length
         ? specials[0]
@@ -1244,31 +1217,24 @@ function setupDaySpecial() {
             'daySpecialBtn'
         );
 
-
     if (!button) {
         return;
     }
 
-
     if (
         button.dataset.daySpecialReady === 'true'
     ) {
-
         updateDaySpecialButtonState();
-
         return;
     }
 
-
     button.dataset.daySpecialReady =
         'true';
-
 
     button.addEventListener(
         'click',
         openCustomerDaySpecial
     );
-
 
     updateDaySpecialButtonState();
 }
@@ -1285,15 +1251,12 @@ function updateDaySpecialButtonState() {
             'daySpecialBtn'
         );
 
-
     if (!button) {
         return;
     }
 
-
     const specials =
         getDaySpecialItems();
-
 
     if (specials.length) {
 
@@ -1301,11 +1264,9 @@ function updateDaySpecialButtonState() {
             'has-special'
         );
 
-
         button.removeAttribute(
             'aria-disabled'
         );
-
 
         button.title =
             specials.length === 1
@@ -1317,7 +1278,6 @@ function updateDaySpecialButtonState() {
         button.classList.remove(
             'has-special'
         );
-
 
         button.removeAttribute(
             'title'
@@ -1334,18 +1294,14 @@ function openCustomerDaySpecial() {
 
     closeCustomerDaySpecial();
 
-
     const specials =
         getDaySpecialItems();
-
 
     const overlay =
         document.createElement('div');
 
-
     overlay.id =
         'customerDaySpecialModal';
-
 
     overlay.className =
         'customer-day-special-overlay';
@@ -1402,16 +1358,13 @@ function openCustomerDaySpecial() {
             </div>
         `;
 
-
         document.body.appendChild(
             overlay
         );
 
-
         document.body.classList.add(
             'customer-day-special-open'
         );
-
 
         requestAnimationFrame(() => {
 
@@ -1420,11 +1373,9 @@ function openCustomerDaySpecial() {
             );
         });
 
-
         attachCustomerDaySpecialCloseEvents(
             overlay
         );
-
 
         return;
     }
@@ -1441,25 +1392,20 @@ function openCustomerDaySpecial() {
                 const item =
                     special.item;
 
-
                 const isAvailable =
                     item.isAvailable !== false;
-
 
                 const ingredient =
                     item.ingridient ||
                     item.ingredient ||
                     '';
 
-
                 const image =
                     item.image ||
                     'image/latte.jpeg';
 
-
                 const price =
                     Number(item.price) || 0;
-
 
                 const itemName =
                     item.name ||
@@ -1470,8 +1416,6 @@ function openCustomerDaySpecial() {
                     <div
                         class="customer-day-special-card"
                     >
-
-                        <!-- IMAGE -->
 
                         <div
                             class="customer-day-special-image-wrap"
@@ -1489,8 +1433,6 @@ function openCustomerDaySpecial() {
 
                         </div>
 
-
-                        <!-- INFORMATION -->
 
                         <div
                             class="customer-day-special-content"
@@ -1524,8 +1466,6 @@ function openCustomerDaySpecial() {
 
                         </div>
 
-
-                        <!-- ACTION -->
 
                         <div
                             class="customer-day-special-actions"
@@ -1575,8 +1515,6 @@ function openCustomerDaySpecial() {
             aria-labelledby="customerDaySpecialTitle"
         >
 
-            <!-- HEADER -->
-
             <div class="customer-day-special-top">
 
                 <h2
@@ -1599,14 +1537,10 @@ function openCustomerDaySpecial() {
             </div>
 
 
-            <!-- SPECIAL ITEMS -->
-
             <div class="customer-day-special-list">
                 ${specialCards}
             </div>
 
-
-            <!-- FOOTER -->
 
             <div
                 class="customer-day-special-modal-footer"
@@ -1629,7 +1563,6 @@ function openCustomerDaySpecial() {
     document.body.appendChild(
         overlay
     );
-
 
     document.body.classList.add(
         'customer-day-special-open'
@@ -1697,7 +1630,6 @@ function openCustomerDaySpecial() {
                     addButton.textContent =
                         '✓ Added to Cart';
 
-
                     addButton.disabled =
                         true;
 
@@ -1712,7 +1644,6 @@ function openCustomerDaySpecial() {
 
                             addButton.textContent =
                                 '+ Add to Cart';
-
 
                             addButton.disabled =
                                 false;
@@ -1737,7 +1668,6 @@ function attachCustomerDaySpecialCloseEvents(
         overlay.querySelector(
             '#customerDaySpecialClose'
         );
-
 
     const closeBottomButton =
         overlay.querySelector(
@@ -1787,7 +1717,6 @@ function closeCustomerDaySpecial() {
             'customerDaySpecialModal'
         );
 
-
     if (!modal) {
 
         document.body.classList.remove(
@@ -1801,7 +1730,6 @@ function closeCustomerDaySpecial() {
     modal.classList.remove(
         'active'
     );
-
 
     document.body.classList.remove(
         'customer-day-special-open'
@@ -1835,7 +1763,6 @@ function loadFromLocalStorage() {
                 STORAGE_KEY
             );
 
-
         if (!stored) {
             return [];
         }
@@ -1863,7 +1790,6 @@ function loadFromLocalStorage() {
             'Could not load cart from local storage:',
             error
         );
-
 
         return [];
     }
@@ -1909,7 +1835,6 @@ function loadCart() {
 
     cart =
         loadFromLocalStorage();
-
 
     renderCart();
 }
@@ -2050,7 +1975,6 @@ function addToCart(
                 button.textContent =
                     originalText;
 
-
                 button.disabled =
                     false;
             }
@@ -2095,7 +2019,6 @@ function renderCart() {
 
                     const itemPrice =
                         Number(item.price) || 0;
-
 
                     const quantity =
                         Number(item.quantity) || 0;
@@ -2273,7 +2196,6 @@ function setupCartButton() {
             '.cartbutton'
         );
 
-
     const container2 =
         document.querySelector(
             '.container2'
@@ -2284,7 +2206,6 @@ function setupCartButton() {
         !cartButton ||
         !container2
     ) {
-
         return;
     }
 
@@ -2292,7 +2213,6 @@ function setupCartButton() {
     if (
         cartButton.dataset.cartReady === 'true'
     ) {
-
         return;
     }
 
@@ -2324,7 +2244,6 @@ function zoomImage(src) {
             'imageViewer'
         );
 
-
     const image =
         document.getElementById(
             'bigImage'
@@ -2336,7 +2255,6 @@ function zoomImage(src) {
         !image ||
         !src
     ) {
-
         return;
     }
 
@@ -2388,7 +2306,6 @@ function setupSearch() {
     if (
         searchInput.dataset.searchReady === 'true'
     ) {
-
         return;
     }
 
@@ -2403,7 +2320,6 @@ function setupSearch() {
 
             searchTerm =
                 event.target.value || '';
-
 
             renderItems();
         }
@@ -2422,12 +2338,10 @@ function openPaymentModal() {
             'paymentModal'
         );
 
-
     const paymentTotal =
         document.getElementById(
             'payment-total'
         );
-
 
     const paymentMessage =
         document.getElementById(
@@ -2509,12 +2423,10 @@ function setupPayment() {
             '.payment'
         );
 
-
     const paymentModal =
         document.getElementById(
             'paymentModal'
         );
-
 
     const paymentForm =
         document.getElementById(
@@ -2527,7 +2439,6 @@ function setupPayment() {
         !paymentModal ||
         !paymentForm
     ) {
-
         return;
     }
 
@@ -2535,7 +2446,6 @@ function setupPayment() {
     if (
         paymentButton.dataset.paymentReady === 'true'
     ) {
-
         return;
     }
 
@@ -2877,7 +2787,6 @@ async function copyPaymentDetails(
             error
         );
 
-
         return false;
     }
 }
@@ -2896,7 +2805,6 @@ function setupEscapeKey() {
             if (
                 event.key !== 'Escape'
             ) {
-
                 return;
             }
 
@@ -2919,11 +2827,6 @@ window.addEventListener(
     'DOMContentLoaded',
     async () => {
 
-        /*
-           The loading state is started immediately by
-           loadMenuFromServer(), before the API request.
-        */
-
         setupSearch();
 
         setupPayment();
@@ -2932,10 +2835,32 @@ window.addEventListener(
 
         setupEscapeKey();
 
-
         await loadMenuFromServer();
-
 
         loadCart();
     }
+);
+
+
+/* ==========================================================================
+   AUTOMATIC CUSTOMER MENU REFRESH
+   ========================================================================== */
+
+/*
+ * Every 15 seconds:
+ *
+ * Admin changes menu
+ *        ↓
+ * Server saves it
+ *        ↓
+ * Customer automatically requests latest data
+ *        ↓
+ * Menu/profile/day-special updates
+ *
+ * The cart is NOT touched.
+ */
+
+setInterval(
+    refreshCustomerMenuSilently,
+    15000
 );
