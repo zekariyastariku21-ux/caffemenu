@@ -1,3 +1,7 @@
+/* ================================================================
+   CAFFE MENU - CAFE ADMIN PANEL
+   ================================================================ */
+
 let currentRestaurant = null;
 let foods = {};
 
@@ -9,445 +13,192 @@ let restaurantProfile = {
 
 let adminLoadingTimer = null;
 
+const MAX_DAY_SPECIALS = 5;
+
 
 /* ================================================================
-   REMOVE EMPTY CATEGORIES
-================================================================ */
+   BASIC HELPERS
+   ================================================================ */
 
 function removeEmptyCategories() {
-
     Object.keys(foods).forEach(category => {
-
         if (
             !Array.isArray(foods[category]) ||
             foods[category].length === 0
         ) {
             delete foods[category];
         }
-
     });
+}
 
+function escapeHtmlForAdmin(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function escapeAttributeForAdmin(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
 
 /* ================================================================
-   PROFESSIONAL LOADING SCREEN
-================================================================ */
+   PROFESSIONAL LOADING
+   ================================================================ */
 
 function showAdminLoading(message = 'Please wait...') {
-
-    clearTimeout(adminLoadingTimer);
-
-    let overlay =
-        document.getElementById('adminLoadingOverlay');
+    let overlay = document.getElementById('adminLoadingOverlay');
 
     if (!overlay) {
-
-        overlay =
-            document.createElement('div');
-
-        overlay.id =
-            'adminLoadingOverlay';
+        overlay = document.createElement('div');
+        overlay.id = 'adminLoadingOverlay';
 
         overlay.innerHTML = `
             <div class="admin-loading-box">
-
                 <div class="admin-loading-spinner"></div>
-
-                <div
-                    id="adminLoadingMessage"
-                    class="admin-loading-message"
-                ></div>
-
-                <div class="admin-loading-submessage">
-                    Please wait...
+                <div class="admin-loading-text" id="adminLoadingText">
+                    ${escapeHtmlForAdmin(message)}
                 </div>
-
             </div>
         `;
 
-        const style =
-            document.createElement('style');
-
-        style.id =
-            'admin-loading-style';
-
-        style.textContent = `
-
-            #adminLoadingOverlay {
-                position: fixed;
-                inset: 0;
-                z-index: 999999;
-                display: none;
-                align-items: center;
-                justify-content: center;
-                background: rgba(0, 0, 0, 0.48);
-                backdrop-filter: blur(5px);
-                -webkit-backdrop-filter: blur(5px);
-                cursor: wait;
-            }
-
-            #adminLoadingOverlay.active {
-                display: flex;
-            }
-
-            .admin-loading-box {
-                width: min(90%, 360px);
-                padding: 30px 25px;
-                background: #fff;
-                border-radius: 18px;
-                text-align: center;
-                box-shadow:
-                    0 20px 60px
-                    rgba(0, 0, 0, 0.28);
-            }
-
-            .admin-loading-spinner {
-                width: 50px;
-                height: 50px;
-                margin: 0 auto 18px;
-                border: 5px solid #eadfd4;
-                border-top-color: #4a2f22;
-                border-radius: 50%;
-                animation:
-                    adminLoadingSpin
-                    0.8s linear infinite;
-            }
-
-            .admin-loading-message {
-                color: #3b2a20;
-                font-size: 19px;
-                font-weight: 700;
-                margin-bottom: 7px;
-            }
-
-            .admin-loading-submessage {
-                color: #777;
-                font-size: 14px;
-            }
-
-            @keyframes adminLoadingSpin {
-
-                from {
-                    transform: rotate(0deg);
-                }
-
-                to {
-                    transform: rotate(360deg);
-                }
-
-            }
-
-            body.admin-loading-active {
-                overflow: hidden;
-            }
-
-        `;
-
-        document.head.appendChild(style);
         document.body.appendChild(overlay);
     }
 
-    const messageElement =
-        document.getElementById(
-            'adminLoadingMessage'
-        );
+    const text = document.getElementById('adminLoadingText');
 
-    if (messageElement) {
-        messageElement.textContent =
-            message;
+    if (text) {
+        text.textContent = message;
     }
 
     overlay.classList.add('active');
-
-    document.body.classList.add(
-        'admin-loading-active'
-    );
-
-}
-
-
-function hideAdminLoading(minimumTime = 150) {
+    overlay.style.display = 'flex';
 
     clearTimeout(adminLoadingTimer);
+}
 
-    adminLoadingTimer =
+function hideAdminLoading(delay = 0) {
+    clearTimeout(adminLoadingTimer);
+
+    adminLoadingTimer = setTimeout(() => {
+        const overlay =
+            document.getElementById('adminLoadingOverlay');
+
+        if (!overlay) {
+            return;
+        }
+
+        overlay.classList.remove('active');
+
         setTimeout(() => {
-
-            const overlay =
-                document.getElementById(
-                    'adminLoadingOverlay'
-                );
-
-            if (overlay) {
-                overlay.classList.remove(
-                    'active'
-                );
+            if (!overlay.classList.contains('active')) {
+                overlay.style.display = 'none';
             }
-
-            document.body.classList.remove(
-                'admin-loading-active'
-            );
-
-        }, minimumTime);
-
+        }, 200);
+    }, delay);
 }
 
 
 /* ================================================================
-   CENTER SCREEN MESSAGE
-================================================================ */
+   CENTER MESSAGE
+   ================================================================ */
 
-function showMessage(text, type = 'success') {
+function showMessage(message, type = 'success') {
+    let container =
+        document.getElementById('adminMessageContainer');
 
-    const oldMessage =
-        document.getElementById('message');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'adminMessageContainer';
 
-    if (oldMessage) {
-        oldMessage.style.display = 'none';
+        document.body.appendChild(container);
     }
 
-    const existingPopup =
-        document.getElementById(
-            'adminCenterMessage'
-        );
+    container.innerHTML = '';
 
-    if (existingPopup) {
-        existingPopup.remove();
-    }
-
-    const popup =
+    const messageBox =
         document.createElement('div');
 
-    popup.id =
-        'adminCenterMessage';
+    messageBox.className =
+        `admin-message-popup ${type}`;
 
-    popup.className =
-        type === 'success'
-            ? 'admin-center-message success'
-            : 'admin-center-message error';
-
-    popup.innerHTML = `
-        <div class="admin-center-message-icon">
-            ${
-                type === 'success'
-                    ? '✓'
-                    : '!'
-            }
+    messageBox.innerHTML = `
+        <div class="admin-message-icon">
+            ${type === 'error' ? '!' : '✓'}
         </div>
-
-        <div class="admin-center-message-text">
-            ${escapeHtmlForAdmin(text)}
+        <div class="admin-message-text">
+            ${escapeHtmlForAdmin(message)}
         </div>
     `;
 
-    if (
-        !document.getElementById(
-            'admin-center-message-style'
-        )
-    ) {
-
-        const style =
-            document.createElement('style');
-
-        style.id =
-            'admin-center-message-style';
-
-        style.textContent = `
-
-            #adminCenterMessage {
-                position: fixed !important;
-                top: 50% !important;
-                left: 50% !important;
-
-                transform:
-                    translate(-50%, -50%)
-                    scale(0.85);
-
-                z-index: 1000000 !important;
-
-                display: flex;
-                align-items: center;
-                gap: 14px;
-
-                width: max-content;
-                max-width: 90vw;
-
-                padding: 18px 24px;
-
-                border-radius: 16px;
-
-                background: #ffffff;
-
-                box-shadow:
-                    0 20px 60px
-                    rgba(0, 0, 0, 0.25);
-
-                opacity: 0;
-
-                transition:
-                    opacity 0.25s ease,
-                    transform 0.25s ease;
-
-                font-family:
-                    Arial,
-                    Helvetica,
-                    sans-serif;
-
-                pointer-events: none;
-            }
-
-            #adminCenterMessage.success {
-                border: 2px solid #9fd3aa;
-                color: #245b32;
-            }
-
-            #adminCenterMessage.error {
-                border: 2px solid #e2a1a1;
-                color: #8b2525;
-            }
-
-            #adminCenterMessage.visible {
-                opacity: 1;
-
-                transform:
-                    translate(-50%, -50%)
-                    scale(1);
-            }
-
-            .admin-center-message-icon {
-                width: 34px;
-                height: 34px;
-                min-width: 34px;
-
-                border-radius: 50%;
-
-                display: flex;
-                align-items: center;
-                justify-content: center;
-
-                font-size: 19px;
-                font-weight: 800;
-            }
-
-            #adminCenterMessage.success
-            .admin-center-message-icon {
-                background: #dff2e3;
-                color: #245b32;
-            }
-
-            #adminCenterMessage.error
-            .admin-center-message-icon {
-                background: #f9dddd;
-                color: #8b2525;
-            }
-
-            .admin-center-message-text {
-                font-size: 16px;
-                font-weight: 600;
-                line-height: 1.4;
-                text-align: left;
-            }
-
-        `;
-
-        document.head.appendChild(style);
-    }
-
-    document.body.appendChild(popup);
+    container.appendChild(messageBox);
 
     requestAnimationFrame(() => {
-
-        popup.classList.add('visible');
-
+        messageBox.classList.add('show');
     });
 
-    popup._messageTimer =
+    setTimeout(() => {
+        messageBox.classList.remove('show');
+
         setTimeout(() => {
-
-            popup.classList.remove('visible');
-
-            setTimeout(() => {
-
-                if (popup) {
-                    popup.remove();
-                }
-
-            }, 300);
-
-        }, 3000);
-
+            if (messageBox.parentNode) {
+                messageBox.remove();
+            }
+        }, 300);
+    }, 2600);
 }
 
 
 /* ================================================================
-   PROFESSIONAL CONFIRMATION MODAL
-================================================================ */
+   CONFIRMATION MODAL
+   ================================================================ */
 
 function showAdminConfirm({
     title = 'Are you sure?',
-    message = 'This action cannot be undone.',
+    message = '',
     confirmText = 'Confirm',
     cancelText = 'Cancel',
-    icon = '⚠'
+    icon = '!'
 } = {}) {
-
     return new Promise(resolve => {
+        const oldModal =
+            document.getElementById('adminConfirmModal');
 
-        const existing =
-            document.getElementById(
-                'adminConfirmModal'
-            );
-
-        if (existing) {
-            existing.remove();
+        if (oldModal) {
+            oldModal.remove();
         }
-
-        let finished = false;
 
         const modal =
             document.createElement('div');
 
-        modal.id =
-            'adminConfirmModal';
-
-        modal.setAttribute(
-            'role',
-            'dialog'
-        );
-
-        modal.setAttribute(
-            'aria-modal',
-            'true'
-        );
-
-        modal.setAttribute(
-            'aria-labelledby',
-            'adminConfirmTitle'
-        );
+        modal.id = 'adminConfirmModal';
+        modal.className = 'admin-confirm-modal-overlay active';
 
         modal.innerHTML = `
-
-            <div class="admin-confirm-card">
-
+            <div class="admin-confirm-modal">
                 <div class="admin-confirm-icon">
-                    ${icon}
+                    ${escapeHtmlForAdmin(icon)}
                 </div>
 
                 <div class="admin-confirm-content">
-
-                    <h2 id="adminConfirmTitle">
+                    <h3>
                         ${escapeHtmlForAdmin(title)}
-                    </h2>
+                    </h3>
 
-                    <p id="adminConfirmMessage">
+                    <p>
                         ${escapeHtmlForAdmin(message)}
                     </p>
-
                 </div>
 
                 <div class="admin-confirm-actions">
-
                     <button
                         type="button"
                         class="admin-confirm-cancel"
@@ -458,588 +209,148 @@ function showAdminConfirm({
 
                     <button
                         type="button"
-                        class="admin-confirm-danger"
+                        class="admin-confirm-ok"
                         id="adminConfirmOk"
                     >
                         ${escapeHtmlForAdmin(confirmText)}
                     </button>
-
                 </div>
-
             </div>
-
         `;
 
+        document.body.appendChild(modal);
 
-        if (
-            !document.getElementById(
-                'admin-confirm-style'
-            )
-        ) {
-
-            const style =
-                document.createElement('style');
-
-            style.id =
-                'admin-confirm-style';
-
-            style.textContent = `
-
-                #adminConfirmModal {
-                    position: fixed;
-                    inset: 0;
-
-                    z-index: 1000002;
-
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-
-                    padding: 20px;
-
-                    background:
-                        rgba(24, 17, 13, 0.62);
-
-                    backdrop-filter:
-                        blur(7px);
-
-                    -webkit-backdrop-filter:
-                        blur(7px);
-
-                    opacity: 0;
-                    visibility: hidden;
-
-                    transition:
-                        opacity 0.22s ease,
-                        visibility 0.22s ease;
-
-                    font-family:
-                        Arial,
-                        Helvetica,
-                        sans-serif;
-                }
-
-                #adminConfirmModal.visible {
-                    opacity: 1;
-                    visibility: visible;
-                }
-
-                body.admin-confirm-active {
-                    overflow: hidden;
-                }
-
-                .admin-confirm-card {
-
-                    width: min(
-                        100%,
-                        440px
-                    );
-
-                    padding: 30px;
-
-                    background:
-                        linear-gradient(
-                            180deg,
-                            #ffffff 0%,
-                            #fffdfb 100%
-                        );
-
-                    border:
-                        1px solid
-                        rgba(74, 47, 34, 0.10);
-
-                    border-radius: 24px;
-
-                    box-shadow:
-                        0 30px 90px
-                        rgba(0, 0, 0, 0.30);
-
-                    text-align: center;
-
-                    transform:
-                        translateY(18px)
-                        scale(0.96);
-
-                    transition:
-                        transform 0.25s ease;
-                }
-
-                #adminConfirmModal.visible
-                .admin-confirm-card {
-
-                    transform:
-                        translateY(0)
-                        scale(1);
-
-                }
-
-                .admin-confirm-icon {
-
-                    width: 68px;
-                    height: 68px;
-
-                    margin:
-                        0 auto 20px;
-
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-
-                    border-radius: 50%;
-
-                    background:
-                        linear-gradient(
-                            145deg,
-                            #fff4df,
-                            #ffe1a8
-                        );
-
-                    border:
-                        1px solid
-                        #f2c978;
-
-                    color: #9a5a00;
-
-                    font-size: 30px;
-
-                    box-shadow:
-                        0 8px 24px
-                        rgba(180, 120, 30, 0.15);
-                }
-
-                .admin-confirm-content h2 {
-
-                    margin:
-                        0 0 10px;
-
-                    color:
-                        #34251e;
-
-                    font-size: 22px;
-
-                    font-weight: 800;
-
-                    letter-spacing:
-                        -0.2px;
-                }
-
-                .admin-confirm-content p {
-
-                    margin:
-                        0 auto;
-
-                    max-width: 350px;
-
-                    color:
-                        #71645d;
-
-                    font-size: 15px;
-
-                    font-weight: 500;
-
-                    line-height: 1.6;
-                }
-
-                .admin-confirm-actions {
-
-                    display: flex;
-
-                    justify-content: center;
-
-                    gap: 12px;
-
-                    margin-top: 28px;
-                }
-
-                .admin-confirm-actions button {
-
-                    min-height: 46px;
-
-                    padding:
-                        0 20px;
-
-                    border-radius: 12px;
-
-                    border: 1px solid transparent;
-
-                    font-family: inherit;
-
-                    font-size: 14px;
-
-                    font-weight: 750;
-
-                    cursor: pointer;
-
-                    transition:
-                        transform 0.18s ease,
-                        box-shadow 0.18s ease,
-                        background 0.18s ease;
-                }
-
-                .admin-confirm-actions button:hover {
-
-                    transform:
-                        translateY(-1px);
-
-                }
-
-                .admin-confirm-actions button:active {
-
-                    transform:
-                        translateY(0);
-
-                }
-
-                .admin-confirm-cancel {
-
-                    background:
-                        #f5f1ee;
-
-                    border-color:
-                        #ded5cf !important;
-
-                    color:
-                        #4b3a30;
-
-                }
-
-                .admin-confirm-cancel:hover {
-
-                    background:
-                        #ebe5e0;
-
-                    box-shadow:
-                        0 5px 14px
-                        rgba(60, 40, 30, 0.10);
-
-                }
-
-                .admin-confirm-danger {
-
-                    background:
-                        linear-gradient(
-                            135deg,
-                            #b83b32,
-                            #962c25
-                        );
-
-                    color:
-                        #ffffff;
-
-                    box-shadow:
-                        0 6px 16px
-                        rgba(150, 44, 37, 0.22);
-
-                }
-
-                .admin-confirm-danger:hover {
-
-                    box-shadow:
-                        0 9px 22px
-                        rgba(150, 44, 37, 0.30);
-
-                }
-
-                .admin-confirm-actions button:focus-visible {
-
-                    outline:
-                        3px solid
-                        rgba(74, 47, 34, 0.22);
-
-                    outline-offset:
-                        2px;
-                }
-
-                @media (max-width: 520px) {
-
-                    #adminConfirmModal {
-
-                        padding:
-                            16px;
-
-                    }
-
-                    .admin-confirm-card {
-
-                        padding:
-                            26px 20px;
-
-                        border-radius:
-                            20px;
-
-                    }
-
-                    .admin-confirm-icon {
-
-                        width: 60px;
-                        height: 60px;
-
-                        font-size: 27px;
-
-                        margin-bottom:
-                            16px;
-
-                    }
-
-                    .admin-confirm-content h2 {
-
-                        font-size:
-                            20px;
-
-                    }
-
-                    .admin-confirm-content p {
-
-                        font-size:
-                            14px;
-
-                    }
-
-                    .admin-confirm-actions {
-
-                        flex-direction:
-                            column-reverse;
-
-                        gap:
-                            10px;
-
-                    }
-
-                    .admin-confirm-actions button {
-
-                        width:
-                            100%;
-
-                    }
-
-                }
-
-                @media (prefers-reduced-motion: reduce) {
-
-                    #adminConfirmModal,
-                    .admin-confirm-card,
-                    .admin-confirm-actions button {
-
-                        transition:
-                            none !important;
-
-                    }
-
-                }
-
-            `;
-
-            document.head.appendChild(style);
-
-        }
-
-
-        document.body.appendChild(
-            modal
-        );
-
-        document.body.classList.add(
-            'admin-confirm-active'
-        );
-
-
-        const cancelButton =
-            document.getElementById(
-                'adminConfirmCancel'
-            );
-
-        const confirmButton =
-            document.getElementById(
-                'adminConfirmOk'
-            );
-
-
-        const previousActiveElement =
-            document.activeElement;
-
-
-        function close(result) {
-
-            if (finished) {
-                return;
-            }
-
-            finished = true;
-
-            document.body.classList.remove(
-                'admin-confirm-active'
-            );
-
-            modal.classList.remove(
-                'visible'
-            );
-
-            document.removeEventListener(
-                'keydown',
-                handleKeydown
-            );
+        const finish = result => {
+            modal.classList.remove('active');
 
             setTimeout(() => {
+                modal.remove();
+            }, 200);
 
-                if (modal) {
-                    modal.remove();
-                }
+            resolve(result);
+        };
 
-                if (
-                    previousActiveElement &&
-                    typeof previousActiveElement.focus ===
-                        'function'
-                ) {
+        document
+            .getElementById('adminConfirmCancel')
+            ?.addEventListener('click', () => {
+                finish(false);
+            });
 
-                    try {
-                        previousActiveElement.focus();
-                    } catch (error) {
-                        // Ignore focus restoration errors.
-                    }
+        document
+            .getElementById('adminConfirmOk')
+            ?.addEventListener('click', () => {
+                finish(true);
+            });
 
-                }
-
-                resolve(result);
-
-            }, 220);
-
-        }
-
-
-        function handleKeydown(event) {
-
-            if (event.key === 'Escape') {
-
-                event.preventDefault();
-
-                close(false);
-
-                return;
+        modal.addEventListener('click', event => {
+            if (event.target === modal) {
+                finish(false);
             }
-
-            if (
-                event.key === 'Enter' &&
-                document.activeElement !==
-                    cancelButton
-            ) {
-
-                event.preventDefault();
-
-                close(true);
-
-            }
-
-        }
-
-
-        cancelButton?.addEventListener(
-            'click',
-            () => close(false)
-        );
-
-
-        confirmButton?.addEventListener(
-            'click',
-            () => close(true)
-        );
-
-
-        modal.addEventListener(
-            'click',
-            event => {
-
-                if (
-                    event.target === modal
-                ) {
-
-                    close(false);
-
-                }
-
-            }
-        );
-
-
-        document.addEventListener(
-            'keydown',
-            handleKeydown
-        );
-
-
-        requestAnimationFrame(() => {
-
-            modal.classList.add(
-                'visible'
-            );
-
-            if (cancelButton) {
-                cancelButton.focus();
-            }
-
         });
-
     });
-
 }
 
 
 /* ================================================================
    CHECK LOGIN / RESTAURANT ACCESS
-================================================================ */
+
+   IMPORTANT:
+   The backend login response uses camelCase:
+   restaurantId
+   restaurantSlug
+   restaurantName
+
+   The session endpoint may use snake_case or camelCase.
+   This function supports BOTH.
+   ================================================================ */
 
 async function checkCafeAdminAccess() {
-
     try {
+        const response = await fetch(
+            '/api/admin/session',
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }
+        );
 
-        const response =
-            await fetch(
-                '/api/admin/session',
-                {
-                    method: 'GET',
-                    credentials: 'same-origin',
-                    cache: 'no-store'
-                }
-            );
+        let data = {};
 
-        const data =
-            await response.json();
+        try {
+            data = await response.json();
+        } catch (error) {
+            data = {};
+        }
 
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
-
-            window.location.replace(
-                '/admin.html'
-            );
-
+        if (!response.ok || !data.ok) {
+            window.location.replace('/admin.html');
             return;
         }
 
-        if (
-            !data.user ||
-            data.user.role !== 'cafe_admin'
-        ) {
+        const user = data.user || {};
 
-            window.location.replace(
-                '/admin.html'
-            );
+        const role =
+            user.role ??
+            data.role ??
+            localStorage.getItem('adminRole');
 
+        if (role !== 'cafe_admin') {
+            window.location.replace('/admin.html');
             return;
         }
 
-        currentRestaurant = {
+        /* --------------------------------------------------------
+           RESTAURANT ID
+           -------------------------------------------------------- */
 
-            id:
-                data.user.restaurant_id,
+        const sessionRestaurantId =
+            user.restaurant_id ??
+            user.restaurantId ??
+            data.restaurant_id ??
+            data.restaurantId ??
+            '';
 
-            name:
-                data.user.restaurant_name,
+        const savedRestaurantId =
+            localStorage.getItem(
+                'adminRestaurantId'
+            ) || '';
 
-            slug:
-                data.user.restaurant_slug
+        const restaurantId =
+            sessionRestaurantId ||
+            savedRestaurantId;
 
-        };
+
+        /* --------------------------------------------------------
+           RESTAURANT NAME
+           -------------------------------------------------------- */
+
+        const sessionRestaurantName =
+            user.restaurant_name ??
+            user.restaurantName ??
+            data.restaurant_name ??
+            data.restaurantName ??
+            '';
+
+        const savedRestaurantName =
+            localStorage.getItem(
+                'adminRestaurantName'
+            ) || '';
+
+        const restaurantName =
+            sessionRestaurantName ||
+            savedRestaurantName ||
+            'Restaurant';
+
+
+        /* --------------------------------------------------------
+           RESTAURANT SLUG
+
+           Priority:
+           1. URL
+           2. session
+           3. localStorage
+           -------------------------------------------------------- */
 
         const params =
             new URLSearchParams(
@@ -1049,31 +360,126 @@ async function checkCafeAdminAccess() {
         const urlRestaurant =
             params.get('restaurant');
 
-        if (
-            urlRestaurant &&
-            urlRestaurant !==
-                currentRestaurant.slug
-        ) {
+        const sessionRestaurantSlug =
+            user.restaurant_slug ??
+            user.restaurantSlug ??
+            data.restaurant_slug ??
+            data.restaurantSlug ??
+            '';
 
-            window.location.replace(
-                '/admin.html'
+        const savedRestaurantSlug =
+            localStorage.getItem(
+                'adminRestaurantSlug'
+            ) ||
+            localStorage.getItem(
+                'selectedRestaurantSlug'
+            ) ||
+            '';
+
+        const restaurantSlug =
+            (
+                urlRestaurant ||
+                sessionRestaurantSlug ||
+                savedRestaurantSlug ||
+                ''
+            ).trim();
+
+
+        /* --------------------------------------------------------
+           SLUG REQUIRED
+           -------------------------------------------------------- */
+
+        if (!restaurantSlug) {
+            throw new Error(
+                'Restaurant slug is missing. Please log in again.'
             );
+        }
+
+
+        /* --------------------------------------------------------
+           IF URL HAS A SLUG, MAKE SURE IT MATCHES THE
+           RESTAURANT ASSIGNED TO THE CURRENT SESSION.
+           -------------------------------------------------------- */
+
+        if (
+            sessionRestaurantSlug &&
+            urlRestaurant &&
+            urlRestaurant !== sessionRestaurantSlug
+        ) {
+            showMessage(
+                'You can only access your assigned restaurant.',
+                'error'
+            );
+
+            setTimeout(() => {
+                window.location.replace('/admin.html');
+            }, 1000);
 
             return;
         }
 
-        const restaurantName =
+
+        /* --------------------------------------------------------
+           SET CURRENT RESTAURANT
+           -------------------------------------------------------- */
+
+        currentRestaurant = {
+            id: restaurantId,
+            name: restaurantName,
+            slug: restaurantSlug
+        };
+
+
+        /* --------------------------------------------------------
+           KEEP LOCAL STORAGE IN SYNC
+           -------------------------------------------------------- */
+
+        localStorage.setItem(
+            'adminRole',
+            'cafe_admin'
+        );
+
+        if (restaurantId !== '') {
+            localStorage.setItem(
+                'adminRestaurantId',
+                String(restaurantId)
+            );
+        }
+
+        localStorage.setItem(
+            'adminRestaurantSlug',
+            restaurantSlug
+        );
+
+        localStorage.setItem(
+            'selectedRestaurantSlug',
+            restaurantSlug
+        );
+
+        localStorage.setItem(
+            'adminRestaurantName',
+            restaurantName
+        );
+
+
+        /* --------------------------------------------------------
+           UPDATE HEADER
+           -------------------------------------------------------- */
+
+        const headerName =
             document.getElementById(
                 'restaurantName'
             );
 
-        if (restaurantName) {
-
-            restaurantName.textContent =
-                currentRestaurant.name ||
-                'Restaurant';
-
+        if (headerName) {
+            headerName.textContent =
+                restaurantName;
         }
+
+
+        /* --------------------------------------------------------
+           HIDE PAGE LOADING
+           -------------------------------------------------------- */
 
         const pageLoading =
             document.getElementById(
@@ -1084,26 +490,26 @@ async function checkCafeAdminAccess() {
             pageLoading.style.display = 'none';
         }
 
+
+        /* --------------------------------------------------------
+           LOAD MENU
+           -------------------------------------------------------- */
+
         await loadRestaurantMenu();
 
         updateAdminCategoryOptions();
-
         updateCategoryManager();
-
         updateExistingItemCategorySelect();
-
         refreshExistingItemsSelect();
-
         renderCurrentMenu();
 
         console.log(
             'Cafe menu loaded successfully:',
-            currentRestaurant.slug,
+            currentRestaurant,
             foods
         );
 
     } catch (error) {
-
         console.error(
             'Cafe admin access error:',
             error
@@ -1124,36 +530,25 @@ async function checkCafeAdminAccess() {
             'error'
         );
     }
-
 }
 
 
 /* ================================================================
    LOAD RESTAURANT MENU
-================================================================ */
+   ================================================================ */
 
 async function loadRestaurantMenu() {
-
     if (!currentRestaurant) {
-
         throw new Error(
             'Restaurant information is not available.'
         );
-
     }
 
     if (!currentRestaurant.slug) {
-
         throw new Error(
             'Restaurant slug is missing.'
         );
-
     }
-
-    console.log(
-        'Loading restaurant menu:',
-        currentRestaurant.slug
-    );
 
     const response =
         await fetch(
@@ -1171,56 +566,37 @@ async function loadRestaurantMenu() {
     let data = {};
 
     try {
-
-        data =
-            await response.json();
-
-    } catch (jsonError) {
-
+        data = await response.json();
+    } catch (error) {
         throw new Error(
             'The server returned an invalid menu response.'
         );
-
     }
 
-    console.log(
-        'Restaurant menu API response:',
-        data
-    );
-
-    if (
-        !response.ok ||
-        !data.ok
-    ) {
-
+    if (!response.ok || !data.ok) {
         throw new Error(
             data.message ||
             'Unable to load restaurant menu.'
         );
-
     }
 
     if (
         !data.menu ||
-        typeof data.menu !== 'object'
+        typeof data.menu !== 'object' ||
+        Array.isArray(data.menu)
     ) {
-
         throw new Error(
             'Restaurant menu data is empty or invalid.'
         );
-
     }
 
-    foods =
-        data.menu;
+    foods = data.menu;
 
     if (
         data.profile &&
         typeof data.profile === 'object'
     ) {
-
         restaurantProfile = {
-
             logo:
                 typeof data.profile.logo === 'string'
                     ? data.profile.logo
@@ -1239,229 +615,204 @@ async function loadRestaurantMenu() {
                 )
                     ? data.profile.addresses
                     : []
-
         };
-
     } else {
-
         restaurantProfile = {
-
             logo: '',
-
             phone_numbers: [],
-
             addresses: []
-
         };
-
     }
 
-    console.log(
-        'Restaurant profile loaded:',
-        restaurantProfile
-    );
+    removeEmptyCategories();
 
     return foods;
-
 }
 
 
 /* ================================================================
-   RENDER MENU
-================================================================ */
+   RENDER CURRENT MENU
+   ================================================================ */
 
 function renderCurrentMenu() {
+    const container =
+        document.getElementById('menuList');
 
-    const menuList =
-        document.getElementById(
-            'menuList'
-        );
-
-    if (!menuList) {
+    if (!container) {
         return;
     }
 
-    menuList.innerHTML = '';
+    container.innerHTML = '';
 
     const categories =
         Object.keys(foods);
 
     if (!categories.length) {
-
-        menuList.innerHTML =
-            '<p>No menu items yet.</p>';
-
+        container.innerHTML = `
+            <div class="admin-empty-menu">
+                No menu items available yet.
+            </div>
+        `;
         return;
     }
 
     categories.forEach(category => {
-
         const items =
-            Array.isArray(
-                foods[category]
-            )
+            Array.isArray(foods[category])
                 ? foods[category]
                 : [];
 
-        const categoryBox =
+        if (!items.length) {
+            return;
+        }
+
+        const categoryBlock =
             document.createElement('div');
 
-        categoryBox.className =
-            'menu-category';
+        categoryBlock.className =
+            'admin-menu-category';
 
-        const title =
-            document.createElement('h4');
+        categoryBlock.innerHTML = `
+            <div class="admin-menu-category-title">
+                ${escapeHtmlForAdmin(category)}
+            </div>
 
-        title.textContent =
-            category;
+            <div class="admin-menu-items">
+                ${items.map((item, index) => {
+                    const image =
+                        typeof item.image === 'string' &&
+                        item.image.trim()
+                            ? item.image
+                            : '';
 
-        categoryBox.appendChild(
-            title
-        );
+                    const ingredient =
+                        item.ingridient ??
+                        item.ingredient ??
+                        '';
 
-        items.forEach(item => {
+                    return `
+                        <div
+                            class="admin-menu-item"
+                            data-category="${escapeAttributeForAdmin(category)}"
+                            data-index="${index}"
+                        >
+                            <div class="admin-menu-item-image">
+                                ${
+                                    image
+                                        ? `
+                                            <img
+                                                src="${escapeAttributeForAdmin(image)}"
+                                                alt="${escapeAttributeForAdmin(item.name || '')}"
+                                            >
+                                        `
+                                        : `
+                                            <div class="admin-menu-no-image">
+                                                ☕
+                                            </div>
+                                        `
+                                }
+                            </div>
 
-            const div =
-                document.createElement('div');
+                            <div class="admin-menu-item-info">
+                                <strong>
+                                    ${escapeHtmlForAdmin(
+                                        item.name ||
+                                        'Unnamed item'
+                                    )}
+                                </strong>
 
-            div.className =
-                'menu-item';
+                                <span>
+                                    ${escapeHtmlForAdmin(
+                                        item.price ?? 0
+                                    )} ETB
+                                </span>
 
-            const special =
-                item.isDaySpecial === true
-                    ? `
-                        <span class="menu-item-day-special">
-                            ⭐ DAY SPECIAL
-                        </span>
-                    `
-                    : '';
+                                ${
+                                    ingredient
+                                        ? `
+                                            <small>
+                                                ${escapeHtmlForAdmin(
+                                                    ingredient
+                                                )}
+                                            </small>
+                                        `
+                                        : ''
+                                }
+                            </div>
 
-            div.innerHTML = `
-                ${escapeHtmlForAdmin(
-                    item.name || ''
-                )}
-                -
-                ${escapeHtmlForAdmin(
-                    item.price || 0
-                )} ETB
-                ${special}
-            `;
+                            ${
+                                item.isDaySpecial === true
+                                    ? `
+                                        <div class="admin-day-special-badge">
+                                            ⭐ DAY SPECIAL
+                                        </div>
+                                    `
+                                    : ''
+                            }
 
-            categoryBox.appendChild(
-                div
-            );
+                            ${
+                                item.available === false
+                                    ? `
+                                        <div class="admin-unavailable-badge">
+                                            UNAVAILABLE
+                                        </div>
+                                    `
+                                    : ''
+                            }
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
 
-        });
-
-        menuList.appendChild(
-            categoryBox
-        );
-
+        container.appendChild(categoryBlock);
     });
-
 }
 
 
 /* ================================================================
-   CATEGORY SELECTS
-================================================================ */
+   CATEGORY SELECT
+   ================================================================ */
 
 function updateAdminCategoryOptions() {
-
-    const newCategory =
+    const select =
         document.getElementById(
             'newItemCategory'
         );
 
-    const editCategory =
-        document.getElementById(
-            'editItemCategory'
-        );
-
-    const categories =
-        Object.keys(foods);
-
-    if (newCategory) {
-
-        const previous =
-            newCategory.value;
-
-        newCategory.innerHTML =
-            '<option value="">Select category</option>';
-
-        categories.forEach(category => {
-
-            const option =
-                document.createElement('option');
-
-            option.value =
-                category;
-
-            option.textContent =
-                category;
-
-            newCategory.appendChild(
-                option
-            );
-
-        });
-
-        if (
-            categories.includes(previous)
-        ) {
-
-            newCategory.value =
-                previous;
-
-        }
-
+    if (!select) {
+        return;
     }
 
-    if (editCategory) {
+    const oldValue = select.value;
 
-        const previous =
-            editCategory.value;
+    select.innerHTML = `
+        <option value="">
+            Select category
+        </option>
+    `;
 
-        editCategory.innerHTML =
-            '<option value="">Select category</option>';
+    Object.keys(foods).forEach(category => {
+        const option =
+            document.createElement('option');
 
-        categories.forEach(category => {
+        option.value = category;
+        option.textContent = category;
 
-            const option =
-                document.createElement('option');
+        select.appendChild(option);
+    });
 
-            option.value =
-                category;
-
-            option.textContent =
-                category;
-
-            editCategory.appendChild(
-                option
-            );
-
-        });
-
-        if (
-            categories.includes(previous)
-        ) {
-
-            editCategory.value =
-                previous;
-
-        }
-
+    if (oldValue && foods[oldValue]) {
+        select.value = oldValue;
     }
-
 }
 
 
 /* ================================================================
-   UPDATE / DELETE CATEGORY SELECT
-================================================================ */
+   EXISTING ITEM CATEGORY SELECT
+   ================================================================ */
 
 function updateExistingItemCategorySelect() {
-
     const select =
         document.getElementById(
             'existingItemCategorySelect'
@@ -1471,130 +822,98 @@ function updateExistingItemCategorySelect() {
         return;
     }
 
-    const previous =
-        select.value;
+    const oldValue = select.value;
 
-    select.innerHTML =
-        '<option value="">Select category</option>';
+    select.innerHTML = `
+        <option value="">
+            Select category
+        </option>
+    `;
 
     Object.keys(foods).forEach(category => {
+        if (
+            !Array.isArray(foods[category]) ||
+            !foods[category].length
+        ) {
+            return;
+        }
 
         const option =
             document.createElement('option');
 
-        option.value =
-            category;
+        option.value = category;
+        option.textContent = category;
 
-        option.textContent =
-            category;
-
-        select.appendChild(
-            option
-        );
-
+        select.appendChild(option);
     });
 
-    if (
-        previous &&
-        Object.prototype.hasOwnProperty.call(
-            foods,
-            previous
-        )
-    ) {
-
-        select.value =
-            previous;
-
+    if (oldValue && foods[oldValue]) {
+        select.value = oldValue;
     }
 
+    updateExistingItemsByCategory();
 }
 
 
 /* ================================================================
-   EXISTING ITEMS
-================================================================ */
+   REFRESH EXISTING ITEMS
+   ================================================================ */
 
 function refreshExistingItemsSelect() {
-
-    const select =
-        document.getElementById(
-            'existingItemSelect'
-        );
-
     const categorySelect =
         document.getElementById(
             'existingItemCategorySelect'
         );
 
-    if (!select) {
+    if (categorySelect) {
+        updateExistingItemsByCategory();
         return;
     }
 
-    const category =
-        categorySelect
-            ? categorySelect.value
-            : '';
-
-    select.innerHTML = '';
-
-    if (!category) {
-
-        select.disabled = true;
-
-        select.innerHTML =
-            '<option value="">Select category first</option>';
-
-        clearEditFields();
-
-        return;
-    }
-
-    const items =
-        Array.isArray(foods[category])
-            ? foods[category]
-            : [];
-
-    select.disabled = false;
-
-    select.innerHTML =
-        '<option value="">Select item</option>';
-
-    items.forEach((item, index) => {
-
-        const option =
-            document.createElement('option');
-
-        option.value =
-            String(index);
-
-        option.textContent =
-            item.name || 'Unnamed item';
-
-        select.appendChild(
-            option
+    const itemSelect =
+        document.getElementById(
+            'existingItemSelect'
         );
 
-    });
-
-    if (!items.length) {
-
-        select.innerHTML =
-            '<option value="">No items in this category</option>';
-
-        select.disabled = true;
-
-        clearEditFields();
+    if (!itemSelect) {
+        return;
     }
 
+    itemSelect.innerHTML = `
+        <option value="">
+            Select item
+        </option>
+    `;
+
+    Object.keys(foods).forEach(category => {
+        const items =
+            Array.isArray(foods[category])
+                ? foods[category]
+                : [];
+
+        items.forEach((item, index) => {
+            const option =
+                document.createElement('option');
+
+            option.value =
+                `${category}::${index}`;
+
+            option.textContent =
+                `${category} — ${
+                    item.name || 'Unnamed item'
+                }`;
+
+            itemSelect.appendChild(option);
+        });
+    });
 }
 
 
 /* ================================================================
-   CATEGORY → ITEM
-================================================================ */
+   UPDATE EXISTING ITEMS BY CATEGORY
+   ================================================================ */
 
 function updateExistingItemsByCategory() {
-
     const categorySelect =
         document.getElementById(
             'existingItemCategorySelect'
@@ -1605,109 +924,100 @@ function updateExistingItemsByCategory() {
             'existingItemSelect'
         );
 
-    if (!categorySelect || !itemSelect) {
+    if (!itemSelect) {
         return;
     }
 
-    itemSelect.value = '';
+    const category =
+        categorySelect?.value || '';
 
-    clearEditFields();
+    itemSelect.innerHTML = `
+        <option value="">
+            Select item
+        </option>
+    `;
 
-    refreshExistingItemsSelect();
-
-    if (categorySelect.value) {
-
-        showMessage(
-            `Select an item from "${categorySelect.value}".`,
-            'success'
-        );
-
+    if (!category) {
+        clearEditFields();
+        return;
     }
 
+    const items =
+        Array.isArray(foods[category])
+            ? foods[category]
+            : [];
+
+    items.forEach((item, index) => {
+        const option =
+            document.createElement('option');
+
+        option.value = String(index);
+
+        option.textContent =
+            item.name || 'Unnamed item';
+
+        itemSelect.appendChild(option);
+    });
+
+    clearEditFields();
 }
 
 
 /* ================================================================
    GET SELECTED ITEM
-================================================================ */
+   ================================================================ */
 
 function getSelectedItemData() {
-
-    const categorySelect =
+    const category =
         document.getElementById(
             'existingItemCategorySelect'
-        );
+        )?.value || '';
 
-    const itemSelect =
+    const indexValue =
         document.getElementById(
             'existingItemSelect'
-        );
+        )?.value ?? '';
 
     if (
-        !categorySelect ||
-        !itemSelect ||
-        !categorySelect.value ||
-        itemSelect.value === ''
+        !category ||
+        indexValue === ''
     ) {
-
         return null;
     }
 
-    const category =
-        categorySelect.value;
-
-    const itemIndex =
-        Number(itemSelect.value);
+    const index =
+        Number(indexValue);
 
     const items =
         Array.isArray(foods[category])
             ? foods[category]
             : [];
 
-    if (
-        !Number.isInteger(itemIndex) ||
-        itemIndex < 0 ||
-        itemIndex >= items.length
-    ) {
+    const item =
+        items[index];
 
+    if (!item) {
         return null;
     }
 
     return {
-
-        category:
-            category,
-
-        itemId:
-            items[itemIndex]?.id,
-
-        items:
-            items,
-
-        index:
-            itemIndex,
-
-        item:
-            items[itemIndex]
-
+        category,
+        index,
+        item
     };
-
 }
 
 
 /* ================================================================
-   POPULATE EDIT FIELDS
-================================================================ */
+   POPULATE EDIT ITEM
+   ================================================================ */
 
 function populateSelectedItemFields() {
-
     const selected =
         getSelectedItemData();
 
     if (!selected) {
-
         clearEditFields();
-
         return;
     }
 
@@ -1729,7 +1039,12 @@ function populateSelectedItemFields() {
             'editItemIngredient'
         );
 
-    const editCategory =
+    const image =
+        document.getElementById(
+            'editItemImage'
+        );
+
+    const category =
         document.getElementById(
             'editItemCategory'
         );
@@ -1751,32 +1066,37 @@ function populateSelectedItemFields() {
 
     if (ingredient) {
         ingredient.value =
-            item.ingridient ||
-            item.ingredient ||
+            item.ingridient ??
+            item.ingredient ??
             '';
     }
 
-    if (editCategory) {
-        editCategory.value =
+    if (image) {
+        image.value = '';
+    }
+
+    if (category) {
+        category.value =
             selected.category;
     }
 
     if (available) {
         available.checked =
-            item.isAvailable !== false;
+            item.available !== false;
     }
 
-    renderEditItemImage(item);
+    renderEditItemImage(
+        item.image || ''
+    );
 }
 
 
 /* ================================================================
-   EDIT ITEM IMAGE
-================================================================ */
+   EDIT ITEM IMAGE PREVIEW
+   ================================================================ */
 
-function renderEditItemImage(item) {
-
-    const image =
+function renderEditItemImage(image) {
+    const img =
         document.getElementById(
             'editItemImagePreviewImg'
         );
@@ -1786,174 +1106,121 @@ function renderEditItemImage(item) {
             'editItemImagePlaceholder'
         );
 
-    if (!image || !placeholder) {
+    if (!img || !placeholder) {
         return;
     }
 
-    const src =
-        typeof item?.image === 'string'
-            ? item.image.trim()
-            : '';
-
-    if (src) {
-
-        image.src = src;
-        image.style.display = 'block';
-
+    if (
+        typeof image === 'string' &&
+        image.trim()
+    ) {
+        img.src = image;
+        img.style.display = 'block';
         placeholder.style.display = 'none';
-
     } else {
-
-        image.removeAttribute('src');
-        image.style.display = 'none';
-
+        img.removeAttribute('src');
+        img.style.display = 'none';
         placeholder.style.display = 'flex';
-
     }
 }
 
 
-function handleEditItemImageChange(event) {
+/* ================================================================
+   HANDLE EDIT IMAGE
+   ================================================================ */
 
+async function handleEditItemImageChange(event) {
     const file =
-        event.target.files &&
-        event.target.files[0];
+        event.target.files?.[0];
 
     if (!file) {
         return;
     }
 
-    if (!file.type.startsWith('image/')) {
+    showAdminLoading(
+        'Processing image...'
+    );
+
+    try {
+        const image =
+            await readImageFile(file);
+
+        renderEditItemImage(image);
+
+        const selected =
+            getSelectedItemData();
+
+        if (selected) {
+            selected.item.image =
+                image;
+        }
 
         showMessage(
-            'Please choose an image file.',
-            'error'
+            'Image selected successfully.',
+            'success'
         );
-
-        event.target.value = '';
-
-        return;
-    }
-
-    const maxSize =
-        5 * 1024 * 1024;
-
-    if (file.size > maxSize) {
-
+    } catch (error) {
         showMessage(
-            'Item image must be smaller than 5 MB.',
+            error.message ||
+            'Could not process image.',
             'error'
         );
-
+    } finally {
         event.target.value = '';
-
-        return;
+        hideAdminLoading(150);
     }
-
-    const image =
-        document.getElementById(
-            'editItemImagePreviewImg'
-        );
-
-    const placeholder =
-        document.getElementById(
-            'editItemImagePlaceholder'
-        );
-
-    if (!image || !placeholder) {
-        return;
-    }
-
-    const reader =
-        new FileReader();
-
-    reader.onload =
-        event => {
-
-            image.src =
-                event.target.result;
-
-            image.style.display =
-                'block';
-
-            placeholder.style.display =
-                'none';
-
-        };
-
-    reader.onerror =
-        () => {
-
-            showMessage(
-                'Could not preview the selected image.',
-                'error'
-            );
-
-            event.target.value = '';
-
-        };
-
-    reader.readAsDataURL(file);
-
 }
 
 
+/* ================================================================
+   CLEAR EDIT IMAGE
+   ================================================================ */
+
 function clearEditItemImage() {
+    const selected =
+        getSelectedItemData();
+
+    if (selected) {
+        selected.item.image = '';
+    }
 
     const input =
         document.getElementById(
             'editItemImage'
         );
 
-    const image =
-        document.getElementById(
-            'editItemImagePreviewImg'
-        );
-
-    const placeholder =
-        document.getElementById(
-            'editItemImagePlaceholder'
-        );
-
     if (input) {
         input.value = '';
     }
 
-    if (image) {
+    renderEditItemImage('');
 
-        image.removeAttribute('src');
-
-        image.style.display =
-            'none';
-
-    }
-
-    if (placeholder) {
-
-        placeholder.style.display =
-            'flex';
-
-    }
-
+    showMessage(
+        'Item image removed. Save the menu to apply the change.',
+        'success'
+    );
 }
 
 
-function clearEditFields() {
+/* ================================================================
+   CLEAR EDIT FIELDS
+   ================================================================ */
 
-    [
+function clearEditFields() {
+    const fields = [
         'editItemName',
         'editItemPrice',
         'editItemIngredient',
         'editItemCategory'
-    ].forEach(id => {
+    ];
 
+    fields.forEach(id => {
         const element =
             document.getElementById(id);
 
         if (element) {
             element.value = '';
         }
-
     });
 
     const available =
@@ -1962,19 +1229,27 @@ function clearEditFields() {
         );
 
     if (available) {
-        available.checked = false;
+        available.checked = true;
     }
 
-    clearEditItemImage();
+    const image =
+        document.getElementById(
+            'editItemImage'
+        );
+
+    if (image) {
+        image.value = '';
+    }
+
+    renderEditItemImage('');
 }
 
 
 /* ================================================================
    ADD CATEGORY
-================================================================ */
+   ================================================================ */
 
 function addCategoryFromUI() {
-
     const input =
         document.getElementById(
             'newCategoryName'
@@ -1988,84 +1263,42 @@ function addCategoryFromUI() {
         input.value.trim();
 
     if (!category) {
-
         showMessage(
             'Please enter a category name.',
             'error'
         );
-
         return;
     }
 
-    const exists =
-        Object.keys(foods).some(
-            currentCategory =>
-                currentCategory.toLowerCase() ===
-                category.toLowerCase()
-        );
-
-    if (exists) {
-
+    if (foods[category]) {
         showMessage(
-            'Category already exists.',
+            'That category already exists.',
             'error'
         );
-
         return;
     }
 
-    showAdminLoading(
-        'Adding category...'
+    foods[category] = [];
+
+    input.value = '';
+
+    updateAdminCategoryOptions();
+    updateCategoryManager();
+    updateExistingItemCategorySelect();
+    renderCurrentMenu();
+
+    showMessage(
+        `"${category}" category added. Click Save Menu to apply it.`,
+        'success'
     );
-
-    setTimeout(() => {
-
-        const newFoods = {};
-
-        Object.keys(foods).forEach(
-            existingCategory => {
-
-                newFoods[existingCategory] =
-                    foods[existingCategory];
-
-            }
-        );
-
-        newFoods[category] = [];
-
-        foods =
-            newFoods;
-
-        input.value = '';
-
-        updateAdminCategoryOptions();
-
-        updateCategoryManager();
-
-        updateExistingItemCategorySelect();
-
-        refreshExistingItemsSelect();
-
-        renderCurrentMenu();
-
-        showMessage(
-            `Category "${category}" added. Click Save Menu to save it.`,
-            'success'
-        );
-
-        hideAdminLoading();
-
-    }, 450);
-
 }
 
 
 /* ================================================================
-   MANAGE CATEGORIES
-================================================================ */
+   CATEGORY MANAGER
+   ================================================================ */
 
 function updateCategoryManager() {
-
     const select =
         document.getElementById(
             'existingCategorySelect'
@@ -2075,47 +1308,37 @@ function updateCategoryManager() {
         return;
     }
 
-    const previous =
+    const oldValue =
         select.value;
 
-    select.innerHTML =
-        '<option value="">Select category</option>';
+    select.innerHTML = `
+        <option value="">
+            Select category
+        </option>
+    `;
 
     Object.keys(foods).forEach(category => {
-
         const option =
             document.createElement('option');
 
-        option.value =
-            category;
+        option.value = category;
+        option.textContent = category;
 
-        option.textContent =
-            category;
-
-        select.appendChild(
-            option
-        );
-
+        select.appendChild(option);
     });
 
-    if (
-        previous &&
-        Object.prototype.hasOwnProperty.call(
-            foods,
-            previous
-        )
-    ) {
-
-        select.value =
-            previous;
-
+    if (oldValue && foods[oldValue]) {
+        select.value = oldValue;
+        populateSelectedCategory();
     }
-
 }
 
 
-function populateSelectedCategory() {
+/* ================================================================
+   POPULATE CATEGORY
+   ================================================================ */
 
+function populateSelectedCategory() {
     const select =
         document.getElementById(
             'existingCategorySelect'
@@ -2130,21 +1353,19 @@ function populateSelectedCategory() {
         return;
     }
 
-    if (!select.value) {
-
-        input.value = '';
-
-        return;
-    }
-
-    input.value =
+    const category =
         select.value;
 
+    input.value =
+        category || '';
 }
 
 
-async function updateSelectedCategory() {
+/* ================================================================
+   UPDATE CATEGORY NAME
+   ================================================================ */
 
+async function updateSelectedCategory() {
     const select =
         document.getElementById(
             'existingCategorySelect'
@@ -2166,236 +1387,171 @@ async function updateSelectedCategory() {
         input.value.trim();
 
     if (!oldCategory) {
-
         showMessage(
-            'Please select a category first.',
+            'Please select a category.',
             'error'
         );
-
         return;
     }
 
     if (!newCategory) {
-
         showMessage(
-            'Please enter a new category name.',
+            'Please enter the new category name.',
             'error'
         );
-
         return;
     }
 
     if (
-        newCategory === oldCategory
+        oldCategory !== newCategory &&
+        foods[newCategory]
     ) {
-
         showMessage(
-            'The category name has not changed.',
+            'That category name already exists.',
             'error'
         );
-
         return;
     }
 
-    const duplicate =
-        Object.keys(foods).some(
-            category =>
-                category.toLowerCase() ===
-                newCategory.toLowerCase()
-        );
-
-    if (duplicate) {
-
+    if (oldCategory === newCategory) {
         showMessage(
-            'A category with this name already exists.',
+            'No category name change was made.',
             'error'
         );
-
         return;
     }
 
-    if (
-        !Object.prototype.hasOwnProperty.call(
-            foods,
-            oldCategory
-        )
-    ) {
+    const confirmed =
+        await showAdminConfirm({
+            title: 'Rename Category?',
+            message:
+                `"${oldCategory}" will be renamed to "${newCategory}".`,
+            confirmText: 'Rename',
+            cancelText: 'Cancel',
+            icon: '✎'
+        });
 
-        showMessage(
-            'The selected category no longer exists.',
-            'error'
-        );
-
-        return;
-    }
-
-    if (
-        !confirm(
-            `Rename "${oldCategory}" to "${newCategory}"?`
-        )
-    ) {
-
+    if (!confirmed) {
         return;
     }
 
     showAdminLoading(
-        'Updating category...'
+        'Renaming category...'
     );
 
     try {
+        foods[newCategory] =
+            foods[oldCategory];
 
-        const newFoods = {};
-
-        Object.keys(foods).forEach(category => {
-
-            if (
-                category === oldCategory
-            ) {
-
-                newFoods[newCategory] =
-                    foods[category];
-
-            } else {
-
-                newFoods[category] =
-                    foods[category];
-
-            }
-
-        });
-
-        foods =
-            newFoods;
+        delete foods[oldCategory];
 
         updateAdminCategoryOptions();
-
         updateCategoryManager();
-
         updateExistingItemCategorySelect();
+        renderCurrentMenu();
 
-        refreshExistingItemsSelect();
-
-        const categoryManager =
+        const newCategorySelect =
             document.getElementById(
                 'existingCategorySelect'
             );
 
-        const categoryInput =
+        if (newCategorySelect) {
+            newCategorySelect.value =
+                newCategory;
+        }
+
+        const editCategoryName =
             document.getElementById(
                 'editCategoryName'
             );
 
-        const itemCategory =
-            document.getElementById(
-                'existingItemCategorySelect'
-            );
-
-        if (categoryManager) {
-
-            categoryManager.value =
+        if (editCategoryName) {
+            editCategoryName.value =
                 newCategory;
-
         }
-
-        if (categoryInput) {
-
-            categoryInput.value =
-                newCategory;
-
-        }
-
-        if (itemCategory) {
-
-            itemCategory.value =
-                newCategory;
-
-        }
-
-        refreshExistingItemsSelect();
-
-        renderCurrentMenu();
 
         showMessage(
-            `Category renamed to "${newCategory}". Click Save Menu to save it.`,
+            `"${oldCategory}" renamed to "${newCategory}". Click Save Menu to apply the change.`,
             'success'
         );
-
     } catch (error) {
-
         console.error(
-            'Update category error:',
+            'Rename category error:',
             error
         );
 
         showMessage(
             error.message ||
-            'Could not update category.',
+            'Could not rename category.',
             'error'
         );
-
     } finally {
-
-        hideAdminLoading();
-
+        hideAdminLoading(150);
     }
-
 }
 
 
 /* ================================================================
    READ IMAGE
-================================================================ */
+   ================================================================ */
 
 function readImageFile(file) {
-
-    return new Promise(
-        (resolve, reject) => {
-
-            if (!file) {
-
-                resolve('');
-
-                return;
-
-            }
-
-            const reader =
-                new FileReader();
-
-            reader.onload =
-                event => {
-
-                    resolve(
-                        event.target.result
-                    );
-
-                };
-
-            reader.onerror =
-                () => {
-
-                    reject(
-                        new Error(
-                            'Could not read the image file.'
-                        )
-                    );
-
-                };
-
-            reader.readAsDataURL(file);
-
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(
+                new Error('No image selected.')
+            );
+            return;
         }
-    );
 
+        if (!file.type.startsWith('image/')) {
+            reject(
+                new Error(
+                    'Please select a valid image file.'
+                )
+            );
+            return;
+        }
+
+        const maxSize =
+            5 * 1024 * 1024;
+
+        if (file.size > maxSize) {
+            reject(
+                new Error(
+                    'Image must be smaller than 5 MB.'
+                )
+            );
+            return;
+        }
+
+        const reader =
+            new FileReader();
+
+        reader.onload = () => {
+            resolve(
+                reader.result
+            );
+        };
+
+        reader.onerror = () => {
+            reject(
+                new Error(
+                    'Could not read the image.'
+                )
+            );
+        };
+
+        reader.readAsDataURL(file);
+    });
 }
 
 
 /* ================================================================
    ADD ITEM
-================================================================ */
+   ================================================================ */
 
 async function addItemFromUI() {
-
     const nameInput =
         document.getElementById(
             'newItemName'
@@ -2416,460 +1572,346 @@ async function addItemFromUI() {
             'newItemIngredient'
         );
 
-    const categoryInput =
-        document.getElementById(
-            'newItemCategory'
-        );
-
     const availableInput =
         document.getElementById(
             'newItemAvailable'
         );
 
-    if (
-        !nameInput ||
-        !priceInput ||
-        !categoryInput
-    ) {
-        return;
-    }
+    const categoryInput =
+        document.getElementById(
+            'newItemCategory'
+        );
 
     const name =
-        nameInput.value.trim();
+        nameInput?.value.trim() || '';
 
-    const price =
-        Number(
-            priceInput.value
-        );
-
-    const ingredient =
-        ingredientInput
-            ? ingredientInput.value.trim()
-            : '';
+    const priceValue =
+        priceInput?.value.trim() || '';
 
     const category =
-        categoryInput.value;
+        categoryInput?.value.trim() || '';
 
-    const available =
-        availableInput
-            ? availableInput.checked
-            : true;
+    const ingredient =
+        ingredientInput?.value.trim() || '';
 
-    const file =
-        imageInput &&
-        imageInput.files
-            ? imageInput.files[0]
-            : null;
-
-    if (
-        !name ||
-        !category
-    ) {
-
+    if (!name) {
         showMessage(
-            'Item name and category are required.',
+            'Please enter an item name.',
             'error'
         );
-
         return;
     }
 
-    if (
-        !Number.isFinite(price)
-    ) {
+    if (!priceValue) {
+        showMessage(
+            'Please enter an item price.',
+            'error'
+        );
+        return;
+    }
 
+    const price =
+        Number(priceValue);
+
+    if (
+        !Number.isFinite(price) ||
+        price < 0
+    ) {
         showMessage(
             'Please enter a valid price.',
             'error'
         );
-
         return;
     }
 
-    showAdminLoading(
-        'Adding item...'
-    );
-
-    try {
-
-        const image =
-            await readImageFile(file);
-
-        await new Promise(
-            resolve =>
-                setTimeout(
-                    resolve,
-                    file ? 0 : 450
-                )
-        );
-
-        if (!foods[category]) {
-
-            foods[category] = [];
-
-        }
-
-        foods[category].push({
-
-            id:
-                Date.now(),
-
-            name:
-                name,
-
-            price:
-                price,
-
-            image:
-                image,
-
-            ingridient:
-                ingredient,
-
-            isAvailable:
-                available
-
-        });
-
-        nameInput.value = '';
-
-        priceInput.value = '';
-
-        if (ingredientInput) {
-
-            ingredientInput.value = '';
-
-        }
-
-        if (imageInput) {
-
-            imageInput.value = '';
-
-        }
-
-        updateAdminCategoryOptions();
-
-        updateCategoryManager();
-
-        updateExistingItemCategorySelect();
-
-        refreshExistingItemsSelect();
-
-        renderCurrentMenu();
-
+    if (!category) {
         showMessage(
-            `"${name}" added. Click Save Menu to save it.`,
-            'success'
-        );
-
-    } catch (error) {
-
-        console.error(
-            'Add item error:',
-            error
-        );
-
-        showMessage(
-            error.message ||
-            'Could not add item.',
+            'Please select a category.',
             'error'
         );
-
-    } finally {
-
-        hideAdminLoading();
-
+        return;
     }
 
+    if (!foods[category]) {
+        foods[category] = [];
+    }
+
+    let image = '';
+
+    if (
+        imageInput &&
+        imageInput.files &&
+        imageInput.files[0]
+    ) {
+        showAdminLoading(
+            'Processing item image...'
+        );
+
+        try {
+            image =
+                await readImageFile(
+                    imageInput.files[0]
+                );
+        } catch (error) {
+            showMessage(
+                error.message ||
+                'Could not process image.',
+                'error'
+            );
+
+            hideAdminLoading(150);
+            return;
+        }
+    }
+
+    const item = {
+        name,
+        price,
+        ingridient: ingredient,
+        image,
+        available:
+            availableInput
+                ? availableInput.checked
+                : true
+    };
+
+    foods[category].push(item);
+
+    if (nameInput) {
+        nameInput.value = '';
+    }
+
+    if (priceInput) {
+        priceInput.value = '';
+    }
+
+    if (imageInput) {
+        imageInput.value = '';
+    }
+
+    if (ingredientInput) {
+        ingredientInput.value = '';
+    }
+
+    if (availableInput) {
+        availableInput.checked = true;
+    }
+
+    updateAdminCategoryOptions();
+    updateCategoryManager();
+    updateExistingItemCategorySelect();
+    renderCurrentMenu();
+
+    showMessage(
+        `"${name}" added to ${category}. Click Save Menu to apply the change.`,
+        'success'
+    );
+
+    hideAdminLoading(150);
 }
 
 
 /* ================================================================
    UPDATE ITEM
-================================================================ */
+   ================================================================ */
 
 async function updateSelectedItem() {
-
     const selected =
         getSelectedItemData();
 
     if (!selected) {
-
         showMessage(
-            'Please choose a category and then choose an item.',
+            'Please select an item to update.',
             'error'
         );
-
         return;
     }
 
-    const item =
-        selected.item;
-
-    const oldCategory =
-        selected.category;
-
-    const index =
-        selected.index;
-
-    const nameElement =
+    const nameInput =
         document.getElementById(
             'editItemName'
         );
 
-    const priceElement =
+    const priceInput =
         document.getElementById(
             'editItemPrice'
         );
 
-    const ingredientElement =
+    const ingredientInput =
         document.getElementById(
             'editItemIngredient'
         );
 
-    const categoryElement =
+    const categoryInput =
         document.getElementById(
             'editItemCategory'
         );
 
-    const availableElement =
+    const availableInput =
         document.getElementById(
             'editItemAvailable'
         );
 
-    const imageElement =
+    const imageInput =
         document.getElementById(
             'editItemImage'
         );
 
-    const newName =
-        nameElement
-            ? nameElement.value.trim()
-            : '';
+    const name =
+        nameInput?.value.trim() || '';
 
-    const newPrice =
-        Number(
-            priceElement
-                ? priceElement.value
-                : ''
-        );
+    const priceValue =
+        priceInput?.value.trim() || '';
 
-    const newIngredient =
-        ingredientElement
-            ? ingredientElement.value.trim()
-            : '';
+    const ingredient =
+        ingredientInput?.value.trim() || '';
 
     const newCategory =
-        categoryElement?.value ||
-        oldCategory;
+        categoryInput?.value.trim() ||
+        selected.category;
 
-    const newImageFile =
-        imageElement?.files?.[0] ||
-        null;
-
-    if (!newName) {
-
+    if (!name) {
         showMessage(
-            'Item name is required.',
+            'Please enter an item name.',
             'error'
         );
-
         return;
     }
 
-    if (!Number.isFinite(newPrice)) {
+    if (!priceValue) {
+        showMessage(
+            'Please enter a price.',
+            'error'
+        );
+        return;
+    }
 
+    const price =
+        Number(priceValue);
+
+    if (
+        !Number.isFinite(price) ||
+        price < 0
+    ) {
         showMessage(
             'Please enter a valid price.',
             'error'
         );
-
         return;
     }
 
-    if (newImageFile) {
-
-        if (
-            !newImageFile.type.startsWith(
-                'image/'
-            )
-        ) {
-
-            showMessage(
-                'Please choose a valid image file.',
-                'error'
-            );
-
-            return;
-        }
-
-        if (
-            newImageFile.size >
-            5 * 1024 * 1024
-        ) {
-
-            showMessage(
-                'Item image must be smaller than 5 MB.',
-                'error'
-            );
-
-            return;
-        }
-
-    }
-
-    showAdminLoading(
-        newImageFile
-            ? 'Preparing new image...'
-            : 'Updating item...'
-    );
-
-    try {
-
-        if (newImageFile) {
-
-            item.image =
-                await readImageFile(
-                    newImageFile
-                );
-
-        }
-
-        item.name =
-            newName;
-
-        item.price =
-            newPrice;
-
-        item.ingridient =
-            newIngredient;
-
-        item.isAvailable =
-            availableElement
-                ? availableElement.checked
-                : true;
-
-
-        if (
-            newCategory &&
-            newCategory !== oldCategory
-        ) {
-
-            selected.items.splice(
-                index,
-                1
-            );
-
-            if (!foods[newCategory]) {
-
-                foods[newCategory] =
-                    [];
-
-            }
-
-            foods[newCategory].push(
-                item
-            );
-
-        }
-
-
-        updateAdminCategoryOptions();
-
-        updateCategoryManager();
-
-        updateExistingItemCategorySelect();
-
-        const categorySelect =
-            document.getElementById(
-                'existingItemCategorySelect'
-            );
-
-        if (categorySelect) {
-
-            categorySelect.value =
-                newCategory;
-
-        }
-
-        refreshExistingItemsSelect();
-
-        const itemSelect =
-            document.getElementById(
-                'existingItemSelect'
-            );
-
-        if (
-            itemSelect &&
-            foods[newCategory]
-        ) {
-
-            const updatedIndex =
-                foods[newCategory].findIndex(
-                    currentItem =>
-                        currentItem === item
-                );
-
-            if (updatedIndex !== -1) {
-
-                itemSelect.value =
-                    String(updatedIndex);
-
-                populateSelectedItemFields();
-
-            }
-
-        }
-
-        renderCurrentMenu();
-
+    if (!newCategory) {
         showMessage(
-            `"${item.name}" updated. ${
-                newImageFile
-                    ? 'Image replaced. '
-                    : ''
-            }Click Save Menu to save it.`,
-            'success'
-        );
-
-    } catch (error) {
-
-        console.error(
-            'Update item error:',
-            error
-        );
-
-        showMessage(
-            error.message ||
-            'Could not update item.',
+            'Please select a category.',
             'error'
         );
-
-    } finally {
-
-        hideAdminLoading();
-
+        return;
     }
 
+    const oldCategory =
+        selected.category;
+
+    const oldIndex =
+        selected.index;
+
+    const oldItem =
+        selected.item;
+
+    const updatedItem = {
+        ...oldItem,
+        name,
+        price,
+        ingridient: ingredient,
+        available:
+            availableInput
+                ? availableInput.checked
+                : true
+    };
+
+    if (
+        imageInput &&
+        imageInput.files &&
+        imageInput.files[0]
+    ) {
+        showAdminLoading(
+            'Processing item image...'
+        );
+
+        try {
+            updatedItem.image =
+                await readImageFile(
+                    imageInput.files[0]
+                );
+        } catch (error) {
+            showMessage(
+                error.message ||
+                'Could not process image.',
+                'error'
+            );
+
+            hideAdminLoading(150);
+            return;
+        }
+    } else {
+        updatedItem.image =
+            oldItem.image || '';
+    }
+
+    if (!foods[newCategory]) {
+        foods[newCategory] = [];
+    }
+
+    if (newCategory === oldCategory) {
+        foods[oldCategory][oldIndex] =
+            updatedItem;
+    } else {
+        foods[oldCategory].splice(
+            oldIndex,
+            1
+        );
+
+        foods[newCategory].push(
+            updatedItem
+        );
+
+        if (
+            foods[oldCategory].length === 0
+        ) {
+            delete foods[oldCategory];
+        }
+    }
+
+    removeEmptyCategories();
+
+    updateAdminCategoryOptions();
+    updateCategoryManager();
+    updateExistingItemCategorySelect();
+    refreshExistingItemsSelect();
+    renderCurrentMenu();
+    clearEditFields();
+
+    showMessage(
+        `"${name}" updated successfully. Click Save Menu to apply the change.`,
+        'success'
+    );
+
+    hideAdminLoading(150);
 }
 
 
 /* ================================================================
    DELETE ITEM
-================================================================ */
+   ================================================================ */
 
 async function deleteSelectedItem() {
-
     const selected =
         getSelectedItemData();
 
     if (!selected) {
-
         showMessage(
-            'Please choose a category and then choose an item.',
+            'Please select an item to delete.',
             'error'
         );
-
         return;
     }
 
@@ -2877,15 +1919,17 @@ async function deleteSelectedItem() {
         selected.item.name ||
         'this item';
 
-    const categoryName =
-        selected.category;
+    const confirmed =
+        await showAdminConfirm({
+            title: 'Delete Item?',
+            message:
+                `"${itemName}" will be removed from the menu.`,
+            confirmText: 'Delete Item',
+            cancelText: 'Keep Item',
+            icon: '🗑'
+        });
 
-    if (
-        !confirm(
-            `Delete "${itemName}"?`
-        )
-    ) {
-
+    if (!confirmed) {
         return;
     }
 
@@ -2894,76 +1938,31 @@ async function deleteSelectedItem() {
     );
 
     try {
-
-        selected.items.splice(
+        foods[selected.category].splice(
             selected.index,
             1
         );
 
+        if (
+            foods[selected.category].length === 0
+        ) {
+            delete foods[selected.category];
+        }
+
         removeEmptyCategories();
 
         updateAdminCategoryOptions();
-
         updateCategoryManager();
-
         updateExistingItemCategorySelect();
-
-        const categorySelect =
-            document.getElementById(
-                'existingItemCategorySelect'
-            );
-
-        const itemSelect =
-            document.getElementById(
-                'existingItemSelect'
-            );
-
-        if (
-            Object.prototype.hasOwnProperty.call(
-                foods,
-                categoryName
-            )
-        ) {
-
-            if (categorySelect) {
-
-                categorySelect.value =
-                    categoryName;
-
-            }
-
-            refreshExistingItemsSelect();
-
-        } else {
-
-            if (categorySelect) {
-
-                categorySelect.value = '';
-
-            }
-
-            if (itemSelect) {
-
-                itemSelect.innerHTML =
-                    '<option value="">Select category first</option>';
-
-                itemSelect.disabled = true;
-
-            }
-
-            clearEditFields();
-
-        }
-
+        refreshExistingItemsSelect();
         renderCurrentMenu();
+        clearEditFields();
 
         showMessage(
-            `"${itemName}" deleted. Click Save Menu to save the change.`,
+            `"${itemName}" deleted. Click Save Menu to apply the change.`,
             'success'
         );
-
     } catch (error) {
-
         console.error(
             'Delete item error:',
             error
@@ -2974,30 +1973,42 @@ async function deleteSelectedItem() {
             'Could not delete item.',
             'error'
         );
-
     } finally {
-
-        hideAdminLoading();
-
+        hideAdminLoading(150);
     }
-
 }
 
 
 /* ================================================================
-   SAVE MENU TO SERVER
-================================================================ */
+   SAVE MENU
+   ================================================================ */
 
 async function saveMenuToServer() {
-
     if (!currentRestaurant) {
-
         showMessage(
             'Restaurant information is not available.',
             'error'
         );
-
         return;
+    }
+
+    if (!currentRestaurant.slug) {
+        showMessage(
+            'Restaurant slug is missing.',
+            'error'
+        );
+        return;
+    }
+
+    removeEmptyCategories();
+
+    const button =
+        document.getElementById(
+            'saveMenuBtn'
+        );
+
+    if (button) {
+        button.disabled = true;
     }
 
     showAdminLoading(
@@ -3005,9 +2016,6 @@ async function saveMenuToServer() {
     );
 
     try {
-
-        removeEmptyCategories();
-
         const response =
             await fetch(
                 '/api/admin/menu/' +
@@ -3035,37 +2043,27 @@ async function saveMenuToServer() {
         let data = {};
 
         try {
-
             data =
                 await response.json();
-
-        } catch (jsonError) {
-
+        } catch (error) {
             data = {};
-
         }
 
         if (
             response.status === 401 ||
             response.status === 403
         ) {
-
             showMessage(
                 data.message ||
-                'Your admin session has expired. Please log in again.',
+                'Your admin session has expired.',
                 'error'
             );
 
-            setTimeout(
-                () => {
-
-                    window.location.replace(
-                        '/admin.html'
-                    );
-
-                },
-                1200
-            );
+            setTimeout(() => {
+                window.location.replace(
+                    '/admin.html'
+                );
+            }, 1000);
 
             return;
         }
@@ -3074,13 +2072,13 @@ async function saveMenuToServer() {
             !response.ok ||
             !data.ok
         ) {
-
             throw new Error(
                 data.message ||
                 'Failed to save menu.'
             );
-
         }
+
+        renderCurrentMenu();
 
         showMessage(
             data.message ||
@@ -3089,7 +2087,6 @@ async function saveMenuToServer() {
         );
 
     } catch (error) {
-
         console.error(
             'Save menu error:',
             error
@@ -3097,118 +2094,95 @@ async function saveMenuToServer() {
 
         showMessage(
             error.message ||
-            'Failed to save menu.',
+            'Could not save menu.',
             'error'
         );
-
     } finally {
+        if (button) {
+            button.disabled = false;
+        }
 
         hideAdminLoading(150);
-
     }
-
 }
 
 
 /* ================================================================
-   REFRESH MENU
-================================================================ */
+   REFRESH ADMIN MENU
+   ================================================================ */
 
 async function refreshAdminMenu() {
-
-    showAdminLoading(
-        'Refreshing menu...'
-    );
-
     const button =
         document.getElementById(
             'adminRefreshBtn'
         );
 
     if (button) {
-
         button.disabled = true;
-
         button.textContent =
             '↻ Refreshing...';
-
     }
 
-    try {
+    showAdminLoading(
+        'Refreshing menu...'
+    );
 
+    try {
         await loadRestaurantMenu();
 
         updateAdminCategoryOptions();
-
         updateCategoryManager();
-
         updateExistingItemCategorySelect();
-
         refreshExistingItemsSelect();
-
         renderCurrentMenu();
 
         showMessage(
             'Menu refreshed successfully.',
             'success'
         );
-
     } catch (error) {
-
         console.error(
-            'Refresh error:',
+            'Refresh menu error:',
             error
         );
 
         showMessage(
-            'Refresh failed: ' +
-            error.message,
+            error.message ||
+            'Could not refresh menu.',
             'error'
         );
-
     } finally {
-
         if (button) {
-
             button.disabled = false;
-
             button.textContent =
                 '↻ Refresh';
-
         }
 
         hideAdminLoading(150);
-
     }
-
 }
 
 
 /* ================================================================
-   LOAD RESTAURANT PROFILE
-================================================================ */
+   PROFILE
+   ================================================================ */
 
 async function loadRestaurantProfile() {
-
     if (!currentRestaurant) {
-
         throw new Error(
             'Restaurant information is not available.'
         );
-
     }
 
     if (!currentRestaurant.slug) {
-
         throw new Error(
             'Restaurant slug is missing.'
         );
-
     }
 
     const response =
         await fetch(
-            '/api/admin/profile/' +
+            '/api/menu/' +
             encodeURIComponent(
                 currentRestaurant.slug
             ),
@@ -3222,222 +2196,131 @@ async function loadRestaurantProfile() {
     let data = {};
 
     try {
-
         data =
             await response.json();
-
     } catch (error) {
-
         throw new Error(
-            'The server returned an invalid profile response.'
+            'Invalid restaurant profile response.'
         );
-
-    }
-
-    if (
-        response.status === 401 ||
-        response.status === 403
-    ) {
-
-        throw new Error(
-            data.message ||
-            'Your admin session has expired.'
-        );
-
     }
 
     if (
         !response.ok ||
         !data.ok
     ) {
-
         throw new Error(
             data.message ||
             'Unable to load restaurant profile.'
         );
-
     }
 
-    restaurantProfile = {
+    if (
+        data.profile &&
+        typeof data.profile === 'object'
+    ) {
+        restaurantProfile = {
+            logo:
+                typeof data.profile.logo === 'string'
+                    ? data.profile.logo
+                    : '',
 
-        logo:
-            typeof data.profile?.logo === 'string'
-                ? data.profile.logo
-                : '',
+            phone_numbers:
+                Array.isArray(
+                    data.profile.phone_numbers
+                )
+                    ? data.profile.phone_numbers
+                    : [],
 
-        phone_numbers:
-            Array.isArray(
-                data.profile?.phone_numbers
-            )
-                ? data.profile.phone_numbers
-                : [],
-
-        addresses:
-            Array.isArray(
-                data.profile?.addresses
-            )
-                ? data.profile.addresses
-                : []
-
-    };
+            addresses:
+                Array.isArray(
+                    data.profile.addresses
+                )
+                    ? data.profile.addresses
+                    : []
+        };
+    }
 
     return restaurantProfile;
-
 }
 
 
 /* ================================================================
    RENDER PROFILE LOGO
-================================================================ */
+   ================================================================ */
 
 function renderProfileLogo() {
-
-    const preview =
-        document.getElementById('profileLogoPreview');
-
     const image =
-        document.getElementById('profileLogoImage');
-
-    const placeholder =
-        document.getElementById('profileLogoPlaceholder');
-
-    const removeButton =
-        document.getElementById('profileLogoRemoveBtn');
-
-    const logo =
-        typeof restaurantProfile.logo === 'string'
-            ? restaurantProfile.logo.trim()
-            : '';
-
-    const validLogo =
-        logo.startsWith('data:image/');
-
-
-    if (image) {
-
-        if (validLogo) {
-
-            image.src = logo;
-
-            image.style.display = 'block';
-
-        } else {
-
-            image.removeAttribute('src');
-
-            image.style.display = 'none';
-
-        }
-    }
-
-
-    if (placeholder) {
-
-        placeholder.style.display =
-            validLogo ? 'none' : 'flex';
-
-    }
-
-
-    if (removeButton) {
-
-        removeButton.style.display =
-            validLogo ? 'inline-flex' : 'none';
-
-    }
-
-
-    if (preview) {
-
-        preview.classList.toggle(
-            'has-logo',
-            validLogo
+        document.getElementById(
+            'profileLogoPreviewImg'
         );
 
+    const placeholder =
+        document.getElementById(
+            'profileLogoPlaceholder'
+        );
+
+    if (!image || !placeholder) {
+        return;
     }
 
+    if (
+        restaurantProfile.logo &&
+        restaurantProfile.logo.startsWith(
+            'data:image/'
+        )
+    ) {
+        image.src =
+            restaurantProfile.logo;
+
+        image.style.display =
+            'block';
+
+        placeholder.style.display =
+            'none';
+    } else {
+        image.removeAttribute('src');
+
+        image.style.display =
+            'none';
+
+        placeholder.style.display =
+            'flex';
+    }
 }
 
 
 /* ================================================================
-   HANDLE LOGO FILE
-================================================================ */
+   PROFILE LOGO CHANGE
+   ================================================================ */
 
 async function handleProfileLogoChange(event) {
-
     const file =
-        event.target.files &&
-        event.target.files[0];
+        event.target.files?.[0];
 
     if (!file) {
         return;
     }
 
-    if (
-        !file.type.startsWith('image/')
-    ) {
-
-        showMessage(
-            'Please choose an image file.',
-            'error'
-        );
-
-        event.target.value = '';
-
-        return;
-    }
-
-    const maxSize =
-        5 * 1024 * 1024;
-
-    if (
-        file.size > maxSize
-    ) {
-
-        showMessage(
-            'Logo image must be smaller than 5 MB.',
-            'error'
-        );
-
-        event.target.value = '';
-
-        return;
-    }
-
     showAdminLoading(
-        'Preparing logo...'
+        'Processing logo...'
     );
 
     try {
-
-        const logo =
+        const image =
             await readImageFile(file);
 
-        if (
-            !logo ||
-            !logo.startsWith('data:image/')
-        ) {
-
-            throw new Error(
-                'The selected logo could not be processed.'
-            );
-
-        }
-
         restaurantProfile.logo =
-            logo;
+            image;
 
         renderProfileLogo();
 
         showMessage(
-            'Logo selected. Click Save Profile to save it.',
+            'Logo selected. Click Save Profile to apply the change.',
             'success'
         );
-
     } catch (error) {
-
         console.error(
-            'Logo selection error:',
+            'Profile logo error:',
             error
         );
 
@@ -3446,47 +2329,27 @@ async function handleProfileLogoChange(event) {
             'Could not load the logo.',
             'error'
         );
-
     } finally {
-
         event.target.value = '';
-
         hideAdminLoading(150);
-
     }
-
 }
 
 
 /* ================================================================
    REMOVE LOGO
-================================================================ */
+   ================================================================ */
 
 function removeProfileLogo() {
-
-    if (
-        !restaurantProfile.logo
-    ) {
-
+    if (!restaurantProfile.logo) {
         showMessage(
             'There is no logo to remove.',
             'error'
         );
-
         return;
     }
 
-    if (
-        !confirm(
-            'Remove the restaurant logo?'
-        )
-    ) {
-
-        return;
-    }
-
-    restaurantProfile.logo =
-        '';
+    restaurantProfile.logo = '';
 
     renderProfileLogo();
 
@@ -3494,28 +2357,24 @@ function removeProfileLogo() {
         'Logo removed. Click Save Profile to apply the change.',
         'success'
     );
-
 }
 
 
 /* ================================================================
    OPEN PROFILE MODAL
-================================================================ */
+   ================================================================ */
 
 async function openProfileModal() {
-
     const modal =
         document.getElementById(
             'profileModal'
         );
 
     if (!modal) {
-
         showMessage(
             'Profile window is not available.',
             'error'
         );
-
         return;
     }
 
@@ -3524,7 +2383,6 @@ async function openProfileModal() {
     );
 
     try {
-
         await loadRestaurantProfile();
 
         const restaurantName =
@@ -3533,25 +2391,19 @@ async function openProfileModal() {
             );
 
         if (restaurantName) {
-
             restaurantName.textContent =
                 currentRestaurant?.name ||
                 'Restaurant Profile';
-
         }
 
         renderProfileLogo();
-
         renderProfilePhones();
-
         renderProfileLocations();
 
         modal.classList.add('active');
-
         modal.style.display = 'flex';
 
     } catch (error) {
-
         console.error(
             'Open profile error:',
             error
@@ -3562,22 +2414,17 @@ async function openProfileModal() {
             'Unable to load profile.',
             'error'
         );
-
     } finally {
-
         hideAdminLoading(150);
-
     }
-
 }
 
 
 /* ================================================================
    CLOSE PROFILE MODAL
-================================================================ */
+   ================================================================ */
 
 function closeProfileModal() {
-
     const modal =
         document.getElementById(
             'profileModal'
@@ -3588,18 +2435,15 @@ function closeProfileModal() {
     }
 
     modal.classList.remove('active');
-
     modal.style.display = 'none';
-
 }
 
 
 /* ================================================================
    RENDER PHONE NUMBERS
-================================================================ */
+   ================================================================ */
 
 function renderProfilePhones() {
-
     const list =
         document.getElementById(
             'phoneList'
@@ -3617,7 +2461,6 @@ function renderProfilePhones() {
         ) ||
         restaurantProfile.phone_numbers.length === 0
     ) {
-
         const empty =
             document.createElement('div');
 
@@ -3634,7 +2477,6 @@ function renderProfilePhones() {
 
     restaurantProfile.phone_numbers.forEach(
         (phone, index) => {
-
             const row =
                 document.createElement('div');
 
@@ -3650,9 +2492,7 @@ function renderProfilePhones() {
             const input =
                 document.createElement('input');
 
-            input.type =
-                'tel';
-
+            input.type = 'tel';
             input.className =
                 'profile-phone-input';
 
@@ -3682,45 +2522,35 @@ function renderProfilePhones() {
             deleteButton.addEventListener(
                 'click',
                 () => {
-
                     restaurantProfile.phone_numbers.splice(
                         index,
                         1
                     );
 
                     renderProfilePhones();
-
                 }
             );
 
             row.appendChild(fields);
-
-            row.appendChild(
-                deleteButton
-            );
+            row.appendChild(deleteButton);
 
             list.appendChild(row);
-
         }
     );
-
 }
 
 
 /* ================================================================
    ADD PHONE
-================================================================ */
+   ================================================================ */
 
 function addPhoneRow() {
-
     if (
         !Array.isArray(
             restaurantProfile.phone_numbers
         )
     ) {
-
         restaurantProfile.phone_numbers = [];
-
     }
 
     restaurantProfile.phone_numbers.push('');
@@ -3733,22 +2563,18 @@ function addPhoneRow() {
         );
 
     if (inputs.length) {
-
         inputs[
             inputs.length - 1
         ].focus();
-
     }
-
 }
 
 
 /* ================================================================
    RENDER LOCATIONS
-================================================================ */
+   ================================================================ */
 
 function renderProfileLocations() {
-
     const list =
         document.getElementById(
             'locationList'
@@ -3766,7 +2592,6 @@ function renderProfileLocations() {
         ) ||
         restaurantProfile.addresses.length === 0
     ) {
-
         const empty =
             document.createElement('div');
 
@@ -3783,7 +2608,6 @@ function renderProfileLocations() {
 
     restaurantProfile.addresses.forEach(
         (location, index) => {
-
             const row =
                 document.createElement('div');
 
@@ -3799,8 +2623,7 @@ function renderProfileLocations() {
             const nameInput =
                 document.createElement('input');
 
-            nameInput.type =
-                'text';
+            nameInput.type = 'text';
 
             nameInput.className =
                 'profile-location-name';
@@ -3817,8 +2640,7 @@ function renderProfileLocations() {
             const urlInput =
                 document.createElement('input');
 
-            urlInput.type =
-                'url';
+            urlInput.type = 'url';
 
             urlInput.className =
                 'profile-location-url';
@@ -3832,13 +2654,8 @@ function renderProfileLocations() {
             urlInput.dataset.index =
                 String(index);
 
-            fields.appendChild(
-                nameInput
-            );
-
-            fields.appendChild(
-                urlInput
-            );
+            fields.appendChild(nameInput);
+            fields.appendChild(urlInput);
 
             const deleteButton =
                 document.createElement('button');
@@ -3855,52 +2672,40 @@ function renderProfileLocations() {
             deleteButton.addEventListener(
                 'click',
                 () => {
-
                     restaurantProfile.addresses.splice(
                         index,
                         1
                     );
 
                     renderProfileLocations();
-
                 }
             );
 
             row.appendChild(fields);
-
-            row.appendChild(
-                deleteButton
-            );
+            row.appendChild(deleteButton);
 
             list.appendChild(row);
-
         }
     );
-
 }
 
 
 /* ================================================================
    ADD LOCATION
-================================================================ */
+   ================================================================ */
 
 function addLocationRow() {
-
     if (
         !Array.isArray(
             restaurantProfile.addresses
         )
     ) {
-
         restaurantProfile.addresses = [];
-
     }
 
     restaurantProfile.addresses.push({
-
         name: '',
         url: ''
-
     });
 
     renderProfileLocations();
@@ -3911,29 +2716,31 @@ function addLocationRow() {
         );
 
     if (inputs.length) {
-
         inputs[
             inputs.length - 1
         ].focus();
-
     }
-
 }
 
 
 /* ================================================================
    SAVE RESTAURANT PROFILE
-================================================================ */
+   ================================================================ */
 
 async function saveRestaurantProfile() {
-
     if (!currentRestaurant) {
-
         showMessage(
             'Restaurant information is not available.',
             'error'
         );
+        return;
+    }
 
+    if (!currentRestaurant.slug) {
+        showMessage(
+            'Restaurant slug is missing.',
+            'error'
+        );
         return;
     }
 
@@ -3955,16 +2762,12 @@ async function saveRestaurantProfile() {
     const phoneNumbers = [];
 
     phoneInputs.forEach(input => {
-
         const phone =
             input.value.trim();
 
         if (phone) {
-
             phoneNumbers.push(phone);
-
         }
-
     });
 
     const addresses = [];
@@ -3974,7 +2777,6 @@ async function saveRestaurantProfile() {
         index < locationNames.length;
         index++
     ) {
-
         const name =
             locationNames[index]
                 .value
@@ -3992,37 +2794,27 @@ async function saveRestaurantProfile() {
         }
 
         if (!name || !url) {
-
             showMessage(
                 'Please enter both the location name and map URL.',
                 'error'
             );
-
             return;
         }
 
         if (
-            !/^https?:\/\//i.test(url)
+            !/^https?:\/\/.+/i.test(url)
         ) {
-
             showMessage(
                 'Map URL must start with http:// or https://.',
                 'error'
             );
-
             return;
         }
 
         addresses.push({
-
-            name:
-                name,
-
-            url:
-                url
-
+            name,
+            url
         });
-
     }
 
     const logo =
@@ -4034,12 +2826,10 @@ async function saveRestaurantProfile() {
         logo &&
         !logo.startsWith('data:image/')
     ) {
-
         showMessage(
             'The restaurant logo is invalid.',
             'error'
         );
-
         return;
     }
 
@@ -4053,13 +2843,10 @@ async function saveRestaurantProfile() {
         );
 
     if (saveButton) {
-
         saveButton.disabled = true;
-
     }
 
     try {
-
         const response =
             await fetch(
                 '/api/admin/profile/' +
@@ -4079,16 +2866,10 @@ async function saveRestaurantProfile() {
 
                     body:
                         JSON.stringify({
-
-                            logo:
-                                logo,
-
+                            logo,
                             phone_numbers:
                                 phoneNumbers,
-
-                            addresses:
-                                addresses
-
+                            addresses
                         })
                 }
             );
@@ -4096,37 +2877,27 @@ async function saveRestaurantProfile() {
         let data = {};
 
         try {
-
             data =
                 await response.json();
-
         } catch (error) {
-
             data = {};
-
         }
 
         if (
             response.status === 401 ||
             response.status === 403
         ) {
-
             showMessage(
                 data.message ||
                 'Your admin session has expired. Please log in again.',
                 'error'
             );
 
-            setTimeout(
-                () => {
-
-                    window.location.replace(
-                        '/admin.html'
-                    );
-
-                },
-                1200
-            );
+            setTimeout(() => {
+                window.location.replace(
+                    '/admin.html'
+                );
+            }, 1200);
 
             return;
         }
@@ -4135,16 +2906,13 @@ async function saveRestaurantProfile() {
             !response.ok ||
             !data.ok
         ) {
-
             throw new Error(
                 data.message ||
                 'Failed to save restaurant profile.'
             );
-
         }
 
         restaurantProfile = {
-
             logo:
                 typeof data.profile?.logo === 'string'
                     ? data.profile.logo
@@ -4155,7 +2923,6 @@ async function saveRestaurantProfile() {
 
             addresses:
                 addresses
-
         };
 
         renderProfileLogo();
@@ -4166,17 +2933,11 @@ async function saveRestaurantProfile() {
             'success'
         );
 
-        setTimeout(
-            () => {
-
-                closeProfileModal();
-
-            },
-            700
-        );
+        setTimeout(() => {
+            closeProfileModal();
+        }, 700);
 
     } catch (error) {
-
         console.error(
             'Save profile error:',
             error
@@ -4187,81 +2948,57 @@ async function saveRestaurantProfile() {
             'Could not save restaurant profile.',
             'error'
         );
-
     } finally {
-
         if (saveButton) {
-
             saveButton.disabled = false;
-
         }
 
         hideAdminLoading(150);
-
     }
-
 }
 
 
 /* ================================================================
-   DAY SPECIAL - MAXIMUM 5
-================================================================ */
-
-const MAX_DAY_SPECIALS = 5;
-
-
-/* ================================================================
-   GET ALL DAY SPECIALS
-================================================================ */
+   DAY SPECIALS
+   ================================================================ */
 
 function getDaySpecialItems() {
-
     const specials = [];
 
     Object.keys(foods).forEach(category => {
-
         const items =
             Array.isArray(foods[category])
                 ? foods[category]
                 : [];
 
         items.forEach((item, index) => {
-
             if (
                 item &&
                 item.isDaySpecial === true
             ) {
-
                 specials.push({
-                    category: category,
-                    index: index,
-                    item: item
+                    category,
+                    index,
+                    item
                 });
-
             }
-
         });
-
     });
 
     return specials;
 }
 
 
-/* ================================================================
-   GET ONE DAY SPECIAL
-   Compatibility helper
-================================================================ */
-
 function getDaySpecialItem() {
-
     const specials =
         getDaySpecialItems();
 
     return specials.length
         ? {
-            category: specials[0].category,
-            item: specials[0].item
+            category:
+                specials[0].category,
+            item:
+                specials[0].item
         }
         : null;
 }
@@ -4269,10 +3006,9 @@ function getDaySpecialItem() {
 
 /* ================================================================
    OPEN DAY SPECIAL MODAL
-================================================================ */
+   ================================================================ */
 
 function openDaySpecialModal() {
-
     const existing =
         document.getElementById(
             'daySpecialModal'
@@ -4295,7 +3031,6 @@ function openDaySpecialModal() {
         'day-special-modal-overlay active';
 
     modal.innerHTML = `
-
         <div class="day-special-modal">
 
             <div class="day-special-modal-header">
@@ -4307,16 +3042,14 @@ function openDaySpecialModal() {
                     </div>
 
                     <div>
-
                         <h2>
                             Day Specials
                         </h2>
 
                         <p>
-                            Choose up to ${MAX_DAY_SPECIALS} items
-                            to feature today.
+                            Choose up to ${MAX_DAY_SPECIALS}
+                            items to feature today.
                         </p>
-
                     </div>
 
                 </div>
@@ -4334,13 +3067,13 @@ function openDaySpecialModal() {
 
             <div class="day-special-modal-body">
 
-                <div class="day-special-counter"
-                     id="daySpecialCounter">
-
+                <div
+                    class="day-special-counter"
+                    id="daySpecialCounter"
+                >
                     ⭐ ${specials.length}
                     / ${MAX_DAY_SPECIALS}
                     Day Specials Selected
-
                 </div>
 
 
@@ -4384,15 +3117,13 @@ function openDaySpecialModal() {
                 <div
                     id="daySpecialPreview"
                     class="day-special-preview"
-                >
-                </div>
+                ></div>
 
 
                 <div
                     id="daySpecialCurrentList"
                     class="day-special-current-list"
-                >
-                </div>
+                ></div>
 
             </div>
 
@@ -4405,8 +3136,13 @@ function openDaySpecialModal() {
                     class="day-special-remove-btn"
                     ${specials.length ? '' : 'disabled'}
                 >
-                    Remove Selected Special
+                    ${
+                        specials.length
+                            ? 'Select a Current Special'
+                            : 'Select a Current Special'
+                    }
                 </button>
+
 
                 <div class="day-special-footer-right">
 
@@ -4434,9 +3170,7 @@ function openDaySpecialModal() {
         </div>
     `;
 
-    document.body.appendChild(
-        modal
-    );
+    document.body.appendChild(modal);
 
 
     const categorySelect =
@@ -4460,47 +3194,37 @@ function openDaySpecialModal() {
         );
 
 
-    Object.keys(foods).forEach(
-        category => {
+    Object.keys(foods).forEach(category => {
+        const items =
+            Array.isArray(foods[category])
+                ? foods[category]
+                : [];
 
-            const items =
-                Array.isArray(
-                    foods[category]
-                )
-                    ? foods[category]
-                    : [];
-
-            if (!items.length) {
-                return;
-            }
-
-            const option =
-                document.createElement(
-                    'option'
-                );
-
-            option.value =
-                category;
-
-            option.textContent =
-                category;
-
-            categorySelect.appendChild(
-                option
-            );
-
+        if (!items.length) {
+            return;
         }
-    );
+
+        const option =
+            document.createElement('option');
+
+        option.value =
+            category;
+
+        option.textContent =
+            category;
+
+        categorySelect.appendChild(
+            option
+        );
+    });
 
 
     categorySelect.addEventListener(
         'change',
         () => {
-
             populateDaySpecialItems(
                 categorySelect.value
             );
-
         }
     );
 
@@ -4508,7 +3232,6 @@ function openDaySpecialModal() {
     itemSelect.addEventListener(
         'change',
         () => {
-
             const category =
                 categorySelect.value;
 
@@ -4532,14 +3255,14 @@ function openDaySpecialModal() {
             );
 
             if (saveButton) {
-
                 saveButton.disabled =
-                    !item;
-
+                    !item ||
+                    item.isDaySpecial === true ||
+                    getDaySpecialItems().length >=
+                        MAX_DAY_SPECIALS;
             }
 
             updateDaySpecialRemoveButton();
-
         }
     );
 
@@ -4567,56 +3290,42 @@ function openDaySpecialModal() {
     modal.addEventListener(
         'click',
         event => {
-
             if (
                 event.target === modal
             ) {
-
                 closeDaySpecialModal();
-
             }
-
         }
     );
 
 
     if (saveButton) {
-
         saveButton.addEventListener(
             'click',
             saveDaySpecial
         );
-
     }
 
 
     if (removeButton) {
-
         removeButton.addEventListener(
             'click',
             removeDaySpecial
         );
-
     }
 
 
     renderCurrentDaySpecialList();
-
     updateDaySpecialCounter();
-
     updateDaySpecialRemoveButton();
-
 }
 
 
 /* ================================================================
-   POPULATE ITEMS
-================================================================ */
+   POPULATE DAY SPECIAL ITEMS
+   ================================================================ */
 
-function populateDaySpecialItems(
-    category
-) {
-
+function populateDaySpecialItems(category) {
     const itemSelect =
         document.getElementById(
             'daySpecialItem'
@@ -4638,71 +3347,46 @@ function populateDaySpecialItems(
         );
 
     if (saveButton) {
-
-        saveButton.disabled =
-            true;
-
+        saveButton.disabled = true;
     }
 
     if (!category) {
-
-        renderDaySpecialPreview(
-            null
-        );
-
+        renderDaySpecialPreview(null);
         updateDaySpecialRemoveButton();
-
         return;
-
     }
 
-
     const items =
-        Array.isArray(
-            foods[category]
-        )
+        Array.isArray(foods[category])
             ? foods[category]
             : [];
 
+    items.forEach((item, index) => {
+        const option =
+            document.createElement('option');
 
-    items.forEach(
-        (item, index) => {
+        option.value =
+            String(index);
 
-            const option =
-                document.createElement(
-                    'option'
-                );
+        option.textContent =
+            item.name ||
+            'Unnamed item';
 
-            option.value =
-                String(index);
+        itemSelect.appendChild(
+            option
+        );
+    });
 
-            option.textContent =
-                item.name ||
-                'Unnamed item';
-
-            itemSelect.appendChild(
-                option
-            );
-
-        }
-    );
-
-
-    renderDaySpecialPreview(
-        null
-    );
-
+    renderDaySpecialPreview(null);
     updateDaySpecialRemoveButton();
-
 }
 
 
 /* ================================================================
-   UPDATE COUNTER
-================================================================ */
+   DAY SPECIAL COUNTER
+   ================================================================ */
 
 function updateDaySpecialCounter() {
-
     const counter =
         document.getElementById(
             'daySpecialCounter'
@@ -4721,30 +3405,25 @@ function updateDaySpecialCounter() {
         Day Specials Selected
     `;
 
-
-    if (count >= MAX_DAY_SPECIALS) {
-
+    if (
+        count >= MAX_DAY_SPECIALS
+    ) {
         counter.classList.add(
             'limit-reached'
         );
-
     } else {
-
         counter.classList.remove(
             'limit-reached'
         );
-
     }
-
 }
 
 
 /* ================================================================
-   CURRENT SPECIALS LIST
-================================================================ */
+   CURRENT DAY SPECIAL LIST
+   ================================================================ */
 
 function renderCurrentDaySpecialList() {
-
     const container =
         document.getElementById(
             'daySpecialCurrentList'
@@ -4758,20 +3437,15 @@ function renderCurrentDaySpecialList() {
         getDaySpecialItems();
 
     if (!specials.length) {
-
         container.innerHTML = `
             <div class="day-special-no-current">
                 No Day Specials selected yet.
             </div>
         `;
-
         return;
-
     }
 
-
     container.innerHTML = `
-
         <div class="day-special-current-heading">
             Current Day Specials
         </div>
@@ -4780,7 +3454,6 @@ function renderCurrentDaySpecialList() {
 
             ${specials.map(
                 (special, number) => {
-
                     const item =
                         special.item;
 
@@ -4791,7 +3464,6 @@ function renderCurrentDaySpecialList() {
                             : '';
 
                     return `
-
                         <div
                             class="day-special-current-item"
                             data-special-category="${escapeAttributeForAdmin(
@@ -4806,33 +3478,32 @@ function renderCurrentDaySpecialList() {
                                 ${number + 1}
                             </div>
 
+
                             <div
                                 class="day-special-current-image"
                             >
-
                                 ${
                                     image
                                         ? `
                                             <img
-                                                src="${escapeAttributeForAdmin(
-                                                    image
-                                                )}"
+                                                src="${escapeAttributeForAdmin(image)}"
                                                 alt="${escapeAttributeForAdmin(
                                                     item.name || ''
                                                 )}"
                                             >
                                         `
                                         : `
-                                            <span>⭐</span>
+                                            <span>
+                                                ⭐
+                                            </span>
                                         `
                                 }
-
                             </div>
+
 
                             <div
                                 class="day-special-current-info"
                             >
-
                                 <strong>
                                     ${escapeHtmlForAdmin(
                                         item.name ||
@@ -4847,10 +3518,11 @@ function renderCurrentDaySpecialList() {
                                     •
                                     ${escapeHtmlForAdmin(
                                         item.price ?? 0
-                                    )} ETB
+                                    )}
+                                    ETB
                                 </small>
-
                             </div>
+
 
                             <button
                                 type="button"
@@ -4865,9 +3537,7 @@ function renderCurrentDaySpecialList() {
                             </button>
 
                         </div>
-
                     `;
-
                 }
             ).join('')}
 
@@ -4880,11 +3550,9 @@ function renderCurrentDaySpecialList() {
             '.day-special-remove-one'
         )
         .forEach(button => {
-
             button.addEventListener(
                 'click',
                 async event => {
-
                     event.preventDefault();
 
                     const category =
@@ -4899,21 +3567,17 @@ function renderCurrentDaySpecialList() {
                         category,
                         index
                     );
-
                 }
             );
-
         });
-
 }
 
 
 /* ================================================================
-   REMOVE BUTTON STATE
-================================================================ */
+   DAY SPECIAL REMOVE BUTTON
+   ================================================================ */
 
 function updateDaySpecialRemoveButton() {
-
     const button =
         document.getElementById(
             'daySpecialRemoveBtn'
@@ -4945,7 +3609,6 @@ function updateDaySpecialRemoveButton() {
         selectedCategory &&
         selectedIndex !== ''
     ) {
-
         const items =
             Array.isArray(
                 foods[selectedCategory]
@@ -4954,43 +3617,32 @@ function updateDaySpecialRemoveButton() {
                 : [];
 
         selectedItem =
-            items[Number(selectedIndex)];
-
+            items[
+                Number(selectedIndex)
+            ];
     }
-
 
     if (
         selectedItem &&
         selectedItem.isDaySpecial === true
     ) {
-
         button.disabled = false;
-
         button.textContent =
             'Remove Selected Special';
-
         return;
-
     }
 
-
-    button.disabled =
-        true;
-
+    button.disabled = true;
     button.textContent =
         'Select a Current Special';
-
 }
 
 
 /* ================================================================
-   PREVIEW
-================================================================ */
+   DAY SPECIAL PREVIEW
+   ================================================================ */
 
-function renderDaySpecialPreview(
-    item
-) {
-
+function renderDaySpecialPreview(item) {
     const preview =
         document.getElementById(
             'daySpecialPreview'
@@ -5001,19 +3653,13 @@ function renderDaySpecialPreview(
     }
 
     if (!item) {
-
         preview.innerHTML = `
-
             <div class="day-special-empty">
                 Select a menu item to see its preview.
             </div>
-
         `;
-
         return;
-
     }
-
 
     const image =
         typeof item.image === 'string' &&
@@ -5026,20 +3672,15 @@ function renderDaySpecialPreview(
         item.ingredient ||
         '';
 
-
     preview.innerHTML = `
-
         <div class="day-special-preview-card">
 
             <div class="day-special-preview-image">
-
                 ${
                     image
                         ? `
                             <img
-                                src="${escapeAttributeForAdmin(
-                                    image
-                                )}"
+                                src="${escapeAttributeForAdmin(image)}"
                                 alt="${escapeAttributeForAdmin(
                                     item.name || ''
                                 )}"
@@ -5051,7 +3692,6 @@ function renderDaySpecialPreview(
                             </div>
                         `
                 }
-
             </div>
 
 
@@ -5065,22 +3705,18 @@ function renderDaySpecialPreview(
                 </h3>
 
                 <p class="special-price">
-
                     ${escapeHtmlForAdmin(
                         item.price ?? 0
-                    )} ETB
-
+                    )}
+                    ETB
                 </p>
 
                 <p class="special-ingredient">
-
                     ${escapeHtmlForAdmin(
                         ingredient ||
                         'No ingredient description'
                     )}
-
                 </p>
-
 
                 ${
                     item.isDaySpecial === true
@@ -5095,18 +3731,15 @@ function renderDaySpecialPreview(
             </div>
 
         </div>
-
     `;
-
 }
 
 
 /* ================================================================
-   SAVE / ADD DAY SPECIAL
-================================================================ */
+   SAVE DAY SPECIAL
+   ================================================================ */
 
 async function saveDaySpecial() {
-
     const categorySelect =
         document.getElementById(
             'daySpecialCategory'
@@ -5123,16 +3756,12 @@ async function saveDaySpecial() {
         !categorySelect.value ||
         itemSelect.value === ''
     ) {
-
         showMessage(
             'Please choose a menu item first.',
             'error'
         );
-
         return;
-
     }
-
 
     const category =
         categorySelect.value;
@@ -5152,32 +3781,23 @@ async function saveDaySpecial() {
     const selectedItem =
         items[index];
 
-
     if (!selectedItem) {
-
         showMessage(
             'The selected menu item could not be found.',
             'error'
         );
-
         return;
-
     }
-
 
     if (
         selectedItem.isDaySpecial === true
     ) {
-
         showMessage(
             `"${selectedItem.name}" is already a Day Special.`,
             'error'
         );
-
         return;
-
     }
-
 
     const currentSpecials =
         getDaySpecialItems();
@@ -5186,16 +3806,12 @@ async function saveDaySpecial() {
         currentSpecials.length >=
         MAX_DAY_SPECIALS
     ) {
-
         showMessage(
             `You can have a maximum of ${MAX_DAY_SPECIALS} Day Specials.`,
             'error'
         );
-
         return;
-
     }
-
 
     const saveButton =
         document.getElementById(
@@ -5203,124 +3819,83 @@ async function saveDaySpecial() {
         );
 
     if (saveButton) {
-
-        saveButton.disabled =
-            true;
-
+        saveButton.disabled = true;
     }
-
 
     showAdminLoading(
         'Adding Day Special...'
     );
 
-
     try {
-
         selectedItem.isDaySpecial =
             true;
 
-
         await saveMenuDataSilently();
 
-
         renderCurrentMenu();
-
         renderCurrentDaySpecialList();
-
         updateDaySpecialCounter();
-
         updateDaySpecialRemoveButton();
 
+        itemSelect.value = '';
 
-        if (itemSelect) {
-
-            itemSelect.value =
-                '';
-
-        }
-
-        renderDaySpecialPreview(
-            null
-        );
-
+        renderDaySpecialPreview(null);
 
         if (
             getDaySpecialItems().length >=
             MAX_DAY_SPECIALS
         ) {
-
             if (saveButton) {
-
-                saveButton.disabled =
-                    true;
-
+                saveButton.disabled = true;
             }
 
             showMessage(
                 `Maximum of ${MAX_DAY_SPECIALS} Day Specials reached.`,
                 'success'
             );
-
         } else {
-
             showMessage(
                 `"${selectedItem.name}" added as a Day Special.`,
                 'success'
             );
-
         }
 
     } catch (error) {
-
         console.error(
             'Save Day Special error:',
             error
         );
 
-
         delete selectedItem.isDaySpecial;
 
-
         renderCurrentMenu();
-
         renderCurrentDaySpecialList();
-
         updateDaySpecialCounter();
-
 
         showMessage(
             error.message ||
             'Could not save Day Special.',
             'error'
         );
-
     } finally {
-
         if (
             saveButton &&
             getDaySpecialItems().length <
                 MAX_DAY_SPECIALS
         ) {
-
-            saveButton.disabled =
-                false;
-
+            saveButton.disabled = false;
         }
 
         hideAdminLoading();
-
     }
-
 }
 
 
 /* ================================================================
    REMOVE SELECTED DAY SPECIAL
-================================================================ */
+   ================================================================ */
 
 async function removeDaySpecial() {
-
     const categorySelect =
         document.getElementById(
             'daySpecialCategory'
@@ -5337,16 +3912,12 @@ async function removeDaySpecial() {
         !categorySelect.value ||
         itemSelect.value === ''
     ) {
-
         showMessage(
             'Select a current Day Special first.',
             'error'
         );
-
         return;
-
     }
-
 
     const category =
         categorySelect.value;
@@ -5366,25 +3937,16 @@ async function removeDaySpecial() {
     const item =
         items[index];
 
-
     if (
         !item ||
         item.isDaySpecial !== true
     ) {
-
         showMessage(
             'The selected item is not a Day Special.',
             'error'
         );
-
         return;
-
     }
-
-
-    /* =========================================================
-       PROFESSIONAL CONFIRMATION
-    ========================================================= */
 
     const itemName =
         item.name ||
@@ -5392,31 +3954,21 @@ async function removeDaySpecial() {
 
     const confirmed =
         await showAdminConfirm({
-
             title:
                 'Remove Day Special?',
-
             message:
                 `"${itemName}" will be removed from today's Day Specials.`,
-
             confirmText:
                 'Remove Special',
-
             cancelText:
                 'Keep Special',
-
             icon:
                 '⭐'
-
         });
 
-
     if (!confirmed) {
-
         return;
-
     }
-
 
     const removeButton =
         document.getElementById(
@@ -5424,43 +3976,27 @@ async function removeDaySpecial() {
         );
 
     if (removeButton) {
-
-        removeButton.disabled =
-            true;
-
+        removeButton.disabled = true;
     }
-
 
     showAdminLoading(
         'Removing Day Special...'
     );
 
-
     try {
-
         item.isDaySpecial =
             false;
 
-
         await saveMenuDataSilently();
 
-
         renderCurrentMenu();
-
         renderCurrentDaySpecialList();
-
         updateDaySpecialCounter();
-
         updateDaySpecialRemoveButton();
 
-        renderDaySpecialPreview(
-            null
-        );
+        itemSelect.value = '';
 
-
-        itemSelect.value =
-            '';
-
+        renderDaySpecialPreview(null);
 
         showMessage(
             `"${itemName}" removed from Day Specials.`,
@@ -5468,48 +4004,37 @@ async function removeDaySpecial() {
         );
 
     } catch (error) {
-
         console.error(
             'Remove Day Special error:',
             error
         );
 
-
         item.isDaySpecial =
             true;
 
-
         renderCurrentMenu();
-
         renderCurrentDaySpecialList();
-
         updateDaySpecialCounter();
-
 
         showMessage(
             error.message ||
             'Could not remove Day Special.',
             'error'
         );
-
     } finally {
-
         hideAdminLoading();
-
     }
-
 }
 
 
 /* ================================================================
-   REMOVE ONE SPECIFIC DAY SPECIAL
-================================================================ */
+   REMOVE SPECIFIC DAY SPECIAL
+   ================================================================ */
 
 async function removeSpecificDaySpecial(
     category,
     index
 ) {
-
     const items =
         Array.isArray(
             foods[category]
@@ -5520,25 +4045,16 @@ async function removeSpecificDaySpecial(
     const item =
         items[index];
 
-
     if (
         !item ||
         item.isDaySpecial !== true
     ) {
-
         showMessage(
             'Day Special could not be found.',
             'error'
         );
-
         return;
-
     }
-
-
-    /* =========================================================
-       PROFESSIONAL CONFIRMATION
-    ========================================================= */
 
     const itemName =
         item.name ||
@@ -5546,54 +4062,36 @@ async function removeSpecificDaySpecial(
 
     const confirmed =
         await showAdminConfirm({
-
             title:
                 'Remove Day Special?',
-
             message:
                 `"${itemName}" will be removed from today's Day Specials.`,
-
             confirmText:
                 'Remove Special',
-
             cancelText:
                 'Keep Special',
-
             icon:
                 '⭐'
-
         });
 
-
     if (!confirmed) {
-
         return;
-
     }
-
 
     showAdminLoading(
         'Removing Day Special...'
     );
 
-
     try {
-
         item.isDaySpecial =
             false;
 
-
         await saveMenuDataSilently();
 
-
         renderCurrentMenu();
-
         renderCurrentDaySpecialList();
-
         updateDaySpecialCounter();
-
         updateDaySpecialRemoveButton();
-
 
         const itemSelect =
             document.getElementById(
@@ -5601,17 +4099,10 @@ async function removeSpecificDaySpecial(
             );
 
         if (itemSelect) {
-
-            itemSelect.value =
-                '';
-
+            itemSelect.value = '';
         }
 
-
-        renderDaySpecialPreview(
-            null
-        );
-
+        renderDaySpecialPreview(null);
 
         showMessage(
             `"${itemName}" removed from Day Specials.`,
@@ -5619,53 +4110,45 @@ async function removeSpecificDaySpecial(
         );
 
     } catch (error) {
-
         console.error(
             'Remove specific Day Special error:',
             error
         );
 
-
         item.isDaySpecial =
             true;
 
-
         renderCurrentMenu();
-
         renderCurrentDaySpecialList();
-
         updateDaySpecialCounter();
-
 
         showMessage(
             error.message ||
             'Could not remove Day Special.',
             'error'
         );
-
     } finally {
-
         hideAdminLoading();
-
     }
-
 }
 
 
 /* ================================================================
    SAVE MENU SILENTLY
-================================================================ */
+   ================================================================ */
 
 async function saveMenuDataSilently() {
-
     if (!currentRestaurant) {
-
         throw new Error(
             'Restaurant information is not available.'
         );
-
     }
 
+    if (!currentRestaurant.slug) {
+        throw new Error(
+            'Restaurant slug is missing.'
+        );
+    }
 
     const response =
         await fetch(
@@ -5691,26 +4174,19 @@ async function saveMenuDataSilently() {
             }
         );
 
-
     let data = {};
 
     try {
-
         data =
             await response.json();
-
     } catch (error) {
-
         data = {};
-
     }
-
 
     if (
         response.status === 401 ||
         response.status === 403
     ) {
-
         window.location.replace(
             '/admin.html'
         );
@@ -5719,151 +4195,70 @@ async function saveMenuDataSilently() {
             data.message ||
             'Your admin session has expired.'
         );
-
     }
-
 
     if (
         !response.ok ||
         !data.ok
     ) {
-
         throw new Error(
             data.message ||
             'Failed to save menu.'
         );
-
     }
 
-
     return data;
-
 }
 
 
 /* ================================================================
    CLOSE DAY SPECIAL MODAL
-================================================================ */
+   ================================================================ */
 
 function closeDaySpecialModal() {
-
     const modal =
         document.getElementById(
             'daySpecialModal'
         );
 
     if (modal) {
-
         modal.classList.remove(
             'active'
         );
 
-        setTimeout(
-            () => {
-
-                if (modal) {
-                    modal.remove();
-                }
-
-            },
-            200
-        );
-
+        setTimeout(() => {
+            if (modal) {
+                modal.remove();
+            }
+        }, 200);
     }
-
-}
-
-
-/* ================================================================
-   ESCAPE HTML
-================================================================ */
-
-function escapeHtmlForAdmin(value) {
-
-    return String(value ?? '')
-        .replace(
-            /&/g,
-            '&amp;'
-        )
-        .replace(
-            /</g,
-            '&lt;'
-        )
-        .replace(
-            />/g,
-            '&gt;'
-        )
-        .replace(
-            /"/g,
-            '&quot;'
-        )
-        .replace(
-            /'/g,
-            '&#039;'
-        );
-
-}
-
-
-/* ================================================================
-   ESCAPE ATTRIBUTE
-================================================================ */
-
-function escapeAttributeForAdmin(value) {
-
-    return String(value ?? '')
-        .replace(
-            /&/g,
-            '&amp;'
-        )
-        .replace(
-            /"/g,
-            '&quot;'
-        )
-        .replace(
-            /'/g,
-            '&#039;'
-        )
-        .replace(
-            /</g,
-            '&lt;'
-        )
-        .replace(
-            />/g,
-            '&gt;'
-        );
-
 }
 
 
 /* ================================================================
    LOGOUT
-================================================================ */
+   ================================================================ */
 
 async function logoutAdmin() {
-
     showAdminLoading(
         'Logging out...'
     );
 
     try {
-
         await fetch(
             '/api/admin/logout',
             {
                 method: 'POST',
-                credentials: 'same-origin',
+                credentials:
+                    'same-origin',
                 cache: 'no-store'
             }
         );
-
     } catch (error) {
-
         console.error(
             'Logout error:',
             error
         );
-
     }
 
     localStorage.removeItem(
@@ -5893,13 +4288,12 @@ async function logoutAdmin() {
     window.location.replace(
         '/admin.html'
     );
-
 }
 
 
 /* ================================================================
    BUTTON EVENTS
-================================================================ */
+   ================================================================ */
 
 document.addEventListener(
     'DOMContentLoaded',
@@ -5965,120 +4359,141 @@ document.addEventListener(
                 'editItemImage'
             );
 
+        const existingItemCategorySelect =
+            document.getElementById(
+                'existingItemCategorySelect'
+            );
 
-        /* =========================================================
+        const existingItemSelect =
+            document.getElementById(
+                'existingItemSelect'
+            );
+
+        const existingCategorySelect =
+            document.getElementById(
+                'existingCategorySelect'
+            );
+
+
+        /* --------------------------------------------------------
            REFRESH
-        ========================================================= */
+           -------------------------------------------------------- */
 
         if (refreshBtn) {
-
             refreshBtn.addEventListener(
                 'click',
                 refreshAdminMenu
             );
-
         }
 
 
-        /* =========================================================
+        /* --------------------------------------------------------
            PROFILE
-        ========================================================= */
+           -------------------------------------------------------- */
 
         if (profileBtn) {
-
             profileBtn.addEventListener(
                 'click',
                 openProfileModal
             );
-
         }
 
         if (profileCloseBtn) {
-
             profileCloseBtn.addEventListener(
                 'click',
                 closeProfileModal
             );
-
         }
 
         if (profileCancelBtn) {
-
             profileCancelBtn.addEventListener(
                 'click',
                 closeProfileModal
             );
-
         }
 
         if (addPhoneBtn) {
-
             addPhoneBtn.addEventListener(
                 'click',
                 addPhoneRow
             );
-
         }
 
         if (addLocationBtn) {
-
             addLocationBtn.addEventListener(
                 'click',
                 addLocationRow
             );
-
         }
 
         if (profileSaveBtn) {
-
             profileSaveBtn.addEventListener(
                 'click',
                 saveRestaurantProfile
             );
-
         }
 
 
-        /* =========================================================
-           EDIT ITEM IMAGE
-        ========================================================= */
+        /* --------------------------------------------------------
+           EDIT ITEM
+           -------------------------------------------------------- */
+
+        if (existingItemCategorySelect) {
+            existingItemCategorySelect.addEventListener(
+                'change',
+                updateExistingItemsByCategory
+            );
+        }
+
+        if (existingItemSelect) {
+            existingItemSelect.addEventListener(
+                'change',
+                populateSelectedItemFields
+            );
+        }
 
         if (editItemImage) {
-
             editItemImage.addEventListener(
                 'change',
                 handleEditItemImageChange
             );
-
         }
 
 
-        /* =========================================================
+        /* --------------------------------------------------------
            PROFILE LOGO
-        ========================================================= */
+           -------------------------------------------------------- */
 
         if (profileLogoInput) {
-
             profileLogoInput.addEventListener(
                 'change',
                 handleProfileLogoChange
             );
-
         }
 
         if (profileLogoRemoveBtn) {
-
             profileLogoRemoveBtn.addEventListener(
                 'click',
                 removeProfileLogo
             );
-
         }
 
 
-        /* =========================================================
+        /* --------------------------------------------------------
+           CATEGORY MANAGER
+           -------------------------------------------------------- */
+
+        if (existingCategorySelect) {
+            existingCategorySelect.addEventListener(
+                'change',
+                populateSelectedCategory
+            );
+        }
+
+
+        /* --------------------------------------------------------
            PROFILE MODAL CLICK OUTSIDE
-        ========================================================= */
+           -------------------------------------------------------- */
 
         const profileModal =
             document.getElementById(
@@ -6086,103 +4501,86 @@ document.addEventListener(
             );
 
         if (profileModal) {
-
             profileModal.addEventListener(
                 'click',
                 event => {
-
                     if (
                         event.target ===
                         profileModal
                     ) {
-
                         closeProfileModal();
-
                     }
-
                 }
             );
-
         }
 
 
-        /* =========================================================
+        /* --------------------------------------------------------
            ESC KEY
-        ========================================================= */
+           -------------------------------------------------------- */
 
         document.addEventListener(
             'keydown',
             event => {
 
                 if (
-                    event.key === 'Escape'
+                    event.key !== 'Escape'
                 ) {
-
-                    const confirmModal =
-                        document.getElementById(
-                            'adminConfirmModal'
-                        );
-
-                    if (confirmModal) {
-
-                        return;
-
-                    }
-
-                    const daySpecialModal =
-                        document.getElementById(
-                            'daySpecialModal'
-                        );
-
-                    if (daySpecialModal) {
-
-                        closeDaySpecialModal();
-
-                        return;
-
-                    }
-
-                    closeProfileModal();
-
+                    return;
                 }
 
+                const confirmModal =
+                    document.getElementById(
+                        'adminConfirmModal'
+                    );
+
+                if (confirmModal) {
+                    return;
+                }
+
+                const daySpecialModal =
+                    document.getElementById(
+                        'daySpecialModal'
+                    );
+
+                if (daySpecialModal) {
+                    closeDaySpecialModal();
+                    return;
+                }
+
+                closeProfileModal();
             }
         );
 
 
-        /* =========================================================
+        /* --------------------------------------------------------
            DAY SPECIAL
-        ========================================================= */
+           -------------------------------------------------------- */
 
         if (daySpecialBtn) {
-
             daySpecialBtn.addEventListener(
                 'click',
                 openDaySpecialModal
             );
-
         }
 
 
-        /* =========================================================
+        /* --------------------------------------------------------
            LOGOUT
-        ========================================================= */
+           -------------------------------------------------------- */
 
         if (logoutBtn) {
-
             logoutBtn.addEventListener(
                 'click',
                 logoutAdmin
             );
-
         }
 
 
-        /* =========================================================
+        /* --------------------------------------------------------
            START ADMIN
-        ========================================================= */
+           -------------------------------------------------------- */
 
         checkCafeAdminAccess();
-
     }
 );
