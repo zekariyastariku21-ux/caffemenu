@@ -1015,11 +1015,11 @@ textarea:focus-visible {
     display: grid;
 
     grid-template-columns:
-        58px
+        48px
         minmax(210px, 1.55fr)
         minmax(150px, 1fr)
         125px
-        minmax(190px, 1.15fr);
+        minmax(120px, 0.75fr);
 
     min-height: 55px;
 
@@ -1103,6 +1103,129 @@ textarea:focus-visible {
         background var(--transition),
         box-shadow var(--transition);
 }
+
+
+
+
+/* ================================================================
+   SUPER ADMIN — RESTAURANT LIST
+   ================================================================ */
+
+.owner-restaurant-row {
+
+    position: relative;
+
+    display: grid;
+
+    grid-template-columns:
+        48px
+        minmax(210px, 1.55fr)
+        minmax(150px, 1fr)
+        125px
+        minmax(120px, 0.75fr);
+
+    min-height: 70px;
+
+    align-items: center;
+
+    padding: 10px 20px;
+
+    border-bottom:
+        1px solid rgba(66, 42, 27, 0.075);
+
+    background: var(--white);
+
+    transition:
+        background var(--transition),
+        box-shadow var(--transition);
+}
+
+.owner-restaurant-number {
+    color: var(--text-muted);
+
+    font-size: 12px;
+
+    font-weight: 800;
+
+    text-align: left;
+}
+
+.owner-restaurant-row:last-child {
+    border-bottom: 0;
+}
+
+.owner-restaurant-row:hover {
+
+    background:
+        linear-gradient(
+            90deg,
+            #fffdf9,
+            #fffaf3
+        );
+
+    box-shadow:
+        inset 0 1px 0 rgba(196, 150, 66, 0.05),
+        inset 0 -1px 0 rgba(196, 150, 66, 0.05);
+}
+
+.owner-restaurant-main {
+    min-width: 0;
+}
+
+.owner-restaurant-main strong {
+
+    display: block;
+
+    overflow: hidden;
+
+    color: var(--espresso-950);
+
+    font-size: 16px;
+
+    font-weight: 800;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+.owner-restaurant-slug {
+
+    min-width: 0;
+
+    overflow: hidden;
+
+    color: var(--text-muted);
+
+    font-family:
+        "SFMono-Regular",
+        Consolas,
+        "Liberation Mono",
+        monospace;
+
+    font-size: 14px;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+.owner-restaurant-access {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.owner-status-badge {
+    white-space: nowrap;
+}
+
+
+
+
+
+
+
 
 .restaurant-row:last-child,
 .owner-cafe-row:last-child,

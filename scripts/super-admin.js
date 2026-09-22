@@ -1,9 +1,9 @@
-'use strict';
+﻿'use strict';
 
 /* ================================================================
-   CAFFE MENU — SUPER ADMIN DASHBOARD
+   CAFFE MENU â€” SUPER ADMIN DASHBOARD
    COMPLETE PROFESSIONAL JAVASCRIPT
-   CREATE CAFÉ + DUPLICATE + PRICE MANAGEMENT + BLUR FIX
+   CREATE CAFÃ‰ + DUPLICATE + PRICE MANAGEMENT + BLUR FIX
    ================================================================ */
 
 
@@ -1119,20 +1119,13 @@ function renderOwnerRestaurantRow(
             <div class="owner-restaurant-number">
                 ${index + 1}
             </div>
-
             <div class="owner-restaurant-main">
+
+                
 
                 <strong>
                     ${escapeHtml(name)}
                 </strong>
-
-                <span>
-                    ${escapeHtml(
-                        restaurant.admin_email ||
-                        restaurant.adminEmail ||
-                        'Restaurant'
-                    )}
-                </span>
 
             </div>
 
@@ -1240,7 +1233,6 @@ function renderOwnerRestaurantRow(
         </div>
     `;
 }
-
 
 function toggleOwnerRestaurantActions(
     restaurantId
@@ -1429,7 +1421,7 @@ async function refreshOwnerDashboard() {
 
 
 /* ================================================================
-   CREATE CAFÉ
+   CREATE CAFÃ‰
    ================================================================ */
 
 function openCreateCafePanel() {
@@ -1478,7 +1470,7 @@ function openCreateCafePanel() {
                         font-weight:700;
                     "
                 >
-                    Create New Café
+                    Create New CafÃ©
                 </div>
 
                 <div
@@ -1489,7 +1481,7 @@ function openCreateCafePanel() {
                         line-height:1.5;
                     "
                 >
-                    Create a new restaurant and its café administrator account.
+                    Create a new restaurant and its cafÃ© administrator account.
                 </div>
 
             </div>
@@ -1502,13 +1494,13 @@ function openCreateCafePanel() {
                     <label
                         for="ownerCreateCafeName"
                     >
-                        Café Name
+                        CafÃ© Name
                     </label>
 
                     <input
                         type="text"
                         id="ownerCreateCafeName"
-                        placeholder="Example Café"
+                        placeholder="Example CafÃ©"
                         autocomplete="organization"
                         required
                     >
@@ -1540,7 +1532,7 @@ function openCreateCafePanel() {
                     <label
                         for="ownerCreateAdminEmail"
                     >
-                        Café Admin Email
+                        CafÃ© Admin Email
                     </label>
 
                     <input
@@ -1588,7 +1580,7 @@ function openCreateCafePanel() {
                     line-height:1.55;
                 "
             >
-                The café administrator will use these credentials to access the restaurant dashboard.
+                The cafÃ© administrator will use these credentials to access the restaurant dashboard.
             </div>
 
 
@@ -1614,7 +1606,7 @@ function openCreateCafePanel() {
                         color:#ffffff;
                     "
                 >
-                    Create Café
+                    Create CafÃ©
                 </button>
 
             </div>
@@ -1623,7 +1615,7 @@ function openCreateCafePanel() {
     `;
 
     openOwnerActionPanel(
-        'Create New Café',
+        'Create New CafÃ©',
         content
     );
 
@@ -1693,7 +1685,7 @@ function openCreateCafePanel() {
 
 
 /* ================================================================
-   SUBMIT CREATE CAFÉ
+   SUBMIT CREATE CAFÃ‰
    ================================================================ */
 
 async function submitCreateOwnerCafe(
@@ -1779,7 +1771,7 @@ async function submitCreateOwnerCafe(
     if (!name) {
 
         showOwnerNotification(
-            'Missing café name',
+            'Missing cafÃ© name',
             'Please enter the new restaurant name.',
             'error'
         );
@@ -1809,7 +1801,7 @@ async function submitCreateOwnerCafe(
 
         showOwnerNotification(
             'Missing admin email',
-            'Please enter the café administrator email.',
+            'Please enter the cafÃ© administrator email.',
             'error'
         );
 
@@ -1845,7 +1837,7 @@ async function submitCreateOwnerCafe(
 
 
     showOwnerLoading(
-        'Creating café...'
+        'Creating cafÃ©...'
     );
 
 
@@ -1915,7 +1907,7 @@ async function submitCreateOwnerCafe(
         } catch (refreshError) {
 
             console.warn(
-                '[super-admin] Café created but refresh failed:',
+                '[super-admin] CafÃ© created but refresh failed:',
                 refreshError
             );
         }
@@ -1924,7 +1916,7 @@ async function submitCreateOwnerCafe(
         if (refreshWorked) {
 
             showOwnerNotification(
-                'Café created',
+                'CafÃ© created',
                 data.message ||
                     `${name} was created successfully.`,
                 'success'
@@ -1933,7 +1925,7 @@ async function submitCreateOwnerCafe(
         } else {
 
             showOwnerNotification(
-                'Café created',
+                'CafÃ© created',
                 `${name} was created successfully. Refresh the dashboard if it does not appear immediately.`,
                 'success'
             );
@@ -1943,13 +1935,13 @@ async function submitCreateOwnerCafe(
     } catch (error) {
 
         console.error(
-            '[super-admin] Create café failed:',
+            '[super-admin] Create cafÃ© failed:',
             error
         );
 
 
         showOwnerNotification(
-            'Unable to create café',
+            'Unable to create cafÃ©',
             error.message ||
                 'Please check the information and try again.',
             'error'
@@ -1973,7 +1965,7 @@ async function submitCreateOwnerCafe(
                 false;
 
             submitButton.textContent =
-                'Create Café';
+                'Create CafÃ©';
         }
 
 
@@ -2031,7 +2023,7 @@ function editOwnerCafe(
                     <div class="owner-form-field">
 
                         <label for="ownerEditCafeName">
-                            Café Name
+                            CafÃ© Name
                         </label>
 
                         <input
@@ -2129,7 +2121,7 @@ async function submitEditOwnerCafe(
     if (!name) {
 
         showOwnerNotification(
-            'Missing café name',
+            'Missing cafÃ© name',
             'Please enter a restaurant name.',
             'error'
         );
@@ -2233,7 +2225,7 @@ async function submitEditOwnerCafe(
 
 
 /* ================================================================
-   EDIT CAFÉ ADMIN
+   EDIT CAFÃ‰ ADMIN
    ================================================================ */
 
 function editOwnerCafeAdmin(
@@ -2264,7 +2256,7 @@ function editOwnerCafeAdmin(
 
 
     openOwnerActionPanel(
-        'Café Administrator',
+        'CafÃ© Administrator',
         `
             <form
                 id="ownerEditCafeAdminForm"
@@ -2298,7 +2290,7 @@ function editOwnerCafeAdmin(
                     <div class="owner-form-field">
 
                         <label for="ownerEditAdminEmail">
-                            Café Admin Email
+                            CafÃ© Admin Email
                         </label>
 
                         <input
@@ -2471,7 +2463,7 @@ async function submitEditOwnerCafeAdmin(
         showOwnerNotification(
             'Administrator updated',
             data.message ||
-                'Café administrator credentials were updated.',
+                'CafÃ© administrator credentials were updated.',
             'success'
         );
 
@@ -2848,7 +2840,7 @@ async function executeDeleteOwnerCafe(
 
 
 /* ================================================================
-   DUPLICATE CAFÉ
+   DUPLICATE CAFÃ‰
    ================================================================ */
 
 function openDuplicateCafePanel() {
@@ -2873,12 +2865,12 @@ function openDuplicateCafePanel() {
         ) {
 
             openOwnerActionPanel(
-                'Duplicate Café',
+                'Duplicate CafÃ©',
                 `
                     <div class="owner-empty-state">
 
                         <div class="owner-empty-icon">
-                            ⧉
+                            â§‰
                         </div>
 
                         <h3 class="owner-empty-title">
@@ -2894,8 +2886,8 @@ function openDuplicateCafePanel() {
                             class="owner-empty-create-btn"
                             onclick="openCreateCafePanel()"
                         >
-                            <span>＋</span>
-                            Create Café
+                            <span>ï¼‹</span>
+                            Create CafÃ©
                         </button>
 
                     </div>
@@ -2973,7 +2965,7 @@ function openDuplicateCafePanel() {
                                     font-weight:900;
                                 "
                             >
-                                →
+                                â†’
                             </span>
 
                         </button>
@@ -2983,7 +2975,7 @@ function openDuplicateCafePanel() {
 
 
         openOwnerActionPanel(
-            'Duplicate Café',
+            'Duplicate CafÃ©',
             `
                 <div
                     style="
@@ -3064,7 +3056,7 @@ function openDuplicateCafePanel() {
                         font-weight:700;
                     "
                 >
-                    Duplicate Café
+                    Duplicate CafÃ©
                 </div>
 
                 <div
@@ -3114,7 +3106,7 @@ function openDuplicateCafePanel() {
                             margin-bottom:7px;
                         "
                     >
-                        New Café Name
+                        New CafÃ© Name
                     </label>
 
                     <input
@@ -3160,7 +3152,7 @@ function openDuplicateCafePanel() {
                             margin-bottom:7px;
                         "
                     >
-                        Café Admin Email
+                        CafÃ© Admin Email
                     </label>
 
                     <input
@@ -3219,7 +3211,7 @@ function openDuplicateCafePanel() {
                         color:#ffffff;
                     "
                 >
-                    Duplicate Café
+                    Duplicate CafÃ©
                 </button>
 
             </div>
@@ -3229,7 +3221,7 @@ function openDuplicateCafePanel() {
 
 
     openOwnerActionPanel(
-        'Duplicate Café',
+        'Duplicate CafÃ©',
         content
     );
 
@@ -3415,7 +3407,7 @@ async function submitDuplicateCafe(
     if (!name) {
 
         showOwnerNotification(
-            'Missing café name',
+            'Missing cafÃ© name',
             'Please enter the new restaurant name.',
             'error'
         );
@@ -3445,7 +3437,7 @@ async function submitDuplicateCafe(
 
         showOwnerNotification(
             'Missing admin email',
-            'Please enter the café administrator email.',
+            'Please enter the cafÃ© administrator email.',
             'error'
         );
 
@@ -3669,7 +3661,7 @@ async function executeDuplicateCafe(
 
 
         showOwnerNotification(
-            'Café duplicated',
+            'CafÃ© duplicated',
             createData.message ||
                 `${details.name} was created successfully with the copied menu.`,
             'success'
@@ -3679,12 +3671,12 @@ async function executeDuplicateCafe(
     } catch (error) {
 
         console.error(
-            '[super-admin] Duplicate café failed:',
+            '[super-admin] Duplicate cafÃ© failed:',
             error
         );
 
         showOwnerNotification(
-            'Unable to duplicate café',
+            'Unable to duplicate cafÃ©',
             error.message ||
                 'Please try again.',
             'error'
@@ -3701,7 +3693,7 @@ async function executeDuplicateCafe(
 
 
 /* ================================================================
-   PRICE MANAGEMENT — RESTAURANT SELECTOR
+   PRICE MANAGEMENT â€” RESTAURANT SELECTOR
    ================================================================ */
 
 async function openPriceManagementForRestaurant(
@@ -3787,8 +3779,8 @@ function openPriceManagementPanel() {
                         class="owner-empty-create-btn"
                         onclick="openCreateCafePanel()"
                     >
-                        <span>＋</span>
-                        Create Café
+                        <span>ï¼‹</span>
+                        Create CafÃ©
                     </button>
 
                 </div>
@@ -3866,7 +3858,7 @@ function openPriceManagementPanel() {
                                 font-weight:900;
                             "
                         >
-                            →
+                            â†’
                         </span>
 
                     </button>
@@ -4016,7 +4008,7 @@ async function openPriceEditorForCafe(
 
 
         openOwnerActionPanel(
-            `Price Management · ${getRestaurantName(restaurant)}`,
+            `Price Management Â· ${getRestaurantName(restaurant)}`,
             renderPriceManagementForm()
         );
 
@@ -4201,7 +4193,7 @@ function renderPriceManagementForm() {
                         class="price-operation-option"
                         data-operation="increase"
                     >
-                        ↑ Increase Prices
+                        â†‘ Increase Prices
                     </button>
 
                     <button
@@ -4209,7 +4201,7 @@ function renderPriceManagementForm() {
                         class="price-operation-option"
                         data-operation="decrease"
                     >
-                        ↓ Decrease Prices
+                        â†“ Decrease Prices
                     </button>
 
                 </div>
@@ -4727,7 +4719,7 @@ function renderPriceItemsList() {
                                             entry.category
                                         )
                                     )}
-                                    ·
+                                    Â·
                                     ${formatETB(price)}
                                 </span>
 
@@ -5082,7 +5074,7 @@ function updatePricePreview() {
                                             )}
                                         </span>
 
-                                        &nbsp;→&nbsp;
+                                        &nbsp;â†’&nbsp;
 
                                         <span
                                             class="price-preview-new"
@@ -5213,7 +5205,7 @@ function confirmPriceManagement() {
         <div class="price-confirmation">
 
             <div class="price-confirmation-icon">
-                ✓
+                âœ“
             </div>
 
             <div class="price-confirmation-eyebrow">
@@ -5746,7 +5738,7 @@ function showOwnerNotification(
         ) {
 
             icon.textContent =
-                '✓';
+                'âœ“';
 
         } else if (
             type === 'error'
