@@ -320,21 +320,14 @@ function getTokenFromRequest(req) {
 
 
 function requireOwner(req, res, next) {
-
   console.log('[auth:owner] Checking owner authentication...');
 
   const token = getTokenFromRequest(req);
 
-  console.log(
-    '[auth:owner] Token exists:',
-    !!token
-  );
+  console.log('[auth:owner] Token exists:', !!token);
 
   if (!token) {
-    console.log(
-      '[auth:owner] No token found.'
-    );
-
+    console.log('[auth:owner] No token found.');
     return res.status(401).json({
       ok: false,
       message: 'Authentication required.'
@@ -342,33 +335,25 @@ function requireOwner(req, res, next) {
   }
 
   try {
-
-    console.log(
-      '[auth:owner] Verifying JWT...'
-    );
+    console.log('[auth:owner] Verifying JWT...');
 
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET
     );
 
-    console.log(
-      '[auth:owner] JWT decoded:',
-      {
-        id: decoded.id,
-        email: decoded.email,
-        role: decoded.role,
-        restaurant_id: decoded.restaurant_id
-      }
-    );
+    console.log('[auth:owner] JWT decoded:', {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+      restaurant_id: decoded.restaurant_id
+    });
 
-    if (decoded.role !== 'super_admin') {
+    // Accepts both underscore, hyphen, and owner role formats
+    const allowedRoles = ['super_admin', 'super-admin', 'owner'];
 
-      console.log(
-        '[auth:owner] Role rejected:',
-        decoded.role
-      );
-
+    if (!allowedRoles.includes(decoded.role)) {
+      console.log('[auth:owner] Role rejected:', decoded.role);
       return res.status(403).json({
         ok: false,
         message: 'Super admin access required.'
@@ -377,18 +362,11 @@ function requireOwner(req, res, next) {
 
     req.user = decoded;
 
-    console.log(
-      '[auth:owner] Owner authentication successful.'
-    );
-
+    console.log('[auth:owner] Owner authentication successful.');
     next();
 
   } catch (error) {
-
-    console.error(
-      '[auth:owner] JWT verification failed:',
-      error
-    );
+    console.error('[auth:owner] JWT verification failed:', error.message);
 
     return res.status(401).json({
       ok: false,
@@ -445,27 +423,40 @@ async function requireRestaurantAdmin(
 }
 
 
+
+
+
 /* ================================================================
    PROTECTED ADMIN HTML PAGES
    ================================================================ */
 
-app.get(
-    '/admin-panel.html',
-    requireRestaurantAdmin,
-    (req, res) => {
-        if (req.user.role !== 'cafe_admin') {
-            return res.redirect('/admin.html');
-        }
+app.get('/admin-panel.html', (req, res) => {
+  return res.redirect('/admin.html');
+});
 
-        return res.sendFile(
-            path.join(__dirname, 'admin-panel.html')
-        );
+
+
+app.get(
+  '/cafe-dashboard',
+  requireRestaurantAdmin,
+  (req, res) => {
+    if (req.user.role !== 'cafe_admin') {
+      return res.redirect('/admin.html');
     }
+
+    return res.sendFile(
+      path.join(__dirname, 'admin-panel.html')
+    );
+  }
 );
 
 
+app.get('/super-admin-panel.html', (req, res) => {
+  return res.redirect('/admin.html');
+});
+
 app.get(
-  '/super-admin-panel.html',
+  '/super-admin-dashboard',
   requireOwner,
   (req, res) => {
     return res.sendFile(
@@ -619,7 +610,7 @@ app.post(
         },
         process.env.JWT_SECRET,
         {
-          expiresIn: '7d'
+          expiresIn: '30d'
         }
       );
 
