@@ -3339,3 +3339,148 @@ body.admin-loading-active {
         width: 100%;
     }
 }
+
+/* ================================================================
+   CURRENT MENU — ITEM IMAGE
+   ================================================================ */
+
+.admin-menu-item-image {
+    width: 70px;
+    height: 70px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+.admin-menu-item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+
+/* ================================================================
+   CURRENT MENU — HORIZONTAL CATEGORY LAYOUT
+   ================================================================ */
+
+.admin-menu-category {
+    padding: 14px;
+
+    background: #fff;
+
+    border: 1px solid #e5d9cf;
+    border-radius: 13px;
+}
+
+.admin-menu-category-title {
+    margin-bottom: 12px;
+
+    padding-bottom: 9px;
+
+    color: #4b3022;
+
+    font-size: 15px;
+    font-weight: 900;
+
+    border-bottom: 1px solid #eee4dc;
+}
+
+.admin-menu-items {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(180px, 1fr)
+        );
+
+    gap: 10px;
+}
+
+.admin-menu-item {
+    display: flex;
+    align-items: center;
+
+    gap: 9px;
+
+    min-width: 0;
+
+    padding: 8px;
+
+    background: #faf7f3;
+
+    border: 1px solid #eee5dd;
+    border-radius: 9px;
+}
+
+.admin-menu-item-image {
+    width: 55px;
+    height: 55px;
+
+    flex-shrink: 0;
+
+    overflow: hidden;
+
+    border-radius: 8px;
+}
+
+.admin-menu-item-image img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+}
+
+.admin-menu-item-info {
+    display: flex;
+    flex-direction: column;
+
+    min-width: 0;
+
+    gap: 3px;
+}
+
+.admin-menu-item-info strong {
+    overflow: hidden;
+
+    color: #4b3022;
+
+    font-size: 13px;
+    font-weight: 800;
+
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.admin-menu-item-info span {
+    color: #745216;
+
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.admin-menu-item-info small {
+    overflow: hidden;
+
+    color: #806f63;
+
+    font-size: 10px;
+
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+
+/* Current Menu — categories side by side */
+
+#menuList {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(240px, 1fr)
+        );
+
+    gap: 14px;
+}

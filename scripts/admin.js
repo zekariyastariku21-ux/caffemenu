@@ -1092,6 +1092,7 @@ function updateExistingItemsByCategory() {
             Select item
         </option>
     `;
+    itemSelect.disabled = !category;
 
     if (!category) {
         clearEditFields();
