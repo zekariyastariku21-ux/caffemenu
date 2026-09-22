@@ -716,12 +716,27 @@ async function loadRestaurantMenu() {
         );
     }
 
-    if (!response.ok || !data.ok) {
-        throw new Error(
-            data.message ||
-            'Unable to load restaurant menu.'
-        );
-    }
+    if (
+    response.status === 401 ||
+    response.status === 403
+) {
+    sessionStorage.removeItem(
+        'dashboardAccess'
+    );
+
+    window.location.replace(
+        '/admin.html'
+    );
+
+    return;
+}
+
+if (!response.ok || !data.ok) {
+    throw new Error(
+        data.message ||
+        'Unable to load restaurant menu.'
+    );
+}
 
     if (
         !data.menu ||

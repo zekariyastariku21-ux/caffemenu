@@ -409,6 +409,7 @@ async function requireRestaurantAdmin(
     req.user = decoded;
 
     next();
+
   } catch (error) {
     console.error(
       '[auth] Restaurant admin token verification failed:',
@@ -419,6 +420,36 @@ async function requireRestaurantAdmin(
       ok: false,
       message: 'Invalid or expired authentication token.'
     });
+  }
+}
+
+
+function requireCafeDashboardAccess(
+  req,
+  res,
+  next
+) {
+  const token = getTokenFromRequest(req);
+
+  if (!token) {
+    return res.redirect('/admin.html');
+  }
+
+  try {
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    if (decoded.role !== 'cafe_admin') {
+      return res.redirect('/admin.html');
+    }
+
+    req.user = decoded;
+    next();
+
+  } catch (error) {
+    return res.redirect('/admin.html');
   }
 }
 
@@ -438,7 +469,7 @@ app.get('/admin-panel.html', (req, res) => {
 
 app.get(
   '/cafe-dashboard',
-  requireRestaurantAdmin,
+  requireCafeDashboardAccess,
   (req, res) => {
     if (req.user.role !== 'cafe_admin') {
       return res.redirect('/admin.html');
