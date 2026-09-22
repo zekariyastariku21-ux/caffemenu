@@ -7080,6 +7080,16 @@ window.addEventListener(
 
 async function initializeSuperAdminDashboard() {
 
+    const dashboardAccess =
+    sessionStorage.getItem(
+        'dashboardAccess'
+    );
+
+if (dashboardAccess !== 'super_admin') {
+    window.location.replace('/admin.html');
+    return;
+}
+
     ensureSuperAdminRuntimeStyles();
 
 

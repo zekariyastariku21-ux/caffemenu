@@ -665,6 +665,11 @@ loginForm.addEventListener(
                 setTimeout(
                     () => {
 
+                        sessionStorage.setItem(
+                            'dashboardAccess',
+                            'super_admin'
+                        );
+
                         window.location.replace(
                             '/super-admin-dashboard'
                         );
@@ -737,6 +742,11 @@ loginForm.addEventListener(
 
                 setTimeout(
                     () => {
+
+                        sessionStorage.setItem(
+                            'dashboardAccess',
+                            'cafe_admin'
+                        );
 
                         window.location.replace(
                             '/cafe-dashboard'

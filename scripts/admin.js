@@ -397,6 +397,17 @@ function showAdminConfirm({
    ================================================================ */
 
 async function checkCafeAdminAccess() {
+
+    const dashboardAccess =
+    sessionStorage.getItem(
+        'dashboardAccess'
+    );
+
+if (dashboardAccess !== 'cafe_admin') {
+    window.location.replace('/admin.html');
+    return;
+}
+
     try {
         const response = await fetch(
             '/api/admin/session',

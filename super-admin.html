@@ -474,6 +474,15 @@
     </div>
 </div>
 
+<script>
+    if (
+        sessionStorage.getItem('dashboardAccess') !==
+        'super_admin'
+    ) {
+        window.location.replace('/admin.html');
+    }
+</script>
+
 <script src="/scripts/super-admin.js"></script>
 
 </body>

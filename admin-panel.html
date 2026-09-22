@@ -673,7 +673,14 @@
     </div>
 </div>
 
-
+<script>
+    if (
+        sessionStorage.getItem('dashboardAccess') !==
+        'cafe_admin'
+    ) {
+        window.location.replace('/admin.html');
+    }
+</script>
 <script src="/scripts/admin.js"></script>
 
 </body>
