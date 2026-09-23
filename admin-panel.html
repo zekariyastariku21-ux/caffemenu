@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -35,7 +35,7 @@
                     id="adminRefreshBtn"
                     class="refresh-btn"
                 >
-                    ↻ Refresh
+                    â†» Refresh
                 </button>
 
                 <button
@@ -43,7 +43,7 @@
                     id="profileBtn"
                     class="profile-btn"
                 >
-                    👤 Profile
+                    ðŸ‘¤ Profile
                 </button>
 
                 <button
@@ -51,7 +51,7 @@
                     id="daySpecialBtn"
                     class="day-special-btn"
                 >
-                    ⭐ Day Special
+                    â­ Day Special
                 </button>
 
                 <button
@@ -59,13 +59,61 @@
                     id="logoutBtn"
                     class="logout-btn"
                 >
-                    🚪 Logout
+                    ðŸšª Logout
                 </button>
 
             </div>
 
         </header>
 
+
+        <!-- MENU MANAGEMENT TABS -->
+
+        <div class="admin-management-tabs">
+
+            <button type="button" class="admin-management-tab active" onclick="openAdminManagementTab(0)">
+                Add Category
+            </button>
+
+            <button type="button" class="admin-management-tab" onclick="openAdminManagementTab(1)">
+                Manage Categories
+            </button>
+
+            <button type="button" class="admin-management-tab" onclick="openAdminManagementTab(2)">
+                Add Item
+            </button>
+
+            <button type="button" class="admin-management-tab" onclick="openAdminManagementTab(3)">
+                Update / Delete Item
+            </button>
+
+        </div>
+
+        <script>
+        function openAdminManagementTab(index) {
+
+            const sections = Array.from(document.querySelectorAll(
+                '.admin-management-tabs ~ .section'
+            )).slice(0, 4);
+
+            const tabs = document.querySelectorAll(
+                '.admin-management-tab'
+            );
+
+            sections.forEach((section, i) => {
+                section.style.display = i === index ? 'block' : 'none';
+            });
+
+            tabs.forEach((tab, i) => {
+                tab.classList.toggle('active', i === index);
+            });
+
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            openAdminManagementTab(0);
+        });
+        </script>
 
         <!-- ADD CATEGORY -->
 
@@ -296,7 +344,7 @@
                             id="editItemImagePlaceholder"
                             class="edit-item-image-placeholder"
                         >
-                            🖼️
+                            ðŸ–¼ï¸
                             <span>
                                 Current image
                             </span>
@@ -424,13 +472,13 @@
             <div class="profile-modal-title-area">
 
                 <div class="profile-title-icon">
-                    👤
+                    ðŸ‘¤
                 </div>
 
                 <div>
 
                     <h2 id="profileModalTitle">
-                        Café Profile
+                        CafÃ© Profile
                     </h2>
 
                     <p id="profileRestaurantName">
@@ -447,7 +495,7 @@
                 class="profile-close-btn"
                 aria-label="Close profile"
             >
-                ×
+                Ã—
             </button>
 
         </div>
@@ -464,11 +512,11 @@
                     <div>
 
                         <div class="profile-section-title">
-                            🖼️ Restaurant Logo
+                            ðŸ–¼ï¸ Restaurant Logo
                         </div>
 
                         <div class="profile-section-description">
-                            Add a logo that customers will see on your café menu.
+                            Add a logo that customers will see on your cafÃ© menu.
                         </div>
 
                     </div>
@@ -496,7 +544,7 @@
                         >
 
                             <span class="profile-logo-placeholder-icon">
-                                🏪
+                                ðŸª
                             </span>
 
                             <span class="profile-logo-placeholder-text">
@@ -514,7 +562,7 @@
                             for="profileLogoInput"
                             class="profile-logo-upload-btn"
                         >
-                            📷 Choose Logo
+                            ðŸ“· Choose Logo
                         </label>
 
                         <input
@@ -530,7 +578,7 @@
                             id="profileLogoRemoveBtn"
                             class="profile-logo-remove-btn"
                         >
-                            🗑 Remove Logo
+                            ðŸ—‘ Remove Logo
                         </button>
 
                         <p class="profile-logo-help">
@@ -554,11 +602,11 @@
                     <div>
 
                         <div class="profile-section-title">
-                            📞 Phone Numbers
+                            ðŸ“ž Phone Numbers
                         </div>
 
                         <div class="profile-section-description">
-                            Customers can tap a number to call your café.
+                            Customers can tap a number to call your cafÃ©.
                         </div>
 
                     </div>
@@ -590,7 +638,7 @@
                     <div>
 
                         <div class="profile-section-title">
-                            📍 Locations
+                            ðŸ“ Locations
                         </div>
 
                         <div class="profile-section-description">
@@ -660,7 +708,7 @@
             id="adminStatusIcon"
             class="admin-status-icon"
         >
-            ✓
+            âœ“
         </div>
 
         <div
@@ -686,3 +734,5 @@
 </body>
 
 </html>
+
+

@@ -1247,7 +1247,7 @@ function renderItems() {
             .map(food => {
 
                 const isAvailable =
-                    food.isAvailable !== false;
+                    food.available !== false;
 
                 const ingredient =
                     food.ingridient ||
@@ -1637,7 +1637,7 @@ function openCustomerDaySpecial() {
                     special.item;
 
                 const isAvailable =
-                    item.isAvailable !== false;
+                    item.available !== false;
 
                 const ingredient =
                     item.ingridient ||
@@ -2132,7 +2132,7 @@ function addToCart(
 
 
     if (
-        food.isAvailable === false
+        food.available === false
     ) {
 
         showToast(
