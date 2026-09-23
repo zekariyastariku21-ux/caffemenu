@@ -2802,6 +2802,7 @@ textarea:focus-visible {
     }
 
     .restaurant-table-header,
+    .owner-restaurant-row,
     .restaurant-row,
     .owner-cafe-row,
     .cafe-row {
@@ -3393,4 +3394,39 @@ textarea:focus-visible {
     .admin-status-message {
         font-size: 15px;
     }
+}
+
+
+/* ============================================================
+   MOBILE RESTAURANT LIST
+============================================================ */
+
+.restaurant-table-header,
+.owner-restaurant-row {
+
+    min-width: 790px;
+}
+
+.restaurant-table-header {
+    grid-template-columns:
+        40px
+        minmax(180px, 1.4fr)
+        minmax(140px, 1fr)
+        105px
+        105px;
+
+    padding:
+        0 14px;
+}
+
+.owner-restaurant-row {
+    grid-template-columns:
+        40px
+        minmax(180px, 1.4fr)
+        minmax(140px, 1fr)
+        105px
+        105px;
+
+    padding:
+        10px 14px;
 }
