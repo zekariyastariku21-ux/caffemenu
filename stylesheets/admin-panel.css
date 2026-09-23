@@ -103,7 +103,7 @@ body {
 }
 
 .admin-panel-box {
-    width: min(1250px, 100%);
+    width: 100%;
     margin: 0 auto;
 
     background: rgba(255, 255, 255, 0.94);
@@ -115,7 +115,7 @@ body {
         0 18px 50px
         rgba(75, 47, 31, 0.09);
 
-    overflow: hidden;
+        overflow: visible;
 }
 
 
@@ -3459,6 +3459,12 @@ body.admin-loading-active {
     font-weight: 800;
 }
 
+
+
+
+
+
+
 .admin-menu-item-info small {
     overflow: hidden;
 
@@ -3484,3 +3490,139 @@ body.admin-loading-active {
 
     gap: 14px;
 }
+
+
+/* ================================================================
+   CURRENT MENU — UNAVAILABLE BADGE
+   ================================================================ */
+
+.admin-menu-item {
+    position: relative;
+}
+
+.admin-unavailable-badge {
+    position: absolute;
+
+    bottom: 1px;
+    right: 1px;
+
+    z-index: 20;
+
+    padding: 2px 2px;
+
+    background: rgb(197, 81, 81);
+
+    color: white;
+    border-bottom: 2px solid red;
+    border-radius: 4px;
+
+    font-size: 8px;
+    font-weight: 900;
+    line-height: 1.2;
+
+    white-space: nowrap;
+
+    box-sizing: border-box;
+}
+
+
+
+.admin-day-special-badge {
+    position: absolute;
+
+    top: -1px;
+    right: 2px;
+
+    z-index: 20;
+
+    padding: 2px 2px;
+
+    background: #ff4f09;
+
+    color: white;
+    border-bottom: 2px solid #21c700;
+    border-radius: 4px;
+
+    font-size: 8px;
+    font-weight: 900;
+    line-height: 1.2;
+
+    white-space: nowrap;
+
+    box-sizing: border-box;
+} 
+/* ================================================================
+   ADMIN MANAGEMENT TABS
+   ================================================================ */
+
+.admin-management-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    width: 100%;
+    max-width: 1000px;
+    margin: 20px auto 14px;
+}
+
+.admin-management-tab {
+    border: 1px solid #d8c5b5;
+    border-radius: 10px;
+    padding: 12px 10px;
+    background: #f8f2ec;
+    color: #5a3928;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.admin-management-tab:hover {
+    background: #eee2d6;
+}
+
+.admin-management-tab.active {
+    background: #6f4631;
+    color: #fff;
+    border-color: #6f4631;
+}
+
+.admin-management-tabs ~ .section {
+    width: 100%;
+    max-width: none;
+    margin: 0 auto 20px;
+}
+
+@media (max-width: 700px) {
+
+    .admin-management-tabs {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 7px;
+    }
+
+    .admin-management-tab {
+        padding: 10px 7px;
+        font-size: 12px;
+    }
+
+}
+
+@media (max-width: 420px) {
+
+    .admin-management-tabs {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+/* ================================================================
+   FIXED CAFE ADMIN HEADER
+   ================================================================ */
+
+.admin-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
