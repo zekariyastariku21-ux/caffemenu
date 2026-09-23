@@ -2669,6 +2669,8 @@ app.post(
       const restaurantId =
         Number(req.params.id);
 
+        
+
       const {
         mode,
         percentage,
@@ -2714,14 +2716,21 @@ app.post(
       const numericPercentage =
         Number(percentage);
 
+        console.log(
+  '[PRICE DEBUG] received percentage:',
+  percentage,
+  'numeric:',
+  numericPercentage
+);
+
       if (
         !Number.isFinite(numericPercentage) ||
-        numericPercentage <= 0
+        numericPercentage < 0
       ) {
         return res.status(400).json({
           ok: false,
           message:
-            'Percentage must be greater than 0.'
+            'Percentage must be 0 or greater.'
         });
       }
 
@@ -3054,9 +3063,7 @@ app.post(
            * Consistent two-decimal rounding.
            */
           const newPrice =
-            Math.round(
-              (rawNewPrice + Number.EPSILON) * 100
-            ) / 100;
+            Math.round(rawNewPrice);
 
           item.price =
             newPrice;
@@ -3378,6 +3385,8 @@ async function startServer() {
 }
 
 startServer();
+
+
 
 
 

@@ -1,9 +1,9 @@
 ﻿'use strict';
 
 /* ================================================================
-   CAFFE MENU â€” SUPER ADMIN DASHBOARD
+   CAFFE MENU — SUPER ADMIN DASHBOARD
    COMPLETE PROFESSIONAL JAVASCRIPT
-   CREATE CAFÃ‰ + DUPLICATE + PRICE MANAGEMENT + BLUR FIX
+   CREATE CAFÉ + DUPLICATE + PRICE MANAGEMENT + BLUR FIX
    ================================================================ */
 
 
@@ -1149,7 +1149,7 @@ function renderOwnerRestaurantRow(
                     "
                 >
                     <span>
-                        ${active ? '●' : '●'}
+                        ${active ? '?' : '?'}
                     </span>
                     ${statusText}
                 </span>
@@ -1421,7 +1421,7 @@ async function refreshOwnerDashboard() {
 
 
 /* ================================================================
-   CREATE CAFÃ‰
+   CREATE CAFÉ
    ================================================================ */
 
 function openCreateCafePanel() {
@@ -1470,7 +1470,7 @@ function openCreateCafePanel() {
                         font-weight:700;
                     "
                 >
-                    Create New CafÃ©
+                    Create New Café
                 </div>
 
                 <div
@@ -1481,7 +1481,7 @@ function openCreateCafePanel() {
                         line-height:1.5;
                     "
                 >
-                    Create a new restaurant and its cafÃ© administrator account.
+                    Create a new restaurant and its café administrator account.
                 </div>
 
             </div>
@@ -1494,13 +1494,13 @@ function openCreateCafePanel() {
                     <label
                         for="ownerCreateCafeName"
                     >
-                        CafÃ© Name
+                        Café Name
                     </label>
 
                     <input
                         type="text"
                         id="ownerCreateCafeName"
-                        placeholder="Example CafÃ©"
+                        placeholder="Example Café"
                         autocomplete="organization"
                         required
                     >
@@ -1532,7 +1532,7 @@ function openCreateCafePanel() {
                     <label
                         for="ownerCreateAdminEmail"
                     >
-                        CafÃ© Admin Email
+                        Café Admin Email
                     </label>
 
                     <input
@@ -1580,7 +1580,7 @@ function openCreateCafePanel() {
                     line-height:1.55;
                 "
             >
-                The cafÃ© administrator will use these credentials to access the restaurant dashboard.
+                The café administrator will use these credentials to access the restaurant dashboard.
             </div>
 
 
@@ -1606,7 +1606,7 @@ function openCreateCafePanel() {
                         color:#ffffff;
                     "
                 >
-                    Create CafÃ©
+                    Create Café
                 </button>
 
             </div>
@@ -1615,7 +1615,7 @@ function openCreateCafePanel() {
     `;
 
     openOwnerActionPanel(
-        'Create New CafÃ©',
+        'Create New Café',
         content
     );
 
@@ -1685,7 +1685,7 @@ function openCreateCafePanel() {
 
 
 /* ================================================================
-   SUBMIT CREATE CAFÃ‰
+   SUBMIT CREATE CAFÉ
    ================================================================ */
 
 async function submitCreateOwnerCafe(
@@ -1771,7 +1771,7 @@ async function submitCreateOwnerCafe(
     if (!name) {
 
         showOwnerNotification(
-            'Missing cafÃ© name',
+            'Missing café name',
             'Please enter the new restaurant name.',
             'error'
         );
@@ -1801,7 +1801,7 @@ async function submitCreateOwnerCafe(
 
         showOwnerNotification(
             'Missing admin email',
-            'Please enter the cafÃ© administrator email.',
+            'Please enter the café administrator email.',
             'error'
         );
 
@@ -1837,7 +1837,7 @@ async function submitCreateOwnerCafe(
 
 
     showOwnerLoading(
-        'Creating cafÃ©...'
+        'Creating café...'
     );
 
 
@@ -1907,7 +1907,7 @@ async function submitCreateOwnerCafe(
         } catch (refreshError) {
 
             console.warn(
-                '[super-admin] CafÃ© created but refresh failed:',
+                '[super-admin] Café created but refresh failed:',
                 refreshError
             );
         }
@@ -1916,7 +1916,7 @@ async function submitCreateOwnerCafe(
         if (refreshWorked) {
 
             showOwnerNotification(
-                'CafÃ© created',
+                'Café created',
                 data.message ||
                     `${name} was created successfully.`,
                 'success'
@@ -1925,7 +1925,7 @@ async function submitCreateOwnerCafe(
         } else {
 
             showOwnerNotification(
-                'CafÃ© created',
+                'Café created',
                 `${name} was created successfully. Refresh the dashboard if it does not appear immediately.`,
                 'success'
             );
@@ -1935,13 +1935,13 @@ async function submitCreateOwnerCafe(
     } catch (error) {
 
         console.error(
-            '[super-admin] Create cafÃ© failed:',
+            '[super-admin] Create café failed:',
             error
         );
 
 
         showOwnerNotification(
-            'Unable to create cafÃ©',
+            'Unable to create café',
             error.message ||
                 'Please check the information and try again.',
             'error'
@@ -1965,7 +1965,7 @@ async function submitCreateOwnerCafe(
                 false;
 
             submitButton.textContent =
-                'Create CafÃ©';
+                'Create Café';
         }
 
 
@@ -2023,7 +2023,7 @@ function editOwnerCafe(
                     <div class="owner-form-field">
 
                         <label for="ownerEditCafeName">
-                            CafÃ© Name
+                            Café Name
                         </label>
 
                         <input
@@ -2121,7 +2121,7 @@ async function submitEditOwnerCafe(
     if (!name) {
 
         showOwnerNotification(
-            'Missing cafÃ© name',
+            'Missing café name',
             'Please enter a restaurant name.',
             'error'
         );
@@ -2225,7 +2225,7 @@ async function submitEditOwnerCafe(
 
 
 /* ================================================================
-   EDIT CAFÃ‰ ADMIN
+   EDIT CAFÉ ADMIN
    ================================================================ */
 
 function editOwnerCafeAdmin(
@@ -2256,7 +2256,7 @@ function editOwnerCafeAdmin(
 
 
     openOwnerActionPanel(
-        'CafÃ© Administrator',
+        'Café Administrator',
         `
             <form
                 id="ownerEditCafeAdminForm"
@@ -2290,7 +2290,7 @@ function editOwnerCafeAdmin(
                     <div class="owner-form-field">
 
                         <label for="ownerEditAdminEmail">
-                            CafÃ© Admin Email
+                            Café Admin Email
                         </label>
 
                         <input
@@ -2463,7 +2463,7 @@ async function submitEditOwnerCafeAdmin(
         showOwnerNotification(
             'Administrator updated',
             data.message ||
-                'CafÃ© administrator credentials were updated.',
+                'Café administrator credentials were updated.',
             'success'
         );
 
@@ -2840,7 +2840,7 @@ async function executeDeleteOwnerCafe(
 
 
 /* ================================================================
-   DUPLICATE CAFÃ‰
+   DUPLICATE CAFÉ
    ================================================================ */
 
 function openDuplicateCafePanel() {
@@ -2865,12 +2865,12 @@ function openDuplicateCafePanel() {
         ) {
 
             openOwnerActionPanel(
-                'Duplicate CafÃ©',
+                'Duplicate Café',
                 `
                     <div class="owner-empty-state">
 
                         <div class="owner-empty-icon">
-                            â§‰
+                            ⧉
                         </div>
 
                         <h3 class="owner-empty-title">
@@ -2886,8 +2886,8 @@ function openDuplicateCafePanel() {
                             class="owner-empty-create-btn"
                             onclick="openCreateCafePanel()"
                         >
-                            <span>ï¼‹</span>
-                            Create CafÃ©
+                            <span>＋</span>
+                            Create Café
                         </button>
 
                     </div>
@@ -2965,7 +2965,7 @@ function openDuplicateCafePanel() {
                                     font-weight:900;
                                 "
                             >
-                                â†’
+                                →
                             </span>
 
                         </button>
@@ -2975,7 +2975,7 @@ function openDuplicateCafePanel() {
 
 
         openOwnerActionPanel(
-            'Duplicate CafÃ©',
+            'Duplicate Café',
             `
                 <div
                     style="
@@ -3056,7 +3056,7 @@ function openDuplicateCafePanel() {
                         font-weight:700;
                     "
                 >
-                    Duplicate CafÃ©
+                    Duplicate Café
                 </div>
 
                 <div
@@ -3106,7 +3106,7 @@ function openDuplicateCafePanel() {
                             margin-bottom:7px;
                         "
                     >
-                        New CafÃ© Name
+                        New Café Name
                     </label>
 
                     <input
@@ -3152,7 +3152,7 @@ function openDuplicateCafePanel() {
                             margin-bottom:7px;
                         "
                     >
-                        CafÃ© Admin Email
+                        Café Admin Email
                     </label>
 
                     <input
@@ -3211,7 +3211,7 @@ function openDuplicateCafePanel() {
                         color:#ffffff;
                     "
                 >
-                    Duplicate CafÃ©
+                    Duplicate Café
                 </button>
 
             </div>
@@ -3221,7 +3221,7 @@ function openDuplicateCafePanel() {
 
 
     openOwnerActionPanel(
-        'Duplicate CafÃ©',
+        'Duplicate Café',
         content
     );
 
@@ -3407,7 +3407,7 @@ async function submitDuplicateCafe(
     if (!name) {
 
         showOwnerNotification(
-            'Missing cafÃ© name',
+            'Missing café name',
             'Please enter the new restaurant name.',
             'error'
         );
@@ -3437,7 +3437,7 @@ async function submitDuplicateCafe(
 
         showOwnerNotification(
             'Missing admin email',
-            'Please enter the cafÃ© administrator email.',
+            'Please enter the café administrator email.',
             'error'
         );
 
@@ -3661,7 +3661,7 @@ async function executeDuplicateCafe(
 
 
         showOwnerNotification(
-            'CafÃ© duplicated',
+            'Café duplicated',
             createData.message ||
                 `${details.name} was created successfully with the copied menu.`,
             'success'
@@ -3671,12 +3671,12 @@ async function executeDuplicateCafe(
     } catch (error) {
 
         console.error(
-            '[super-admin] Duplicate cafÃ© failed:',
+            '[super-admin] Duplicate café failed:',
             error
         );
 
         showOwnerNotification(
-            'Unable to duplicate cafÃ©',
+            'Unable to duplicate café',
             error.message ||
                 'Please try again.',
             'error'
@@ -3693,7 +3693,7 @@ async function executeDuplicateCafe(
 
 
 /* ================================================================
-   PRICE MANAGEMENT â€” RESTAURANT SELECTOR
+   PRICE MANAGEMENT — RESTAURANT SELECTOR
    ================================================================ */
 
 async function openPriceManagementForRestaurant(
@@ -3779,8 +3779,8 @@ function openPriceManagementPanel() {
                         class="owner-empty-create-btn"
                         onclick="openCreateCafePanel()"
                     >
-                        <span>ï¼‹</span>
-                        Create CafÃ©
+                        <span>＋</span>
+                        Create Café
                     </button>
 
                 </div>
@@ -3858,7 +3858,7 @@ function openPriceManagementPanel() {
                                 font-weight:900;
                             "
                         >
-                            â†’
+                            →
                         </span>
 
                     </button>
@@ -4008,7 +4008,7 @@ async function openPriceEditorForCafe(
 
 
         openOwnerActionPanel(
-            `Price Management Â· ${getRestaurantName(restaurant)}`,
+            `Price Management · ${getRestaurantName(restaurant)}`,
             renderPriceManagementForm()
         );
 
@@ -4050,38 +4050,7 @@ function renderPriceManagementForm() {
 
         <div class="price-management">
 
-            <div class="price-management-hero">
-
-                <div class="price-management-icon">
-                    %
-                </div>
-
-                <span class="price-management-eyebrow">
-                    PRICE CONTROL
-                </span>
-
-                <div
-                    style="
-                        font-family:Georgia,'Times New Roman',serif;
-                        font-size:21px;
-                        font-weight:600;
-                    "
-                >
-                    Manage Menu Prices
-                </div>
-
-                <div
-                    style="
-                        margin-top:7px;
-                        color:rgba(255,255,255,.65);
-                        font-size:11px;
-                        line-height:1.5;
-                    "
-                >
-                    Apply a percentage increase or decrease to selected menu items.
-                </div>
-
-            </div>
+        
 
 
             <div class="price-summary-strip">
@@ -4193,7 +4162,7 @@ function renderPriceManagementForm() {
                         class="price-operation-option"
                         data-operation="increase"
                     >
-                        â†‘ Increase Prices
+                        ↑ Increase Prices
                     </button>
 
                     <button
@@ -4201,7 +4170,7 @@ function renderPriceManagementForm() {
                         class="price-operation-option"
                         data-operation="decrease"
                     >
-                        â†“ Decrease Prices
+                        ↓ Decrease Prices
                     </button>
 
                 </div>
@@ -4209,7 +4178,12 @@ function renderPriceManagementForm() {
             </div>
 
 
-            <div class="price-form-section">
+            <div style="
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+        ">
 
                 <div class="price-section-heading">
                     <span class="price-section-number">2</span>
@@ -4226,8 +4200,8 @@ function renderPriceManagementForm() {
                             min="0"
                             max="100"
                             step="0.1"
-                            value="10"
-                            placeholder="10"
+                            value="0"
+                            placeholder="0"
                         >
 
                         <span
@@ -4245,14 +4219,7 @@ function renderPriceManagementForm() {
 
                     </div>
 
-                    <div
-                        style="
-                            color:#766960;
-                            font-size:11px;
-                        "
-                    >
-                        Enter the percentage to apply.
-                    </div>
+                    
 
                 </div>
 
@@ -4261,41 +4228,160 @@ function renderPriceManagementForm() {
 
             <div class="price-form-section">
 
-                <div class="price-section-heading">
-                    <span class="price-section-number">3</span>
-                    Select Items
-                </div>
+    <div class="price-section-heading">
+        <span class="price-section-number">3</span>
+        Menu Selection
+    </div>
 
-                <div class="price-items-toolbar">
 
-                    <div class="price-search-wrap">
+    <div
+        style="
+            display:grid;
+            grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:12px;
+        "
+    >
 
-                        <input
-                            type="search"
-                            id="priceItemSearch"
-                            placeholder="Search menu item..."
-                            autocomplete="off"
-                        >
+        <button
+            type="button"
+            class="restaurant-action-btn"
+            id="priceAllMenuBtn"
+            style="
+                min-height:38px; padding:0 8px; font-size:11px; font-weight:900; white-space:nowrap;
+            "
+        >
+            All Menu
+        </button>
 
-                    </div>
 
-                    <button
-                        type="button"
-                        class="restaurant-action-btn"
-                        id="priceSelectAllBtn"
-                    >
-                        Select All
-                    </button>
+        <button
+            type="button"
+            class="restaurant-action-btn"
+            id="priceSelectCategoryBtn"
+            style="
+                min-height:38px; padding:0 8px; font-size:11px; font-weight:900; white-space:nowrap;
+            "
+        >
+            Select Category
+        </button>
 
-                </div>
+        <button
+            type="button"
+            class="restaurant-action-btn"
+            id="priceSelectItemsBtn"
+            style="
+                min-height:38px; padding:0 8px; font-size:11px; font-weight:900; white-space:nowrap;
+            "
+        >
+            Select Items
+        </button>
 
-                <div
-                    id="priceItemsList"
-                    class="price-items-list"
-                >
-                </div>
 
-            </div>
+        <button
+            type="button"
+            class="restaurant-action-btn"
+            id="priceClearSelectionBtn"
+            style="
+                min-height:38px; padding:0 8px; font-size:11px; font-weight:900; white-space:nowrap;
+            "
+        >
+            Clear Selection
+        </button>
+
+    </div>
+
+    <div
+    id="priceCategoryPanel"
+    style="
+        display:none;
+        margin-bottom:12px;
+        padding:12px;
+        border:1px solid rgba(196,150,66,.18);
+        border-radius:12px;
+        background:#fffaf0;
+    "
+>
+</div>
+
+<div
+    id="priceItemsSelectionPanel"
+    style="
+        display:none;
+        margin-bottom:12px;
+        padding:12px;
+        border:1px solid rgba(196,150,66,.18);
+        border-radius:12px;
+        background:#fffaf0;
+    "
+>
+    <div class="price-items-toolbar">
+
+        <div class="price-search-wrap">
+
+            <input
+                type="search"
+                id="priceItemSearch"
+                placeholder="Search menu item..."
+                autocomplete="off"
+            >
+
+        </div>
+
+    </div>
+
+    <div
+        id="priceItemsList"
+        class="price-items-list"
+    >
+    </div>
+
+</div>
+
+
+    <div
+        style="
+            margin-bottom:12px;
+            padding:12px;
+            border:1px solid rgba(196,150,66,.18);
+            border-radius:12px;
+            background:#fffaf0;
+        "
+    >
+
+        
+
+
+    <div class="price-items-toolbar">
+
+        <div class="price-search-wrap">
+
+            <input
+                type="search"
+                id="priceItemSearch"
+                placeholder="Search menu item..."
+                autocomplete="off"
+            >
+
+        </div>
+
+
+        <button
+            type="button"
+            class="restaurant-action-btn"
+            id="priceSelectAllBtn"
+        >
+            Select All
+        </button>
+
+    </div>
+
+
+    <div
+        id="priceItemsList"
+        class="price-items-list"
+    >
+    </div>
+
+</div>
 
 
             <div
@@ -4355,6 +4441,109 @@ function formatPriceCategoryName(
             letter.toUpperCase()
         );
 }
+
+function renderPriceCategoryPanel() {
+
+    const panel =
+        document.getElementById(
+            'priceCategoryPanel'
+        );
+
+    if (!panel) {
+        return;
+    }
+
+    const categories =
+        Object.keys(
+            priceManagementMenu || {}
+        ).filter(
+            category =>
+                Array.isArray(
+                    priceManagementMenu[category]
+                )
+        );
+
+    if (!categories.length) {
+
+        panel.innerHTML = `
+            <div
+                style="
+                    padding:10px;
+                    color:#735727;
+                    font-size:11px;
+                    font-weight:800;
+                "
+            >
+                No categories found.
+            </div>
+        `;
+
+        return;
+    }
+
+    panel.innerHTML =
+        categories.map(
+            category => `
+                <button
+                    type="button"
+                    class="restaurant-action-btn"
+                    data-price-category="${escapeHtml(category)}"
+                    style="
+                        width:100%;
+                        min-height:42px;
+                        margin-bottom:8px;
+                        font-weight:800;
+                        text-align:left;
+                    "
+                >
+                    ${escapeHtml(
+                        formatPriceCategoryName(
+                            category
+                        )
+                    )}
+                </button>
+            `
+        ).join('');
+
+    panel
+        .querySelectorAll(
+            '[data-price-category]'
+        )
+        .forEach(
+            button => {
+
+                button.addEventListener(
+                    'click',
+                    () => {
+
+                        const category =
+                            button.dataset
+                                .priceCategory;
+
+                        const categoryItems =
+                            getAllPriceItems()
+                                .filter(
+                                    item =>
+                                        item.category ===
+                                        category
+                                );
+
+                        categoryItems.forEach(
+                            item => {
+                                priceManagementSelectedItems
+                                    .add(item.key);
+                            }
+                        );
+
+                        renderPriceItemsList();
+                        updateSelectedPriceCount();
+                        updatePricePreview();
+                    }
+                );
+            }
+        );
+}
+
 
 
 /* ================================================================
@@ -4481,6 +4670,180 @@ function setupPriceManagementEvents() {
             toggleAllPriceItems
         );
     }
+
+        function setActivePriceButton(activeButtonId) {
+
+    [
+        'priceAllMenuBtn',
+        'priceSelectCategoryBtn',
+        'priceSelectItemsBtn',
+        'priceClearSelectionBtn'
+    ].forEach(id => {
+
+        const button = document.getElementById(id);
+
+        if (button) {
+            button.classList.toggle(
+                'active',
+                id === activeButtonId
+            );
+        }
+
+    });
+}
+
+const allMenuButton =
+    document.getElementById(
+        'priceAllMenuBtn'
+    );
+
+if (allMenuButton) {
+    allMenuButton.addEventListener(
+        'click',
+        () => {
+
+            setActivePriceButton('priceAllMenuBtn');
+
+            const categoryPanel =
+    document.getElementById('priceCategoryPanel');
+
+const itemsPanel =
+    document.getElementById('priceItemsSelectionPanel');
+
+if (categoryPanel) {
+    categoryPanel.style.display = 'none';
+}
+
+if (itemsPanel) {
+    itemsPanel.style.display = 'none';
+}
+
+
+            getAllPriceItems().forEach(
+                item => {
+                    priceManagementSelectedItems.add(
+                        item.key
+                    );
+                }
+            );
+
+            renderPriceItemsList();
+            updateSelectedPriceCount();
+            updatePricePreview();
+        }
+    );
+}
+
+
+const selectCategoryButton =
+    document.getElementById(
+        'priceSelectCategoryBtn'
+    );
+
+if (selectCategoryButton) {
+    selectCategoryButton.addEventListener(
+        'click',
+        () => {
+
+            setActivePriceButton('priceSelectCategoryBtn');
+
+            const categoryPanel =
+                document.getElementById(
+                    'priceCategoryPanel'
+                );
+
+            const itemsPanel =
+                document.getElementById(
+                    'priceItemsSelectionPanel'
+                );
+
+            if (itemsPanel) {
+                itemsPanel.style.display = 'none';
+            }
+
+            if (categoryPanel) {
+                categoryPanel.style.display = 'block';
+            }
+
+            renderPriceCategoryPanel();
+        }
+    );
+}
+
+
+const selectItemsButton =
+    document.getElementById(
+        'priceSelectItemsBtn'
+    );
+
+if (selectItemsButton) {
+    selectItemsButton.addEventListener(
+        'click',
+        () => {
+
+            setActivePriceButton('priceSelectItemsBtn');
+
+            const categoryPanel =
+                document.getElementById(
+                    'priceCategoryPanel'
+                );
+
+            const itemsPanel =
+                document.getElementById(
+                    'priceItemsSelectionPanel'
+                );
+
+            if (categoryPanel) {
+                categoryPanel.style.display = 'none';
+            }
+
+            if (itemsPanel) {
+                itemsPanel.style.display = 'block';
+            }
+
+            renderPriceItemsList();
+            updateSelectedPriceCount();
+            updatePricePreview();
+        }
+    );
+}
+
+
+const clearSelectionButton =
+    document.getElementById(
+        'priceClearSelectionBtn'
+    );
+
+if (clearSelectionButton) {
+    clearSelectionButton.addEventListener(
+        'click',
+        () => {
+
+            setActivePriceButton('priceClearSelectionBtn');
+
+            const categoryPanel =
+                document.getElementById('priceCategoryPanel');
+
+            const itemsPanel =
+                document.getElementById('priceItemsSelectionPanel');
+
+            if (categoryPanel) {
+                categoryPanel.style.display = 'none';
+            }
+
+            if (itemsPanel) {
+                itemsPanel.style.display = 'none';
+            }
+
+
+            priceManagementSelectedItems.clear();
+
+            renderPriceItemsList();
+            updateSelectedPriceCount();
+            updatePricePreview();
+        }
+    );
+}
 }
 
 
@@ -4696,6 +5059,12 @@ function renderPriceItemsList() {
                                 class="price-item-check"
                                 data-price-key="${escapeHtml(key)}"
                                 ${selected ? 'checked' : ''}
+                                style="
+        width:14px;
+        height:14px;
+        margin:0;
+        flex:0 0 14px;
+    "
                             >
 
                             <span class="price-item-info">
@@ -4704,7 +5073,7 @@ function renderPriceItemsList() {
                                     style="
                                         display:block;
                                         color:#2b211b;
-                                        font-size:11px;
+                                        font-size:18px;
                                         font-weight:800;
                                     "
                                 >
@@ -4719,7 +5088,7 @@ function renderPriceItemsList() {
                                             entry.category
                                         )
                                     )}
-                                    Â·
+                                    ·
                                     ${formatETB(price)}
                                 </span>
 
@@ -5074,7 +5443,7 @@ function updatePricePreview() {
                                             )}
                                         </span>
 
-                                        &nbsp;â†’&nbsp;
+                                        &nbsp;→&nbsp;
 
                                         <span
                                             class="price-preview-new"
@@ -5147,7 +5516,7 @@ function confirmPriceManagement() {
 
     if (
         !Number.isFinite(percentage) ||
-        percentage <= 0 ||
+        percentage < 0 ||
         percentage > 100
     ) {
 
@@ -5205,7 +5574,7 @@ function confirmPriceManagement() {
         <div class="price-confirmation">
 
             <div class="price-confirmation-icon">
-                âœ“
+                ✓
             </div>
 
             <div class="price-confirmation-eyebrow">
@@ -5261,7 +5630,7 @@ function confirmPriceManagement() {
             <button
                 type="button"
                 class="owner-action-btn"
-                onclick="applyPriceManagement()"
+                onclick="applyPriceManagement(${percentage})"
                 style="
                     min-height:43px;
                     padding:0 20px;
@@ -5288,7 +5657,7 @@ function confirmPriceManagement() {
    APPLY PRICE MANAGEMENT
    ================================================================ */
 
-async function applyPriceManagement() {
+async function applyPriceManagement(confirmedPercentage) {
 
     const restaurant =
         priceManagementRestaurant;
@@ -5317,11 +5686,7 @@ async function applyPriceManagement() {
 
 
     const percentage =
-        Number(
-            document.getElementById(
-                'pricePercentage'
-            )?.value || 0
-        );
+    Number(confirmedPercentage);
 
 
     const activeOperation =
@@ -5363,7 +5728,7 @@ async function applyPriceManagement() {
 
     if (
         !Number.isFinite(percentage) ||
-        percentage <= 0 ||
+        percentage < 0 ||
         percentage > 100
     ) {
 
@@ -5499,32 +5864,51 @@ async function applyPriceManagement() {
     try {
 
         const response =
-            await fetch(
-                `/api/admin/menu/${encodeURIComponent(slug)}`,
-                {
-                    method:'POST',
+    await fetch(
+        `/api/owner/restaurants/${encodeURIComponent(
+            restaurant.id
+        )}/price-management`,
+        {
+            method: 'POST',
 
-                    headers:{
-                        Authorization:
-                            `Bearer ${token}`,
+            headers: {
+                Authorization:
+                    `Bearer ${token}`,
 
-                        'Content-Type':
-                            'application/json',
+                'Content-Type':
+                    'application/json',
 
-                        Accept:
-                            'application/json'
-                    },
+                Accept:
+                    'application/json'
+            },
 
-                    credentials:
-                        'same-origin',
+            credentials:
+                'same-origin',
 
-                    body:
-                        JSON.stringify({
-                            menu:
-                                updatedMenu
-                        })
-                }
-            );
+            body:
+                JSON.stringify({
+                    mode:
+                        operation,
+
+                    percentage:
+                        percentage,
+
+                    scope:
+                        'items',
+
+                    items:
+                        selected.map(
+                            entry => ({
+                                category:
+                                    entry.category,
+
+                                index:
+                                    entry.index
+                            })
+                        )
+                })
+        }
+    );
 
 
         const data =
@@ -5738,7 +6122,7 @@ function showOwnerNotification(
         ) {
 
             icon.textContent =
-                'âœ“';
+                '✓';
 
         } else if (
             type === 'error'
@@ -7206,3 +7590,12 @@ if (
 
     initializeSuperAdminDashboard();
 }
+
+
+
+
+
+
+
+
+
