@@ -1,4 +1,4 @@
-/* ================================================================
+﻿/* ================================================================
    CAFFE MENU — SUPER ADMIN DASHBOARD
    FULL PROFESSIONAL DASHBOARD
    Espresso / Cream / Gold
@@ -3692,7 +3692,7 @@ textarea:focus-visible {
 
 
 /* ================================================================
-   PRICE MANAGEMENT � ACTIVE SELECTION BUTTON
+   PRICE MANAGEMENT ï¿½ ACTIVE SELECTION BUTTON
    ================================================================ */
 
 .price-management #priceAllMenuBtn.active,
@@ -3721,8 +3721,8 @@ textarea:focus-visible {
 
 
 /* ================================================================
-   SUPER ADMIN � VISIBILITY & PROFESSIONAL UI
-   VISUAL ONLY � NO FUNCTIONALITY OR LAYOUT CHANGES
+   SUPER ADMIN ï¿½ VISIBILITY & PROFESSIONAL UI
+   VISUAL ONLY ï¿½ NO FUNCTIONALITY OR LAYOUT CHANGES
    ================================================================ */
 
 .super-admin-app {
@@ -4089,7 +4089,7 @@ label:has(#ownerShowAdminPassword) {
 
 
 /* ================================================================
-   SUPER ADMIN � PREMIUM CAFE THEME
+   SUPER ADMIN ï¿½ PREMIUM CAFE THEME
    FINAL VISUAL OVERRIDES ONLY
    NO FUNCTIONALITY OR ARRANGEMENT CHANGES
    ================================================================ */
@@ -5321,4 +5321,44 @@ label:has(#ownerShowAdminPassword) {
     }
 }
 
+
+/* ================================================================
+   SUPER ADMIN FORMS — VERTICAL SCROLL
+   ================================================================ */
+
+.owner-action-panel {
+    overflow: hidden !important;
+}
+
+.owner-action-content {
+    max-height: calc(100vh - 190px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* ================================================================
+   PRICE MANAGEMENT — MOBILE BUTTON ROW
+   ================================================================ */
+
+#priceAllMenuBtn,
+#priceSelectCategoryBtn,
+#priceSelectItemsBtn,
+#priceClearSelectionBtn {
+    box-sizing: border-box !important;
+}
+
+@media (max-width: 650px) {
+    #priceAllMenuBtn,
+    #priceSelectCategoryBtn,
+    #priceSelectItemsBtn,
+    #priceClearSelectionBtn {
+        flex: 1 1 calc(50% - 6px) !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+    }
+}
 

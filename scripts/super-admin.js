@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 /* ================================================================
    CAFFE MENU — SUPER ADMIN DASHBOARD
@@ -6674,7 +6674,7 @@ function openOwnerActionPanel(
             maxWidth:
                 'calc(100vw - 32px)',
 
-            height:'auto',
+            height:'calc(100vh - 32px)',
 
             maxHeight:
                 'calc(100vh - 32px)',
@@ -6724,19 +6724,20 @@ function openOwnerActionPanel(
      */
 
     Object.assign(
-        contentElement.style,
-        {
-            display:'block',
-            visibility:'visible',
-            opacity:'1',
-            width:'100%',
-            maxWidth:'none',
-            margin:'0',
-            overflowY:'auto',
-            overflowX:'hidden',
-            boxSizing:'border-box'
-        }
-    );
+    contentElement.style,
+    {
+        display:'block',
+        visibility:'visible',
+        opacity:'1',
+        width:'100%',
+        maxWidth:'none',
+        margin:'0',
+        maxHeight:'100%',
+        overflowY:'auto',
+        overflowX:'hidden',
+        boxSizing:'border-box'
+    }
+);
 
 
     /*
@@ -6881,6 +6882,8 @@ function openOwnerActionPanel(
    ================================================================ */
 
 function closeOwnerActionPanel() {
+
+        duplicateSourceRestaurant = null;
 
     const panel =
         document.getElementById(
@@ -7745,3 +7748,4 @@ if (
 
     initializeSuperAdminDashboard();
 }
+

@@ -1,4 +1,4 @@
-﻿let cart = [];
+let cart = [];
 
 const STORAGE_KEY = 'simple-cart';
 
@@ -197,10 +197,15 @@ function showRestaurantHeaderLoading() {
         document.getElementById('restaurantLogo');
 
     if (logoElement) {
-        logoElement.removeAttribute('src');
+        logoElement.src = 'image/z logo.jpeg';
 
-        logoElement.alt =
-            'Restaurant logo';
+        logoElement.alt = '';
+
+        logoElement.onerror = function () {
+            this.onerror = null;
+            this.src = 'image/z logo.jpeg';
+            this.alt = '';
+        };
 
         logoElement.classList.add(
             'restaurant-loading-logo'
@@ -275,10 +280,10 @@ function showRestaurantHeaderError() {
         'aria-busy'
     );
 
-    logoElement.removeAttribute('src');
+    logoElement.src =
+        'image/z logo.jpeg';
 
-    logoElement.alt =
-        'Restaurant Logo';
+    logoElement.alt = '';
 
     logoElement.style.display =
         'block';
@@ -369,8 +374,13 @@ async function loadRestaurantLogo() {
 
             logoElement.src = logo;
 
-            logoElement.alt =
-                'Restaurant Logo';
+            logoElement.alt = '';
+
+            logoElement.onerror = function () {
+                this.onerror = null;
+                this.src = 'image/z logo.jpeg';
+                this.alt = '';
+            };
 
             logoElement.style.display =
                 'block';
@@ -411,12 +421,16 @@ async function loadRestaurantLogo() {
 
         if (logoElement) {
 
-            logoElement.removeAttribute(
-                'src'
-            );
+            logoElement.src =
+                'image/z logo.jpeg';
 
-            logoElement.alt =
-                'Restaurant Logo';
+            logoElement.alt = '';
+
+            logoElement.onerror = function () {
+                this.onerror = null;
+                this.src = 'image/z logo.jpeg';
+                this.alt = '';
+            };
 
             logoElement.style.display =
                 'block';
@@ -458,7 +472,7 @@ async function loadMenuFromServer() {
             `${API_BASE}/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
             {
                 method: 'GET',
-                cache: 'no-store',
+                cache: 'default',
                 headers: {
                     'Accept': 'application/json'
                 }
@@ -736,7 +750,7 @@ async function refreshCustomerMenuSilently() {
                 `/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
                 {
                     method: 'GET',
-                    cache: 'no-store',
+                    cache: 'default',
                     headers: {
                         'Cache-Control': 'no-cache'
                     }
@@ -888,12 +902,12 @@ function renderRestaurantProfile() {
         if (logo) {
             logoElement.src = logo;
             logoElement.style.display = 'block';
-            logoElement.alt = 'Restaurant Logo';
+            logoElement.alt = '';
         } else {
-    logoElement.removeAttribute('src');
-    logoElement.style.display = 'block';
-    logoElement.alt = 'Restaurant Logo';
-}
+            logoElement.src = 'image/z logo.jpeg';
+            logoElement.style.display = 'block';
+            logoElement.alt = '';
+        }
     }
 
 
@@ -1255,8 +1269,7 @@ function renderItems() {
                     '';
 
                 const image =
-                    food.image ||
-                    '';
+                    food.image || 'image/food.jpeg';
 
                 const daySpecial =
                     food.isDaySpecial === true;
@@ -1293,7 +1306,7 @@ function renderItems() {
                                 )}"
                                 loading="lazy"
                                 onclick="zoomImage(this.src)"
-                                onerror="this.onerror=null;this.src='image/latte.jpeg';"
+                                onerror="this.onerror=null;this.src='image/food.jpeg';"
                             >
 
                         </div>
@@ -1576,7 +1589,7 @@ function openCustomerDaySpecial() {
 
 
                 <div class="customer-day-special-empty-icon">
-                    ⭐
+                    ✨
                 </div>
 
 
@@ -1645,8 +1658,7 @@ function openCustomerDaySpecial() {
                     '';
 
                 const image =
-                    item.image ||
-                    '';
+                    item.image || 'image/food.jpeg';
 
                 const price =
                     Number(item.price) || 0;
@@ -1671,7 +1683,7 @@ function openCustomerDaySpecial() {
                                 class="customer-day-special-image"
                                 onerror="
                                     this.onerror = null;
-                                    this.src = 'image/latte.jpeg';
+                                    this.src = 'image/food.jpeg';
                                 "
                             >
 
@@ -1765,7 +1777,7 @@ function openCustomerDaySpecial() {
                     id="customerDaySpecialTitle"
                     class="customer-day-special-heading"
                 >
-                    ⭐ TODAY'S SPECIALS ⭐
+                    ✨ TODAY'S SPECIALS ✨
                 </h2>
 
 
@@ -1872,7 +1884,7 @@ function openCustomerDaySpecial() {
 
 
                     addButton.textContent =
-                        'âœ“ Added to Cart';
+                        '✓ Added to Cart';
 
                     addButton.disabled =
                         true;
@@ -2202,7 +2214,7 @@ function addToCart(
 
 
         button.textContent =
-            'âœ“ Added';
+            '✓ Added';
 
 
         button.disabled =
@@ -2297,7 +2309,7 @@ function renderCart() {
                                             item.name
                                         )}')"
                                     >
-                                        âˆ’
+                                        -
                                     </button>
 
 
@@ -3094,11 +3106,11 @@ window.addEventListener(
  * Every 15 seconds:
  *
  * Admin changes menu
- *        â†“
+ *        →
  * Server saves it
- *        â†“
+ *        →
  * Customer automatically requests latest data
- *        â†“
+ *        →
  * Menu/profile/day-special updates
  *
  * The cart is NOT touched.
@@ -3108,5 +3120,6 @@ setInterval(
     refreshCustomerMenuSilently,
     60000
 );
+
 
 

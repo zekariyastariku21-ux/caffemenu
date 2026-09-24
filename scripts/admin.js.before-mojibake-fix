@@ -52,7 +52,7 @@ function showAdminStatus(
     popup.classList.add(type);
 
     if (type === 'success') {
-        icon.textContent = '?';
+        icon.textContent = 'Ã¢Å“â€œ';
     } else if (type === 'error') {
         icon.textContent = '!';
     } else {
@@ -250,7 +250,7 @@ function showMessage(message, type = 'success') {
      * Set icon.
      */
     if (popupType === 'success') {
-        icon.textContent = '?';
+        icon.textContent = 'Ã¢Å“â€œ';
     } else if (popupType === 'error') {
         icon.textContent = '!';
     } else {
@@ -865,7 +865,7 @@ function renderCurrentMenu() {
                                         `
                                         : `
                                             <div class="admin-menu-no-image">
-                                                ??
+                                                Ëœâ€¢
                                             </div>
                                         `
                                 }
@@ -1055,7 +1055,7 @@ function refreshExistingItemsSelect() {
                 `${category}::${index}`;
 
             option.textContent =
-                `${category} • ${
+                `${category} Ã¢â‚¬â€ ${
                     item.name || 'Unnamed item'
                 }`;
 
@@ -1585,7 +1585,7 @@ async function updateSelectedCategory() {
                 `"${oldCategory}" will be renamed to "${newCategory}".`,
             confirmText: 'Rename',
             cancelText: 'Cancel',
-            icon: '?'
+            icon: 'Ã¢Å“Å½'
         });
 
     if (!confirmed) {
@@ -2083,7 +2083,7 @@ async function deleteSelectedItem() {
                 `"${itemName}" will be removed from the menu.`,
             confirmText: 'Delete Item',
             cancelText: 'Keep Item',
-            icon: '??'
+            icon: 'Ã°Å¸â€”â€˜'
         });
 
     if (!confirmed) {
@@ -2277,7 +2277,7 @@ async function refreshAdminMenu() {
     if (button) {
         button.disabled = true;
         button.textContent =
-            '? Refreshing...';
+            'Ã¢â€ Â» Refreshing...';
     }
 
     showAdminLoading(
@@ -2312,7 +2312,7 @@ async function refreshAdminMenu() {
         if (button) {
             button.disabled = false;
             button.textContent =
-                '? Refresh';
+                'Ã¢â€ Â» Refresh';
         }
 
         hideAdminLoading(150);
@@ -3245,7 +3245,7 @@ function openDaySpecialModal() {
                     class="day-special-close"
                     id="daySpecialCloseBtn"
                 >
-                    ?
+                    Ã—
                 </button>
 
             </div>
@@ -3342,7 +3342,7 @@ function openDaySpecialModal() {
                         class="day-special-save-btn"
                         disabled
                     >
-                        ? Add Day Special
+                        Ã¢Â­Â Add Day Special
                     </button>
 
                 </div>
@@ -3676,7 +3676,7 @@ function renderCurrentDaySpecialList() {
                                         `
                                         : `
                                             <span>
-                                                ??
+                                                Â­Â
                                             </span>
                                         `
                                 }
@@ -3697,7 +3697,7 @@ function renderCurrentDaySpecialList() {
                                     ${escapeHtmlForAdmin(
                                         special.category
                                     )}
-                                    •
+                                    Ã¢â‚¬Â¢
                                     ${escapeHtmlForAdmin(
                                         item.price ?? 0
                                     )}
@@ -3715,7 +3715,7 @@ function renderCurrentDaySpecialList() {
                                 data-index="${special.index}"
                                 title="Remove this Day Special"
                             >
-                                ?
+                                Ã—
                             </button>
 
                         </div>
@@ -3904,7 +3904,7 @@ function renderDaySpecialPreview(item) {
                     item.isDaySpecial === true
                         ? `
                             <span class="day-special-current">
-                                ? CURRENT DAY SPECIAL
+                                Ã¢Â­Â CURRENT DAY SPECIAL
                             </span>
                         `
                         : ''
@@ -4145,7 +4145,7 @@ async function removeDaySpecial() {
             cancelText:
                 'Keep Special',
             icon:
-                '?'
+                'Ã¢Â­Â'
         });
 
     if (!confirmed) {
@@ -4253,7 +4253,7 @@ async function removeSpecificDaySpecial(
             cancelText:
                 'Keep Special',
             icon:
-                '?'
+                'â˜…'
         });
 
     if (!confirmed) {
