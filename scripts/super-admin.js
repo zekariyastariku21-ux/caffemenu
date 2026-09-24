@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 /* ================================================================
    CAFFE MENU — SUPER ADMIN DASHBOARD
@@ -1149,7 +1149,7 @@ function renderOwnerRestaurantRow(
                     "
                 >
                     <span>
-                        ${active ? '?' : '?'}
+                        ${active ? '✓' : '!'}
                     </span>
                     ${statusText}
                 </span>
@@ -2228,7 +2228,7 @@ async function submitEditOwnerCafe(
    EDIT CAFÉ ADMIN
    ================================================================ */
 
-function editOwnerCafeAdmin(
+async function editOwnerCafeAdmin(
     restaurantId
 ) {
 
@@ -2249,103 +2249,237 @@ function editOwnerCafeAdmin(
     }
 
 
-    const email =
-        restaurant.admin_email ||
-        restaurant.adminEmail ||
-        '';
+    const token =
+        localStorage.getItem(
+            'adminToken'
+        );
 
 
-    openOwnerActionPanel(
-        'Café Administrator',
-        `
-            <form
-                id="ownerEditCafeAdminForm"
-                onsubmit="submitEditOwnerCafeAdmin(event, ${Number(restaurantId)})"
-            >
+    if (!token) {
 
-                <div
-                    style="
-                        margin-bottom:16px;
-                        padding:14px;
-                        border:1px solid rgba(196,150,66,.16);
-                        border-radius:12px;
-                        background:#fffaf0;
-                        color:#735727;
-                        font-size:10px;
-                        line-height:1.55;
-                    "
+        showOwnerNotification(
+            'Session expired',
+            'Please log in again.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/owner/restaurants/${Number(restaurantId)}/admin`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization':
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.message ||
+                'Unable to load admin account.'
+            );
+        }
+
+
+        const admin =
+            data.admin || {};
+
+
+        const email =
+            admin.email || '';
+
+
+        const currentPassword =
+            admin.password || '';
+
+
+        openOwnerActionPanel(
+            'Admin Account',
+            `
+                <form
+                    id="ownerEditCafeAdminForm"
+                    onsubmit="submitEditOwnerCafeAdmin(event, ${Number(restaurantId)})"
                 >
-                    Update the login credentials for
-                    <strong>
-                        ${escapeHtml(
-                            getRestaurantName(
-                                restaurant
-                            )
-                        )}
-                    </strong>.
-                </div>
 
-                <div class="owner-form-grid">
+                    <div
+                        style="
+                            display:grid;
+                            grid-template-columns:1fr 1fr auto;
+                            gap:16px;
+                            align-items:end;
+                            margin-bottom:18px;
+                        "
+                    >
 
-                    <div class="owner-form-field">
+                        <div class="owner-form-field">
 
-                        <label for="ownerEditAdminEmail">
-                            Café Admin Email
-                        </label>
+                            <label>
+                                Current Email
+                            </label>
 
-                        <input
-                            type="email"
-                            id="ownerEditAdminEmail"
-                            value="${escapeHtml(email)}"
-                            autocomplete="email"
-                            required
+                            <input
+                                type="email"
+                                value="${escapeHtml(email)}"
+                                readonly
+                            >
+
+                        </div>
+
+
+                        <div class="owner-form-field">
+
+                            <label>
+                                Current Password
+                            </label>
+
+                            <input
+                                type="password"
+                                id="ownerCurrentAdminPassword"
+                                value="${escapeHtml(currentPassword)}"
+                                readonly
+                            >
+
+                        </div>
+
+
+                        <label
+                            style="
+                                display:flex;
+                                align-items:center;
+                                gap:7px;
+                                cursor:pointer;
+                                font-size:13px;
+                                padding-bottom:10px;
+                                white-space:nowrap;
+                            "
                         >
+
+                            <input
+                                type="checkbox"
+                                id="ownerShowAdminPassword"
+                                onchange="
+                                    document.getElementById('ownerCurrentAdminPassword').type =
+                                    this.checked ? 'text' : 'password';
+                                "
+                            >
+
+                            Show Password
+
+                        </label>
 
                     </div>
 
-                    <div class="owner-form-field">
 
-                        <label for="ownerEditAdminPassword">
-                            New Password
-                        </label>
+                    <div class="owner-form-grid">
 
-                        <input
-                            type="password"
-                            id="ownerEditAdminPassword"
-                            placeholder="Minimum 6 characters"
-                            autocomplete="new-password"
-                            minlength="6"
-                            required
-                        >
+                        <div class="owner-form-field">
+
+                            <label for="ownerEditAdminEmail">
+                                New Email
+                            </label>
+
+                            <input
+                                type="email"
+                                id="ownerEditAdminEmail"
+                                value="${escapeHtml(email)}"
+                                autocomplete="email"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="owner-form-field">
+
+                            <label for="ownerEditAdminPassword">
+                                New Password
+                            </label>
+
+                            <input
+                                type="password"
+                                id="ownerEditAdminPassword"
+                                autocomplete="new-password"
+                            >
+
+                        </div>
+
+
+                        <div class="owner-form-field">
+
+                            <label for="ownerEditAdminPasswordConfirm">
+                                Confirm Password
+                            </label>
+
+                            <input
+                                type="password"
+                                id="ownerEditAdminPasswordConfirm"
+                                autocomplete="new-password"
+                            >
+
+                        </div>
 
                     </div>
 
-                </div>
 
-                <div class="owner-form-actions">
-
-                    <button
-                        type="button"
-                        class="restaurant-action-btn"
-                        onclick="closeOwnerActionPanel()"
+                    <div
+                        class="owner-action-buttons"
+                        style="
+                            margin-top:18px;
+                            display:flex;
+                            justify-content:flex-end;
+                            gap:10px;
+                        "
                     >
-                        Cancel
-                    </button>
 
-                    <button
-                        type="submit"
-                        class="owner-action-btn"
-                    >
-                        Save Credentials
-                    </button>
+                        <button
+                            type="button"
+                            onclick="closeOwnerActionPanel()"
+                        >
+                            Cancel
+                        </button>
 
-                </div>
 
-            </form>
-        `
-    );
+                        <button
+                            type="submit"
+                        >
+                            Save Changes
+                        </button>
+
+                    </div>
+
+                </form>
+            `
+        );
+
+    } catch (error) {
+
+        console.error(
+            '[owner:restaurant:admin:get]',
+            error
+        );
+
+        showOwnerNotification(
+            'Unable to load admin account',
+            error.message ||
+            'Unable to load the current admin account.',
+            'error'
+        );
+    }
 }
-
 
 async function submitEditOwnerCafeAdmin(
     event,
@@ -2387,6 +2521,14 @@ async function submitEditOwnerCafeAdmin(
             ?.value || '';
 
 
+    const confirmPassword =
+        document
+            .getElementById(
+                'ownerConfirmAdminPassword'
+            )
+            ?.value || '';
+
+
     if (!email) {
 
         showOwnerNotification(
@@ -2406,6 +2548,20 @@ async function submitEditOwnerCafeAdmin(
         showOwnerNotification(
             'Password too short',
             'The password must contain at least 6 characters.',
+            'error'
+        );
+
+        return;
+    }
+
+
+    if (
+        password !== confirmPassword
+    ) {
+
+        showOwnerNotification(
+            'Passwords do not match',
+            'New password and confirm password must match.',
             'error'
         );
 
@@ -2489,7 +2645,6 @@ async function submitEditOwnerCafeAdmin(
         cleanupOwnerVisualState();
     }
 }
-
 
 /* ================================================================
    ENABLE / DISABLE
@@ -2870,7 +3025,7 @@ function openDuplicateCafePanel() {
                     <div class="owner-empty-state">
 
                         <div class="owner-empty-icon">
-                            ⧉
+                            →
                         </div>
 
                         <h3 class="owner-empty-title">
@@ -7590,12 +7745,3 @@ if (
 
     initializeSuperAdminDashboard();
 }
-
-
-
-
-
-
-
-
-

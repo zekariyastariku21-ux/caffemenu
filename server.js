@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 
 const express = require('express');
 const fs = require('fs');
@@ -2352,6 +2352,79 @@ app.put(
    UPDATE RESTAURANT ADMIN ACCOUNT
    ================================================================ */
 
+app.get(
+  '/api/owner/restaurants/:id/admin',
+  requireOwner,
+  async (req, res) => {
+    try {
+      const restaurantId =
+        Number(req.params.id);
+
+      if (
+        !Number.isInteger(restaurantId) ||
+        restaurantId <= 0
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Invalid restaurant ID.'
+        });
+      }
+
+      const result =
+        await pool.query(`
+          SELECT
+            id,
+            email,
+            password,
+            role,
+            restaurant_id
+          FROM users
+          WHERE restaurant_id = $1
+            AND role = 'cafe_admin'
+          ORDER BY id ASC
+          LIMIT 1
+        `, [
+          restaurantId
+        ]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message:
+            'Restaurant admin account not found.'
+        });
+      }
+
+      const admin =
+        result.rows[0];
+
+      return res.json({
+        ok: true,
+        admin: {
+          id: admin.id,
+          email: admin.email,
+          password: admin.password,
+          role: admin.role,
+          restaurantId: admin.restaurant_id
+        }
+      });
+
+    } catch (error) {
+      console.error(
+        '[owner:restaurant:admin:get] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message:
+          'Unable to load restaurant admin account.'
+      });
+    }
+  }
+);
+
 app.put(
   '/api/owner/restaurants/:id/admin',
   requireOwner,
@@ -3385,6 +3458,7 @@ async function startServer() {
 }
 
 startServer();
+
 
 
 
