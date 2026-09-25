@@ -5,12 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <title>Super Admin Dashboard - Caffe Menu</title>
 
-<title>Super Admin Dashboard - Caffe Menu</title>
-
-<link rel="stylesheet" href="/stylesheets/super-admin.css">
-
-
+    <link rel="stylesheet" href="/stylesheets/super-admin.css">
 </head>
 
 <body>
@@ -19,39 +16,33 @@
      TOP NOTIFICATION
 ================================================================ -->
 
-<div id="ownerTopNotification"
-     class="owner-top-notification">
+<div id="ownerTopNotification" class="owner-top-notification">
 
+    <div class="owner-notification-content">
 
-<div class="owner-notification-content">
-
-    <div id="ownerNotificationIcon"
-         class="owner-notification-icon">
-        âœ“
-    </div>
-
-    <div class="owner-notification-text">
-
-        <div id="ownerNotificationTitle"
-             class="owner-notification-title">
-            Success
+        <div id="ownerNotificationIcon" class="owner-notification-icon">
+            ✓
         </div>
 
-        <div id="ownerNotificationMessage"
-             class="owner-notification-message">
+        <div class="owner-notification-text">
+
+            <div id="ownerNotificationTitle" class="owner-notification-title">
+                Success
+            </div>
+
+            <div id="ownerNotificationMessage" class="owner-notification-message">
+            </div>
+
         </div>
 
+        <button class="owner-notification-close"
+                onclick="closeOwnerNotification()"
+                type="button"
+                aria-label="Close notification">
+            ✕
+        </button>
+
     </div>
-
-    <button class="owner-notification-close"
-            onclick="closeOwnerNotification()"
-            type="button"
-            aria-label="Close notification">
-        âœ•
-    </button>
-
-</div>
-
 
 </div>
 
@@ -60,7 +51,6 @@
 ================================================================ -->
 
 <main class="super-admin-app">
-
 
 <!-- ============================================================
      HEADER
@@ -75,7 +65,7 @@
                 title="Refresh Dashboard"
                 type="button"
                 aria-label="Refresh Dashboard">
-            â†»
+            ↻
         </button>
 
     </div>
@@ -107,17 +97,16 @@
                     id="superAdminMenuToggle"
                     aria-label="Open menu"
                     aria-expanded="false">
-                â˜°
+                ☰
             </button>
 
-            <div class="super-admin-menu"
-                 id="superAdminMenu">
+            <div class="super-admin-menu" id="superAdminMenu">
 
                 <button type="button"
                         onclick="openCreateCafePanel(); closeSuperAdminMenu();">
 
                     <span class="owner-menu-feature-icon">
-                        ï¼‹
+                        ➕
                     </span>
 
                     <span>
@@ -132,11 +121,11 @@
                         onclick="openDuplicateCafePanel(); closeSuperAdminMenu();">
 
                     <span class="owner-menu-feature-icon">
-                        â§‰
+                        ⧉
                     </span>
 
                     <span>
-                        Duplicate CafÃ©
+                        Duplicate Café
                     </span>
 
                 </button>
@@ -147,7 +136,7 @@
                         onclick="openPriceManagementPanel(); closeSuperAdminMenu();">
 
                     <span class="owner-menu-feature-icon">
-                        %
+                        🏷️
                     </span>
 
                     <span>
@@ -161,7 +150,7 @@
                         onclick="openCompanyProfile(); closeSuperAdminMenu();">
 
                     <span class="owner-menu-feature-icon">
-                        âš™
+                        ⚙️
                     </span>
 
                     <span>
@@ -179,7 +168,7 @@
                         onclick="logoutAdmin(); closeSuperAdminMenu();">
 
                     <span class="owner-menu-feature-icon">
-                        â†ª
+                        ↪
                     </span>
 
                     <span>
@@ -207,7 +196,7 @@
             onclick="filterOwnerRestaurants('all')">
 
         <div class="stat-icon total-icon">
-            🗂
+            🗂️
         </div>
 
         <div class="stat-content">
@@ -216,8 +205,7 @@
                 Total Restaurants
             </div>
 
-            <div id="totalRestaurants"
-                 class="stat-number">
+            <div id="totalRestaurants" class="stat-number">
                 0
             </div>
 
@@ -235,7 +223,7 @@
             onclick="filterOwnerRestaurants('active')">
 
         <div class="stat-icon active-icon">
-            âœ“
+            ✓
         </div>
 
         <div class="stat-content">
@@ -244,8 +232,7 @@
                 Active Restaurants
             </div>
 
-            <div id="activeRestaurants"
-                 class="stat-number">
+            <div id="activeRestaurants" class="stat-number">
                 0
             </div>
 
@@ -263,7 +250,7 @@
             onclick="filterOwnerRestaurants('disabled')">
 
         <div class="stat-icon disabled-icon">
-            ⛔
+            ⛔️
         </div>
 
         <div class="stat-content">
@@ -272,8 +259,7 @@
                 Disabled Restaurants
             </div>
 
-            <div id="disabledRestaurants"
-                 class="stat-number">
+            <div id="disabledRestaurants" class="stat-number">
                 0
             </div>
 
@@ -309,7 +295,7 @@
                 type="button">
 
             <span>
-                â†»
+                ↻
             </span>
 
             Refresh
@@ -327,7 +313,7 @@
         <div class="restaurant-search-bar">
 
             <span class="search-icon">
-                âŒ•
+                🔍
             </span>
 
             <input type="text"
@@ -340,7 +326,7 @@
                     id="restaurantSearchClear"
                     title="Clear search"
                     aria-label="Clear search">
-                âœ•
+                ✕
             </button>
 
         </div>
@@ -351,51 +337,41 @@
     <!-- ========================================================
          TABLE
     ========================================================= -->
-    <!-- ========================================================
-     TABLE
-========================================================= -->
-<div class="restaurant-table">
+    <div class="restaurant-table">
 
-    <div class="restaurant-table-header">
+        <div class="restaurant-table-header">
 
-        <div>
-            #
+            <div>
+                #
+            </div>
+
+            <div>
+                Restaurant Name
+            </div>
+
+            <div>
+                Slug
+            </div>
+
+            <div>
+                Status
+            </div>
+
+            <div>
+                Access
+            </div>
+
         </div>
 
-        <div>
-            Restaurant Name
-        </div>
 
-        <div>
-            Slug
-        </div>
-
-        <div>
-            Status
-        </div>
-
-        <div>
-            Access
+        <div id="ownerCafeList" class="owner-cafe-list">
+            Loading cafés...
         </div>
 
     </div>
 
 
-    <div id="ownerCafeList"
-         class="owner-cafe-list">
-        Loading cafÃ©s...
-    </div>
-
-</div>
-
-
-<div id="ownerDashboardMessage"
-     class="owner-dashboard-message">
-</div>
-
-
-    <div id="ownerDashboardMessage"
-         class="owner-dashboard-message">
+    <div id="ownerDashboardMessage" class="owner-dashboard-message">
     </div>
 
 </section>
@@ -455,14 +431,13 @@
             onclick="closeOwnerActionPanel()"
             type="button"
             aria-label="Close">
-        âœ•
+        ✕
     </button>
 
 </div>
 
 
-<div id="ownerActionContent"
-     class="owner-action-content">
+<div id="ownerActionContent" class="owner-action-content">
 </div>
 
 
@@ -470,10 +445,10 @@
 
 <!-- ============================================================
      ADMIN STATUS POPUP
-     ============================================================ -->
+============================================================ -->
 <div id="adminStatusPopup" class="admin-status-popup">
     <div class="admin-status-popup-content">
-        <div id="adminStatusIcon" class="admin-status-icon">âœ“</div>
+        <div id="adminStatusIcon" class="admin-status-icon">✓</div>
         <div id="adminStatusMessage" class="admin-status-message">
             Saved successfully
         </div>
@@ -493,4 +468,3 @@
 
 </body>
 </html>
-

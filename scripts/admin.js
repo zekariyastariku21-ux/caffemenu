@@ -1,4 +1,4 @@
-/* ================================================================
+﻿/* ================================================================
    CAFFE MENU - CAFE ADMIN PANEL
    ================================================================ */
 
@@ -52,7 +52,7 @@ function showAdminStatus(
     popup.classList.add(type);
 
     if (type === 'success') {
-        icon.textContent = '?';
+        icon.textContent = '\u2713';
     } else if (type === 'error') {
         icon.textContent = '!';
     } else {
@@ -250,7 +250,7 @@ function showMessage(message, type = 'success') {
      * Set icon.
      */
     if (popupType === 'success') {
-        icon.textContent = '?';
+        icon.textContent = '\u2713';
     } else if (popupType === 'error') {
         icon.textContent = '!';
     } else {
@@ -1055,7 +1055,7 @@ function refreshExistingItemsSelect() {
                 `${category}::${index}`;
 
             option.textContent =
-                `${category} • ${
+                `${category} â€¢ ${
                     item.name || 'Unnamed item'
                 }`;
 
@@ -1585,7 +1585,7 @@ async function updateSelectedCategory() {
                 `"${oldCategory}" will be renamed to "${newCategory}".`,
             confirmText: 'Rename',
             cancelText: 'Cancel',
-            icon: '?'
+            icon: '\u00D7'
         });
 
     if (!confirmed) {
@@ -2277,7 +2277,7 @@ async function refreshAdminMenu() {
     if (button) {
         button.disabled = true;
         button.textContent =
-            '? Refreshing...';
+            '↻ Refreshing...';
     }
 
     showAdminLoading(
@@ -2312,7 +2312,7 @@ async function refreshAdminMenu() {
         if (button) {
             button.disabled = false;
             button.textContent =
-                '? Refresh';
+                '↻ Refresh';
         }
 
         hideAdminLoading(150);
@@ -3244,9 +3244,7 @@ function openDaySpecialModal() {
                     type="button"
                     class="day-special-close"
                     id="daySpecialCloseBtn"
-                >
-                    ?
-                </button>
+                >&#215;</button>
 
             </div>
 
@@ -3342,7 +3340,7 @@ function openDaySpecialModal() {
                         class="day-special-save-btn"
                         disabled
                     >
-                        ? Add Day Special
+                        + Add Day Special
                     </button>
 
                 </div>
@@ -3697,7 +3695,7 @@ function renderCurrentDaySpecialList() {
                                     ${escapeHtmlForAdmin(
                                         special.category
                                     )}
-                                    •
+                                    â€¢
                                     ${escapeHtmlForAdmin(
                                         item.price ?? 0
                                     )}
@@ -3714,9 +3712,7 @@ function renderCurrentDaySpecialList() {
                                 )}"
                                 data-index="${special.index}"
                                 title="Remove this Day Special"
-                            >
-                                ?
-                            </button>
+                            >&#215;</button>
 
                         </div>
                     `;
@@ -4145,7 +4141,7 @@ async function removeDaySpecial() {
             cancelText:
                 'Keep Special',
             icon:
-                '?'
+                '\u00D7'
         });
 
     if (!confirmed) {
@@ -4253,7 +4249,7 @@ async function removeSpecificDaySpecial(
             cancelText:
                 'Keep Special',
             icon:
-                '?'
+                '\u00D7'
         });
 
     if (!confirmed) {
@@ -4887,6 +4883,16 @@ async function refreshCustomerMenuSilently() {
         );
     }
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
