@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 /* ================================================================
    CAFFE MENU — SUPER ADMIN DASHBOARD
@@ -1893,7 +1893,6 @@ async function submitCreateOwnerCafe(
          * a successful creation look like a failed creation.
          */
 
-        closeOwnerActionPanel();
 
 
         let refreshWorked =
@@ -2188,7 +2187,6 @@ async function submitEditOwnerCafe(
             );
 
 
-        closeOwnerActionPanel();
 
         await loadOwnerCafes();
 
@@ -2611,7 +2609,6 @@ async function submitEditOwnerCafeAdmin(
             );
 
 
-        closeOwnerActionPanel();
 
         await loadOwnerCafes();
 
@@ -2958,7 +2955,6 @@ async function executeDeleteOwnerCafe(
             );
 
 
-        closeOwnerActionPanel();
 
         await loadOwnerCafes();
 
@@ -3810,7 +3806,6 @@ async function executeDuplicateCafe(
             null;
 
 
-        closeOwnerActionPanel();
 
         await loadOwnerCafes();
 
@@ -6084,7 +6079,6 @@ async function applyPriceManagement(confirmedPercentage) {
          * Close modal before dashboard refresh.
          */
 
-        closeOwnerActionPanel();
 
 
         /*
@@ -6172,10 +6166,709 @@ function openCompanyProfile() {
 
     closeSuperAdminMenu();
 
-    cleanupOwnerVisualState();
+    openOwnerActionPanel(
+        'Company Settings',
+        `
+            <form
+                id="companySettingsForm"
+                onsubmit="return false"
+            >
 
-    window.location.href =
-        '/';
+                <div class="owner-form-group">
+                    <label for="companyName">
+                        Company Name
+                    </label>
+
+                    <div
+                        style="
+                            display:flex;
+                            align-items:center;
+                            gap:10px;
+                        "
+                    >
+                        <input
+                            id="companyName"
+                            type="text"
+                            placeholder="Company name"
+                            style="flex:1;"
+                        >
+
+                        <button
+                            type="button"
+                            class="restaurant-action-btn"
+                            onclick="document.getElementById('companyName').focus()"
+                        >
+                            &#9998; Edit
+                        </button>
+                    </div>
+                </div>
+
+                <div class="owner-form-group">
+    <label for="companySlogan">
+        Slogan
+    </label>
+
+    <div
+        style="
+            display:flex;
+            align-items:center;
+            gap:10px;
+        "
+    >
+        <input
+            id="companySlogan"
+            type="text"
+            placeholder="Company slogan"
+            style="flex:1;"
+        >
+
+        <button
+            type="button"
+            class="restaurant-action-btn"
+            onclick="document.getElementById('companySlogan').focus()"
+        >
+            &#9998; Edit
+        </button>
+    </div>
+</div>
+
+                <div class="owner-form-group">
+                    <label>
+                        Company Logo
+                    </label>
+
+                    <div
+                        style="
+                            display:flex;
+                            align-items:center;
+                            gap:14px;
+                            margin-bottom:12px;
+                        "
+                    >
+                        <img
+                            id="companyLogoPreview"
+                            src="image/z logo.jpeg"
+                            alt="Company Logo"
+                            style="
+                                width:80px;
+                                height:80px;
+                                object-fit:cover;
+                                border-radius:10px;
+                                border:1px solid #ddd;
+                            "
+                        >
+
+                        <div
+                            style="
+                                display:flex;
+                                gap:8px;
+                                flex-wrap:wrap;
+                            "
+                        >
+                            <label
+                                for="companyLogoInput"
+                                class="restaurant-action-btn"
+                                style="cursor:pointer;"
+                            >
+                                Replace Logo
+                            </label>
+
+                            <input
+                                id="companyLogoInput"
+                                type="file"
+                                accept="image/*"
+                                style="display:none;"
+                                onchange="previewCompanyLogo(event)"
+                            >
+
+                            <button
+                                type="button"
+                                class="restaurant-action-btn"
+                                onclick="deleteCompanyLogo()"
+                            >
+                                Delete Logo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="owner-form-group">
+                    <label for="companyAbout">
+                        About Company
+                    </label>
+
+                    <div
+                        style="display:flex;flex-direction:column;gap:10px;"
+                    >
+                        <textarea
+                            id="companyAbout"
+                            rows="5"
+                            placeholder="About your company"
+                            style="width:100%;resize:vertical;"
+                        ></textarea>
+
+                        <button
+                            type="button"
+                            class="restaurant-action-btn"
+                            onclick="document.getElementById('companyAbout').focus()"
+                            style="align-self:flex-end;"
+                        >
+                            &#9998; Edit
+                        </button>
+                    </div>
+                </div>
+
+
+                <div class="owner-form-group">
+    <label>
+        Phone Numbers
+    </label>
+
+    <div
+        id="companyPhoneList"
+        class="profile-entry-list"
+    ></div>
+
+    <button
+        type="button"
+        class="restaurant-action-btn"
+        onclick="addCompanyPhone()"
+        style="margin-top:10px;"
+    >
+        + Add Phone
+    </button>
+</div>
+                
+               <div class="owner-form-group">
+    <label>
+        📍 Locations
+    </label>
+
+    <div
+        id="companyLocationList"
+        class="profile-entry-list"
+    ></div>
+
+    <button
+        type="button"
+        class="restaurant-action-btn"
+        onclick="addCompanyLocation()"
+        style="margin-top:10px;"
+    >
+        + Add Location
+    </button>
+</div>
+
+
+
+<div class="owner-form-group">
+    <label for="companyEmail">
+        Email
+    </label>
+
+    <div
+        style="
+            display:flex;
+            align-items:center;
+            gap:10px;
+        "
+    >
+        <input
+            id="companyEmail"
+            type="email"
+            placeholder="Email address"
+            style="flex:1;"
+        >
+
+        <button
+            type="button"
+            class="restaurant-action-btn"
+            onclick="document.getElementById('companyEmail').focus()"
+        >
+            &#9998; Edit
+        </button>
+    </div>
+</div>
+
+
+
+
+                <div class="company-settings-actions">
+
+                    <button
+                        type="button"
+                        class="restaurant-action-btn"
+                        onclick="closeOwnerActionPanel()"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        id="companySettingsSaveButton"
+                        type="button"
+                        class="restaurant-action-btn company-settings-save-button"
+                        onclick="saveCompanySettings()"
+                    >
+                        Save Changes
+                    </button>
+
+                </div>
+
+            </form>
+        `
+    );
+
+    loadCompanySettings();
+}
+
+let companyPhoneNumbers = [];
+let companyLocations = [];
+
+function renderCompanyPhones() {
+    const list =
+        document.getElementById('companyPhoneList');
+
+    if (!list) {
+        return;
+    }
+
+    list.innerHTML = '';
+
+    companyPhoneNumbers.forEach((phone, index) => {
+        const row =
+            document.createElement('div');
+
+        row.style.cssText =
+            'display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;';
+
+        const input =
+            document.createElement('input');
+
+        input.type = 'text';
+        input.value = phone;
+        input.style.cssText =
+            'flex:1;border:none;outline:none;background:transparent;font-size:15px;';
+
+        input.addEventListener('input', () => {
+            companyPhoneNumbers[index] =
+                input.value;
+        });
+
+        const editButton =
+            document.createElement('button');
+
+        editButton.type = 'button';
+        editButton.className =
+            'restaurant-action-btn';
+        editButton.innerHTML =
+            '&#9998; Edit';
+
+        editButton.onclick = () => {
+            input.focus();
+        };
+
+        const deleteButton =
+            document.createElement('button');
+
+        deleteButton.type = 'button';
+        deleteButton.className =
+            'restaurant-action-btn';
+        deleteButton.innerHTML =
+            '&#128465; Delete';
+
+        deleteButton.onclick = () => {
+            companyPhoneNumbers.splice(index, 1);
+            renderCompanyPhones();
+        };
+
+        row.appendChild(input);
+        row.appendChild(editButton);
+        row.appendChild(deleteButton);
+
+        list.appendChild(row);
+    });
+}
+
+function addCompanyPhone() {
+    companyPhoneNumbers.push('');
+    renderCompanyPhones();
+
+    const list =
+        document.getElementById('companyPhoneList');
+
+    if (list) {
+        const inputs =
+            list.querySelectorAll('input');
+
+        if (inputs.length > 0) {
+            inputs[inputs.length - 1].focus();
+        }
+    }
+}
+
+
+function renderCompanyLocations() {
+    const list =
+        document.getElementById('companyLocationList');
+
+    if (!list) {
+        return;
+    }
+
+    list.innerHTML = '';
+
+    if (companyLocations.length === 0) {
+        const emptyMessage =
+            document.createElement('div');
+
+        emptyMessage.textContent =
+            'No locations added yet.';
+
+        emptyMessage.style.cssText =
+            'color:#777;font-size:14px;padding:8px 0;';
+
+        list.appendChild(emptyMessage);
+
+        return;
+    }
+
+    companyLocations.forEach((location, index) => {
+        const row =
+            document.createElement('div');
+
+        row.className =
+            'profile-entry profile-location-entry';
+
+        const fields =
+            document.createElement('div');
+
+        fields.className =
+            'profile-entry-fields';
+
+        const nameInput =
+            document.createElement('input');
+
+        nameInput.type = 'text';
+        nameInput.className =
+            'profile-location-name';
+        nameInput.placeholder =
+            'Location name';
+        nameInput.value =
+            location.name || '';
+
+        nameInput.addEventListener('input', () => {
+            companyLocations[index].name =
+                nameInput.value;
+        });
+
+        const urlInput =
+            document.createElement('input');
+
+        urlInput.type = 'url';
+        urlInput.className =
+            'profile-location-url';
+        urlInput.placeholder =
+            'Google Maps URL';
+        urlInput.value =
+            location.url || '';
+
+        urlInput.addEventListener('input', () => {
+            companyLocations[index].url =
+                urlInput.value;
+        });
+
+        fields.appendChild(nameInput);
+        fields.appendChild(urlInput);
+
+        const deleteButton =
+            document.createElement('button');
+
+        deleteButton.type = 'button';
+        deleteButton.className =
+            'restaurant-action-btn';
+        deleteButton.innerHTML =
+            '&#128465; Delete';
+
+        deleteButton.onclick = () => {
+            companyLocations.splice(index, 1);
+            renderCompanyLocations();
+        };
+
+        row.appendChild(fields);
+        row.appendChild(deleteButton);
+
+        list.appendChild(row);
+    });
+}
+
+function addCompanyLocation() {
+    companyLocations.push({
+        name: '',
+        url: ''
+    });
+
+    renderCompanyLocations();
+
+    const list =
+        document.getElementById('companyLocationList');
+
+    if (list) {
+        const inputs =
+            list.querySelectorAll('.profile-location-name');
+
+        if (inputs.length > 0) {
+            inputs[inputs.length - 1].focus();
+        }
+    }
+}
+
+async function loadCompanySettings() {
+
+    try {
+
+        const response =
+            await fetch(
+                '/api/owner/company-settings',
+                {
+                    credentials: 'include'
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.message ||
+                'Unable to load company settings.'
+            );
+        }
+
+        document.getElementById('companyName').value =
+            data.settings.companyName || '';
+
+        document.getElementById('companySlogan').value =
+            data.settings.slogan || '';
+
+        companyPhoneNumbers =
+            Array.isArray(data.settings.phoneNumbers)
+                ? data.settings.phoneNumbers
+                : (data.settings.phone ? [data.settings.phone] : []);
+
+        renderCompanyPhones();
+
+companyLocations =
+    Array.isArray(data.settings.addresses)
+        ? data.settings.addresses
+        : [];
+
+renderCompanyLocations();
+
+document.getElementById('companyEmail').value =
+    data.settings.email || '';
+
+document.getElementById('companyAbout').value =
+    data.settings.about || '';
+
+        const logoPreview =
+            document.getElementById('companyLogoPreview');
+
+        if (logoPreview) {
+            logoPreview.src =
+                data.settings.logo ||
+                'image/z logo.jpeg';
+        }
+    } catch (error) {
+
+        console.error(
+            '[company-settings:get] Error:',
+            error
+        );
+
+    }
+}
+
+
+function previewCompanyLogo(event) {
+    const file = event.target.files && event.target.files[0];
+    const preview = document.getElementById('companyLogoPreview');
+
+    if (!file || !preview) {
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function () {
+        preview.src = reader.result;
+    };
+
+    reader.readAsDataURL(file);
+}
+
+async function saveCompanySettings() {
+
+    showOwnerLoading('Saving...');
+
+    const saveButton =
+        document.getElementById('companySettingsSaveButton');
+
+    if (saveButton) {
+        saveButton.disabled = true;
+    }
+    const logoInput =
+        document.getElementById('companyLogoInput');
+
+    let companyLogo = '';
+
+    if (
+        logoInput &&
+        logoInput.files &&
+        logoInput.files.length > 0
+    ) {
+        companyLogo =
+            await new Promise((resolve, reject) => {
+
+                const reader =
+                    new FileReader();
+
+                reader.onload = () => {
+                    resolve(reader.result);
+                };
+
+                reader.onerror = () => {
+                    reject(
+                        new Error(
+                            'Unable to read company logo.'
+                        )
+                    );
+                };
+
+                reader.readAsDataURL(
+                    logoInput.files[0]
+                );
+            });
+    } else {
+        const logoPreview =
+            document.getElementById(
+                'companyLogoPreview'
+            );
+
+        if (
+            logoPreview &&
+            logoPreview.src &&
+            !logoPreview.src.endsWith(
+                'image/z%20logo.jpeg'
+            )
+        ) {
+            companyLogo =
+                logoPreview.src;
+        }
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                '/api/owner/company-settings',
+                {
+                    method: 'PUT',
+
+                    headers: {
+                        'Content-Type':
+                            'application/json'
+                    },
+
+                    credentials: 'include',
+
+                    body: JSON.stringify({
+                        companyName:
+                            document.getElementById(
+                                'companyName'
+                            ).value,
+
+                        slogan:
+                            document.getElementById(
+                                'companySlogan'
+                            ).value,
+
+                        phoneNumbers: companyPhoneNumbers
+    .map(phone => String(phone || '').trim())
+    .filter(Boolean),
+
+addresses: companyLocations
+    .map(location => ({
+        name: String(location.name || '').trim(),
+        url: String(location.url || '').trim()
+    }))
+    .filter(location => location.name && location.url),
+
+email: document.getElementById('companyEmail').value,
+
+                        address:
+    companyLocations.length > 0
+        ? String(companyLocations[0].name || '').trim()
+        : '',
+
+                        about:
+                            document.getElementById(
+                                'companyAbout'
+                            ).value,
+
+                        logo:
+                            companyLogo
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.message ||
+                'Unable to save company settings.'
+            );
+        }
+        const loadingOverlay =
+            document.getElementById('ownerLoadingOverlay');
+
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
+
+        showOwnerNotification(
+            'Saved successfully',
+            'success'
+        );
+
+        if (saveButton) {
+            saveButton.disabled = false;
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            '[company-settings:update] Error:',
+            error
+        );
+
+        
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Changes';
+        }
+        const loadingOverlay = document.getElementById('ownerLoadingOverlay');
+
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
+
+        showOwnerNotification('Unable to save', 'error');
+
+    }
 }
 
 
@@ -6522,8 +7215,7 @@ function ensureOwnerActionBackdrop() {
                     backdrop
                 ) {
 
-                    closeOwnerActionPanel();
-                }
+                            }
             }
         );
 
@@ -7321,8 +8013,7 @@ function setupSuperAdminMenuEvents() {
                 )
             ) {
 
-                closeOwnerActionPanel();
-            }
+                    }
         }
     );
 }
@@ -7451,8 +8142,7 @@ function setupOwnerActionPanelEvents() {
 
             if (closeButton) {
 
-                closeOwnerActionPanel();
-            }
+                    }
         }
     );
 }

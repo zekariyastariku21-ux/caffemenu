@@ -1,4 +1,4 @@
-﻿/* ================================================================
+/* ================================================================
    CAFFE MENU — SUPER ADMIN DASHBOARD
    FULL PROFESSIONAL DASHBOARD
    Espresso / Cream / Gold
@@ -1612,7 +1612,7 @@ textarea:focus-visible {
     top: 20px;
     left: 50%;
 
-    z-index: 2000;
+    z-index: 1000010;
 
     width: min(510px, calc(100vw - 30px));
 
@@ -5361,4 +5361,187 @@ label:has(#ownerShowAdminPassword) {
         overflow-wrap: break-word !important;
     }
 }
+
+
+
+
+/* ============================================================
+   COMPANY SETTINGS
+   ============================================================ */
+
+#companySettingsForm {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    height: 100%;
+    min-height: 0;
+}
+
+#companySettingsForm .company-settings-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 4px 4px 24px;
+}
+
+#companySettingsForm .company-settings-section {
+    padding: 20px 0;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+#companySettingsForm .company-settings-section:first-child {
+    padding-top: 4px;
+}
+
+#companySettingsForm .company-settings-section:last-child {
+    border-bottom: none;
+}
+
+#companySettingsForm .company-settings-section-title {
+    margin: 0 0 16px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    color: #3b2a20;
+}
+
+#companySettingsForm .company-settings-fields {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+#companySettingsForm .owner-form-group {
+    margin-bottom: 0;
+}
+
+#companySettingsForm .owner-form-group > label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 600;
+    color: #4a382d;
+}
+
+#companySettingsForm input,
+#companySettingsForm textarea {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #d7d0cb;
+    border-radius: 8px;
+    background: #fff;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #2f2925;
+}
+
+#companySettingsForm input:focus,
+#companySettingsForm textarea:focus {
+    outline: none;
+    border-color: #9b7659;
+    box-shadow: 0 0 0 2px rgba(155, 118, 89, .12);
+}
+
+#companySettingsForm textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* Company logo */
+
+#companySettingsForm .company-logo-box {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+#companySettingsForm #companyLogoPreview {
+    width: 90px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    background: #f7f5f3;
+}
+
+#companySettingsForm .company-logo-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Phone and location lists */
+
+#companySettingsForm .profile-entry-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#companySettingsForm .profile-entry {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#companySettingsForm .profile-entry-fields {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#companySettingsForm .profile-entry input {
+    min-width: 0;
+}
+
+#companySettingsForm .company-add-button {
+    margin-top: 12px;
+}
+
+/* Fixed bottom buttons */
+
+#companySettingsForm .company-settings-actions {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 4px 4px;
+    margin-top: auto;
+    border-top: 1px solid #e5e5e5;
+    background: #fff;
+}
+
+#companySettingsForm .company-settings-actions button {
+    min-width: 90px;
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+    #companySettingsForm .company-settings-content {
+        padding-left: 2px;
+        padding-right: 2px;
+    }
+
+    #companySettingsForm .company-logo-box {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    #companySettingsForm .company-logo-actions {
+        width: 100%;
+    }
+
+    #companySettingsForm .company-settings-actions {
+        padding-bottom: 6px;
+    }
+
+    #companySettingsForm .company-settings-actions button {
+        flex: 1;
+    }
+}
+
+
 

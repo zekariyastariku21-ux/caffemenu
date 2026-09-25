@@ -14,7 +14,12 @@ html {
 
 body {
     font-family: Arial, Helvetica, sans-serif;
-    background: #f6f2ed;
+    background: linear-gradient(
+        135deg,
+        #fff1e6,
+        #ccc7c6,
+        #b6afa8
+    ) !important;
     color: #2d211b;
     overflow-x: hidden;
 }
@@ -48,7 +53,7 @@ img {
 
     padding: 12px 35px;
 
-    background: rgba(255, 250, 245, 0.97);
+    background: rgba(236, 236, 236, 0.97);
 
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -90,7 +95,7 @@ img {
 
     border-radius: 16px;
 
-    border: 3px solid #ffffff;
+    border: 3px solid #cac7c7;
 
     box-shadow:
         0 5px 14px rgba(67, 43, 27, 0.20);
@@ -131,7 +136,7 @@ img {
 
     font-size: 25px;
 
-    font-weight: 800;
+    font-weight: 900px;
 
     letter-spacing: 2.2px;
 
@@ -180,13 +185,13 @@ img {
         Helvetica,
         sans-serif;
 
-    font-size: 8px;
+    font-size: 10px;
 
     font-weight: 700;
 
     letter-spacing: 2.4px;
 
-    color: #9a7254;
+    color: #6b5747;
 
     white-space: nowrap;
 
@@ -366,8 +371,8 @@ img {
 
     background: linear-gradient(
         135deg,
-        #5a3825,
-        #8b6044
+        #e69e74,
+        #64441a
     );
 
     color: white;
@@ -498,10 +503,13 @@ img {
     padding: 12px 22px;
 
     border-radius: 10px;
-
-    background: white;
-
-    color: #4b2f20;
+    background: linear-gradient(
+            90deg,
+            rgba(230, 155, 108, 0.72),
+            rgba(156, 144, 102, 0.856),
+            rgba(25, 15, 9, 0.05)
+        );
+    color: white;
 
     font-weight: 700;
 

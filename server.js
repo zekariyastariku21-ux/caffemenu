@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 
 const express = require('express');
 const fs = require('fs');
@@ -277,6 +277,39 @@ async function ensureDatabaseStructure() {
       ADD COLUMN IF NOT EXISTS logo TEXT NOT NULL DEFAULT ''
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS company_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        company_name TEXT NOT NULL DEFAULT '',
+        slogan TEXT NOT NULL DEFAULT '',
+        phone TEXT NOT NULL DEFAULT '',
+        email TEXT NOT NULL DEFAULT '',
+        address TEXT NOT NULL DEFAULT '',
+        logo TEXT NOT NULL DEFAULT '',
+        about TEXT NOT NULL DEFAULT '',
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    
+        await pool.query(`
+      ALTER TABLE company_settings
+      ADD COLUMN IF NOT EXISTS logo TEXT NOT NULL DEFAULT ''
+    `);
+
+
+    await pool.query(`
+      ALTER TABLE company_settings
+      ADD COLUMN IF NOT EXISTS about TEXT NOT NULL DEFAULT ''
+    `);
+        await pool.query(`
+      ALTER TABLE company_settings
+      ADD COLUMN IF NOT EXISTS addresses JSONB NOT NULL DEFAULT '[]'::jsonb
+    `);
+
+    await pool.query(`
+      ALTER TABLE company_settings
+      ADD COLUMN IF NOT EXISTS phone_numbers JSONB NOT NULL DEFAULT '[]'::jsonb
+    `);
     console.log('[db] Database structure checked.');
   } catch (error) {
     console.error(
@@ -570,8 +603,7 @@ app.post(
         email,
         password
       } = req.body;
-
-      if (!email || !password) {
+if (!email || !password) {
         return res.status(400).json({
           ok: false,
           message: 'Email and password are required.'
@@ -1534,6 +1566,94 @@ app.post(
    ================================================================ */
 
 
+   /* ================================================================
+   PUBLIC
+   RESTAURANT LIST
+   ================================================================ */
+
+app.get(
+  '/api/company-restaurants',
+  async (req, res) => {
+
+    try {
+
+      const result = await pool.query(`
+        SELECT
+          id,
+          name,
+          slug,
+          status
+        FROM restaurants
+        WHERE status = 'active'
+        ORDER BY id ASC
+      `);
+
+      return res.json({
+        ok: true,
+        restaurants: result.rows
+      });
+
+    } catch (error) {
+
+      console.error(
+        '[company:restaurants] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message:
+          'Unable to load restaurants.'
+      });
+
+    }
+  }
+);
+
+
+/* ================================================================
+   PUBLIC
+   RESTAURANT LIST
+   ================================================================ */
+
+app.get(
+  '/api/company-restaurants',
+  async (req, res) => {
+
+    try {
+
+      const result = await pool.query(`
+        SELECT
+          id,
+          name,
+          slug,
+          status
+        FROM restaurants
+        WHERE status = 'active'
+        ORDER BY id ASC
+      `);
+
+      return res.json({
+        ok: true,
+        restaurants: result.rows
+      });
+
+    } catch (error) {
+
+      console.error(
+        '[company:restaurants] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message:
+          'Unable to load restaurants.'
+      });
+
+    }
+  }
+);
 
 app.get(
   '/api/owner/restaurants',
@@ -3389,6 +3509,269 @@ app.delete(
   }
 );
 
+/* ================================================================
+   PUBLIC
+   COMPANY SETTINGS
+   ================================================================ */
+
+app.get(
+  '/api/company-settings',
+  async (req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT
+          company_name,
+          slogan,
+          phone,
+          phone_numbers,
+          email,
+          address,
+          logo,
+          about
+        FROM company_settings
+        WHERE id = 1
+        LIMIT 1
+      `);
+
+      if (result.rows.length === 0) {
+        return res.json({
+          ok: true,
+          settings: {
+            companyName: '',
+            slogan: '',
+            phone: '',
+            phoneNumbers: [],
+            email: '',
+            address: '',
+            logo: '',
+            about: ''
+          }
+        });
+      }
+
+      const row = result.rows[0];
+
+      return res.json({
+        ok: true,
+        settings: {
+          companyName: row.company_name || '',
+          slogan: row.slogan || '',
+          phone: row.phone || '',
+          phoneNumbers: Array.isArray(row.phone_numbers) && row.phone_numbers.length > 0 ? row.phone_numbers : (row.phone ? [row.phone] : []),
+          email: row.email || '',
+          address: row.address || '',
+          logo: row.logo || '',
+          about: row.about || ''
+        }
+      });
+
+    } catch (error) {
+      console.error(
+        '[company-settings:public] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message:
+          'Unable to load company settings.'
+      });
+    }
+  }
+);
+
+
+/* ================================================================
+   SUPER ADMIN
+   COMPANY SETTINGS
+   GET COMPANY SETTINGS
+   ================================================================ */
+
+app.get(
+  '/api/owner/company-settings',
+  requireOwner,
+  async (req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT
+          company_name,
+          slogan,
+          phone,
+          phone_numbers,
+          email,
+          address,
+          logo,
+          about
+        FROM company_settings
+        WHERE id = 1
+        LIMIT 1
+      `);
+
+      if (result.rows.length === 0) {
+        return res.json({
+          ok: true,
+          settings: {
+            companyName: '',
+            slogan: '',
+            phone: '',
+            addresses: [],
+            email: '',
+            address: '',
+            logo: '',
+            about: ''
+          }
+        });
+      }
+
+      const row = result.rows[0];
+
+      return res.json({
+        ok: true,
+        settings: {
+          companyName: row.company_name || '',
+          slogan: row.slogan || '',
+          phone: row.phone || '',
+          phoneNumbers: Array.isArray(row.phone_numbers) && row.phone_numbers.length > 0 ? row.phone_numbers : (row.phone ? [row.phone] : []),
+          addresses: Array.isArray(row.addresses)
+  ? row.addresses
+  : [],
+          email: row.email || '',
+          address: row.address || '',
+          logo: row.logo || '',
+          about: row.about || ''
+        }
+      });
+
+    } catch (error) {
+      console.error(
+        '[owner:company-settings:get] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message:
+          'Unable to load company settings.'
+      });
+    }
+  }
+);
+
+
+/* ================================================================
+   SUPER ADMIN
+   COMPANY SETTINGS
+   UPDATE COMPANY SETTINGS
+   ================================================================ */
+
+app.put(
+  '/api/owner/company-settings',
+  requireOwner,
+  async (req, res) => {
+    try {
+      const {
+    companyName,
+    slogan,
+    phone,
+    phoneNumbers,
+    addresses,
+    email,
+    address,
+    logo,
+    about
+} = req.body;
+
+      const normalizedPhoneNumbers = Array.isArray(phoneNumbers)
+  ? phoneNumbers.map(value => String(value || '').trim()).filter(Boolean)
+  : [];
+
+const primaryPhone = String(phone || normalizedPhoneNumbers[0] || '').trim();
+
+const normalizedAddresses = Array.isArray(addresses)
+  ? addresses
+      .map(location => ({
+          name: String(location?.name || '').trim(),
+          url: String(location?.url || '').trim()
+      }))
+      .filter(location =>
+          location.name &&
+          location.url &&
+          /^https?:\/\//i.test(location.url)
+      )
+  : [];
+
+
+      await pool.query(`
+        INSERT INTO company_settings (
+          id,
+          company_name,
+          slogan,
+          phone,
+          phone_numbers,
+          addresses,
+          email,
+          address,
+          logo,
+          about,
+          updated_at
+        )
+        VALUES (
+  1,
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  $7,
+  $8,
+  $9,
+  NOW()
+)
+        ON CONFLICT (id)
+        DO UPDATE SET
+  company_name = EXCLUDED.company_name,
+  slogan = EXCLUDED.slogan,
+  phone = EXCLUDED.phone,
+  phone_numbers = EXCLUDED.phone_numbers,
+  addresses = EXCLUDED.addresses,
+  email = EXCLUDED.email,
+  address = EXCLUDED.address,
+  logo = EXCLUDED.logo,
+  about = EXCLUDED.about,
+  updated_at = NOW()
+      `, [
+        String(companyName || '').trim(),
+        String(slogan || '').trim(),
+        primaryPhone,
+        JSON.stringify(normalizedPhoneNumbers),
+        JSON.stringify(normalizedAddresses),
+        String(email || '').trim(),
+        String(address || '').trim(),
+        String(logo || ''),
+        String(about || '').trim()
+      ]);
+
+      return res.json({
+        ok: true,
+        message:
+          'Company settings saved successfully.'
+      });
+
+    } catch (error) {
+      console.error(
+        '[owner:company-settings:update] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message:
+          'Unable to save company settings.'
+      });
+    }
+  }
+);
 
 /* ================================================================
    API 404
@@ -3458,6 +3841,7 @@ async function startServer() {
 }
 
 startServer();
+
 
 
 
