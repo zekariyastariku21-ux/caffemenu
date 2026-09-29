@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +14,7 @@
     <div class="owner-notification-content">
 
       <div id="ownerNotificationIcon" class="owner-notification-icon">
-        âœ“
+        ✓
       </div>
 
       <div class="owner-notification-text">
@@ -32,7 +32,7 @@
         class="owner-notification-close"
         onclick="closeOwnerNotification()"
       >
-        âœ•
+        ✕
       </button>
 
     </div>
@@ -52,7 +52,7 @@
         class="owner-action-close"
         onclick="closeOwnerActionPanel()"
       >
-        âœ•
+        ✕
       </button>
 
     </div>
@@ -69,7 +69,7 @@
       class="close-image"
       onclick="closeImage()"
     >
-      âœ•
+      ✕
     </button>
 
     <img
@@ -257,6 +257,14 @@
 
       <div class="cart">
 
+        <button
+          class="cart-close"
+          type="button"
+          aria-label="Close cart"
+        >
+          ×
+        </button>
+
         <div class="cart-actions">
           <!-- Cart persists per-device via localStorage -->
         </div>
@@ -297,12 +305,12 @@
         </table>
 
 
-        <button
+       <!-- <button
           class="payment"
           type="button"
         >
           Pay Now
-        </button>
+        </button> -->
 
       </div>
 
@@ -328,3 +336,4 @@
 
 </body>
 </html>
+

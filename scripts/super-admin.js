@@ -1149,7 +1149,7 @@ function renderOwnerRestaurantRow(
                     "
                 >
                     <span>
-                        ${active ? '✓' : '!'}
+                        ${active ? 'âœ“' : '!'}
                     </span>
                     ${statusText}
                 </span>
@@ -3021,7 +3021,7 @@ function openDuplicateCafePanel() {
                     <div class="owner-empty-state">
 
                         <div class="owner-empty-icon">
-                            →
+                            â†’
                         </div>
 
                         <h3 class="owner-empty-title">
@@ -3037,7 +3037,7 @@ function openDuplicateCafePanel() {
                             class="owner-empty-create-btn"
                             onclick="openCreateCafePanel()"
                         >
-                            <span>＋</span>
+                            <span>ï¼‹</span>
                             Create Café
                         </button>
 
@@ -3116,7 +3116,7 @@ function openDuplicateCafePanel() {
                                     font-weight:900;
                                 "
                             >
-                                →
+                                â†’
                             </span>
 
                         </button>
@@ -3929,7 +3929,7 @@ function openPriceManagementPanel() {
                         class="owner-empty-create-btn"
                         onclick="openCreateCafePanel()"
                     >
-                        <span>＋</span>
+                        <span>ï¼‹</span>
                         Create Café
                     </button>
 
@@ -4008,7 +4008,7 @@ function openPriceManagementPanel() {
                                 font-weight:900;
                             "
                         >
-                            →
+                            â†’
                         </span>
 
                     </button>
@@ -4312,7 +4312,7 @@ function renderPriceManagementForm() {
                         class="price-operation-option"
                         data-operation="increase"
                     >
-                        ↑ Increase Prices
+                        â†‘ Increase Prices
                     </button>
 
                     <button
@@ -4320,7 +4320,7 @@ function renderPriceManagementForm() {
                         class="price-operation-option"
                         data-operation="decrease"
                     >
-                        ↓ Decrease Prices
+                        â†“ Decrease Prices
                     </button>
 
                 </div>
@@ -5593,7 +5593,7 @@ function updatePricePreview() {
                                             )}
                                         </span>
 
-                                        &nbsp;→&nbsp;
+                                        &nbsp;â†’&nbsp;
 
                                         <span
                                             class="price-preview-new"
@@ -5724,7 +5724,7 @@ function confirmPriceManagement() {
         <div class="price-confirmation">
 
             <div class="price-confirmation-icon">
-                ✓
+                âœ“
             </div>
 
             <div class="price-confirmation-eyebrow">
@@ -6292,32 +6292,27 @@ function openCompanyProfile() {
                     </div>
                 </div>
 
+
+
                 <div class="owner-form-group">
-                    <label for="companyAbout">
-                        About Company
+                    <label>
+                        Company Content
                     </label>
 
                     <div
-                        style="display:flex;flex-direction:column;gap:10px;"
+                        id="companyContentList"
+                        class="profile-entry-list"
+                    ></div>
+
+                    <button
+                        type="button"
+                        class="restaurant-action-btn"
+                        onclick="addCompanyContent()"
+                        style="margin-top:10px;"
                     >
-                        <textarea
-                            id="companyAbout"
-                            rows="5"
-                            placeholder="About your company"
-                            style="width:100%;resize:vertical;"
-                        ></textarea>
-
-                        <button
-                            type="button"
-                            class="restaurant-action-btn"
-                            onclick="document.getElementById('companyAbout').focus()"
-                            style="align-self:flex-end;"
-                        >
-                            &#9998; Edit
-                        </button>
-                    </div>
+                        + Add Content
+                    </button>
                 </div>
-
 
                 <div class="owner-form-group">
     <label>
@@ -6341,7 +6336,7 @@ function openCompanyProfile() {
                 
                <div class="owner-form-group">
     <label>
-        📍 Locations
+        Locations
     </label>
 
     <div
@@ -6389,6 +6384,9 @@ function openCompanyProfile() {
         </button>
     </div>
 </div>
+
+                <div style="height: 15px;"></div>
+
 
 
 
@@ -6592,6 +6590,7 @@ function renderCompanyLocations() {
         deleteButton.onclick = () => {
             companyLocations.splice(index, 1);
             renderCompanyLocations();
+
         };
 
         row.appendChild(fields);
@@ -6622,6 +6621,181 @@ function addCompanyLocation() {
     }
 }
 
+let companyContent = [];
+
+function renderCompanyContent() {
+    const list =
+        document.getElementById('companyContentList');
+
+    if (!list) {
+        return;
+    }
+
+    list.innerHTML = '';
+
+    companyContent.forEach((item, index) => {
+        const row =
+            document.createElement('div');
+
+        row.style.cssText =
+            'display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid #ddd;border-radius:10px;background:#fff;margin-bottom:10px;';
+
+        const topicInput =
+            document.createElement('input');
+
+        topicInput.type = 'text';
+        topicInput.placeholder = 'Topic';
+        topicInput.value = item.topic || '';
+        topicInput.style.cssText =
+            'width:100%;box-sizing:border-box;';
+
+        topicInput.oninput = () => {
+            item.topic = topicInput.value;
+        };
+
+        const subTopicInput =
+            document.createElement('input');
+
+        subTopicInput.type = 'text';
+        subTopicInput.placeholder = 'Sub Topic';
+        subTopicInput.value = item.subTopic || '';
+        subTopicInput.style.cssText =
+            'width:100%;box-sizing:border-box;';
+
+        subTopicInput.oninput = () => {
+            item.subTopic = subTopicInput.value;
+        };
+
+        const imageRow =
+            document.createElement('div');
+
+        imageRow.style.cssText =
+            'display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
+
+        const imagePreview =
+            document.createElement('img');
+
+        imagePreview.src =
+            item.image || 'image/z logo.jpeg';
+
+        imagePreview.alt = 'Content Image';
+
+        imagePreview.style.cssText =
+            'width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #ddd;';
+
+        const imageInput =
+            document.createElement('input');
+
+        imageInput.type = 'file';
+        imageInput.accept = 'image/*';
+
+        imageInput.onchange = () => {
+            const file =
+                imageInput.files &&
+                imageInput.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            const reader =
+                new FileReader();
+
+            reader.onload = () => {
+                item.image = reader.result;
+                imagePreview.src = reader.result;
+            };
+
+            reader.readAsDataURL(file);
+        };
+
+        imageRow.appendChild(imagePreview);
+        imageRow.appendChild(imageInput);
+
+        const descriptionInput =
+            document.createElement('textarea');
+
+        descriptionInput.rows = 4;
+        descriptionInput.placeholder = 'Description';
+        descriptionInput.value =
+            item.description || '';
+
+        descriptionInput.style.cssText =
+            'width:100%;box-sizing:border-box;resize:vertical;';
+
+        descriptionInput.oninput = () => {
+            item.description =
+                descriptionInput.value;
+        };
+
+        const actions =
+            document.createElement('div');
+
+        actions.style.cssText =
+            'display:flex;gap:8px;justify-content:flex-end;';
+
+        const editButton =
+            document.createElement('button');
+
+        editButton.type = 'button';
+        editButton.className =
+            'restaurant-action-btn';
+        editButton.innerHTML =
+            '&#9998; Edit';
+
+        editButton.onclick = () => {
+            topicInput.focus();
+        };
+
+        const deleteButton =
+            document.createElement('button');
+
+        deleteButton.type = 'button';
+        deleteButton.className =
+            'restaurant-action-btn';
+        deleteButton.innerHTML =
+            '&#128465; Delete';
+
+        deleteButton.onclick = () => {
+            companyContent.splice(index, 1);
+            renderCompanyContent();
+        };
+
+        actions.appendChild(editButton);
+        actions.appendChild(deleteButton);
+
+        row.appendChild(topicInput);
+        row.appendChild(subTopicInput);
+        row.appendChild(imageRow);
+        row.appendChild(descriptionInput);
+        row.appendChild(actions);
+
+        list.appendChild(row);
+    });
+}
+
+function addCompanyContent() {
+    companyContent.push({
+        topic: '',
+        subTopic: '',
+        image: '',
+        description: ''
+    });
+
+    renderCompanyContent();
+
+    const list =
+        document.getElementById('companyContentList');
+
+    if (list) {
+        const inputs =
+            list.querySelectorAll('input[type="text"]');
+
+        if (inputs.length > 0) {
+            inputs[inputs.length - 2].focus();
+        }
+    }
+}
 async function loadCompanySettings() {
 
     try {
@@ -6667,8 +6841,10 @@ renderCompanyLocations();
 document.getElementById('companyEmail').value =
     data.settings.email || '';
 
-document.getElementById('companyAbout').value =
-    data.settings.about || '';
+
+companyContent = Array.isArray(data.settings.companyContent) ? data.settings.companyContent : [];
+
+renderCompanyContent();
 
         const logoPreview =
             document.getElementById('companyLogoPreview');
@@ -6802,7 +6978,7 @@ addresses: companyLocations
         name: String(location.name || '').trim(),
         url: String(location.url || '').trim()
     }))
-    .filter(location => location.name && location.url),
+    .filter(location => location.name),
 
 email: document.getElementById('companyEmail').value,
 
@@ -6811,11 +6987,21 @@ email: document.getElementById('companyEmail').value,
         ? String(companyLocations[0].name || '').trim()
         : '',
 
-                        about:
-                            document.getElementById(
-                                'companyAbout'
-                            ).value,
 
+                        companyContent:
+                            companyContent
+                                .map(item => ({
+                                    topic: String(item.topic || '').trim(),
+                                    subTopic: String(item.subTopic || '').trim(),
+                                    image: String(item.image || ''),
+                                    description: String(item.description || '').trim()
+                                }))
+                                .filter(item =>
+                                    item.topic ||
+                                    item.subTopic ||
+                                    item.image ||
+                                    item.description
+                                ),
                         logo:
                             companyLogo
                     })
@@ -6970,7 +7156,7 @@ function showOwnerNotification(
         ) {
 
             icon.textContent =
-                '✓';
+                'âœ“';
 
         } else if (
             type === 'error'

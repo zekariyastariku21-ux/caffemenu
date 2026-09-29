@@ -1,4 +1,4 @@
-﻿/* ================================================================
+/* ================================================================
    TODAY'S SPECIAL
    Premium Customer Modal
    ================================================================ */
@@ -51,7 +51,8 @@ body.customer-day-special-open {
 
     z-index: 99999;
 
-    overflow: hidden;
+    overflow-y: hidden;
+    overflow-x: hidden;
 
     opacity: 0;
     visibility: hidden;
@@ -85,6 +86,8 @@ body.customer-day-special-open {
     max-width: 920px;
 
     max-height: calc(100vh - 48px);
+
+    height: auto;
 
     margin: 0 auto;
 
@@ -270,24 +273,10 @@ body.customer-day-special-open {
    ================================================================ */
 
 .customer-day-special-list {
-
-    width: 100%;
-
-    padding: 22px 24px;
-
-    display: flex;
-    flex-direction: column;
-
-    gap: 16px;
-
-    min-width: 0;
-
-    overflow-x: hidden;
-    overflow-y: auto;
-
-    overscroll-behavior: contain;
-
-    scrollbar-width: thin;
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: calc(100vh - 48px - 66px - 80px);
+    overflow-y: auto !important;
 }
 
 
@@ -303,7 +292,7 @@ body.customer-day-special-open {
 
 .customer-day-special-list::-webkit-scrollbar-track {
 
-    background: transparent;
+    background: #f1f1f1;
 }
 
 
@@ -793,7 +782,7 @@ body.customer-day-special-open {
 
     .customer-day-special-overlay {
 
-        padding: 16px;
+        padding: 8px;
     }
 
 
@@ -805,6 +794,8 @@ body.customer-day-special-open {
 
         max-height:
             calc(100vh - 32px);
+
+        height: auto;
 
         border-radius: 18px;
     }
@@ -840,12 +831,11 @@ body.customer-day-special-open {
 
 
     .customer-day-special-list {
-
-        padding:
-            17px;
-
-        gap: 14px;
-    }
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: calc(100vh - 48px - 66px - 80px);
+    overflow-y: auto !important;
+}
 
 
     .customer-day-special-card {
@@ -923,6 +913,8 @@ body.customer-day-special-open {
         max-height:
             calc(100vh - 20px);
 
+        height: auto;
+
         border-radius: 16px;
     }
 
@@ -960,12 +952,11 @@ body.customer-day-special-open {
 
 
     .customer-day-special-list {
-
-        padding:
-            12px;
-
-        gap: 12px;
-    }
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: calc(100vh - 48px - 66px - 80px);
+    overflow-y: auto !important;
+}
 
 
     /* ------------------------------------------------------------
@@ -1110,11 +1101,11 @@ body.customer-day-special-open {
 
 
     .customer-day-special-list {
-
-        padding: 9px;
-
-        gap: 10px;
-    }
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: calc(100vh - 48px - 66px - 80px);
+    overflow-y: auto !important;
+}
 
 
     .customer-day-special-card {
@@ -1214,4 +1205,49 @@ body.customer-day-special-open {
 
         transition: none !important;
     }
+}
+
+
+/* PREVENT INNER SPECIAL ITEM SCROLLBAR */
+
+.customer-day-special-content {
+    overflow: visible !important;
+    overflow-y: visible !important;
+}
+/* KEEP HEADER AND FOOTER FIXED */
+
+.customer-day-special-top,
+.customer-day-special-modal-footer {
+    flex-shrink: 0;
+}
+
+/* Keep popup header/footer fixed while the specials list scrolls */
+.customer-day-special-multiple-modal {
+    display: flex;
+    flex-direction: column;
+    height: min(90vh, 900px);
+    max-height: calc(100vh - 48px);
+    min-height: 0;
+}
+
+.customer-day-special-list {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: calc(100vh - 48px - 66px - 80px);
+    overflow-y: auto !important;
+}
+
+.customer-day-special-top,
+.customer-day-special-modal-footer {
+    flex: 0 0 auto;
+}
+
+/* Constrain the modal and let only the specials list scroll */
+.customer-day-special-multiple-modal {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    max-height: calc(100vh - 48px) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
 }

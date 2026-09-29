@@ -53,7 +53,16 @@ async function loadCompanySettings() {
             element.textContent = slogan;
         });
 
-        const phoneList = document.querySelector('[data-company-phone-list]');
+        
+        const about =
+            settings.about || '';
+
+        document.querySelectorAll(
+            '[data-company-about]'
+        ).forEach(element => {
+            element.textContent = about;
+        });
+const phoneList = document.querySelector('[data-company-phone-list]');
 
         if (phoneList) {
             phoneList.innerHTML = '';
@@ -102,34 +111,44 @@ if (locationContainer) {
         const url =
             String(location.url || '').trim();
 
-        if (!name || !url) {
+        if (!name) {
             return;
         }
-
-        const item =
+const item =
             document.createElement('div');
 
         item.style.cssText =
             'display:flex;flex-direction:column;gap:2px;';
-
-        const link =
-            document.createElement('a');
-
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
 
         const strong =
             document.createElement('strong');
 
         strong.textContent = name;
 
-        link.appendChild(strong);
-        item.appendChild(link);
+        if (url) {
+            const link =
+                document.createElement('a');
+
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+
+            link.appendChild(strong);
+            item.appendChild(link);
+        } else {
+            item.appendChild(strong);
+        }
 
         locationContainer.appendChild(item);
     });
 }
+
+        const companyContent =
+            Array.isArray(settings.companyContent)
+                ? settings.companyContent
+                : [];
+
+        renderCompanyContent(companyContent);
 
     } catch (error) {
 
@@ -147,6 +166,243 @@ document.addEventListener(
     loadCompanySettings
 );
 
+
+function renderCompanyContent(companyContent) {
+
+    const container =
+        document.querySelector(
+            '[data-company-content-list]'
+        );
+
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = '';
+
+    if (!Array.isArray(companyContent)) {
+        return;
+    }
+
+    companyContent.forEach(item => {
+
+        const topic =
+            String(item.topic || '').trim();
+
+        const subTopic =
+            String(item.subTopic || '').trim();
+
+        const image =
+            String(item.image || '').trim();
+
+        const description =
+            String(item.description || '').trim();
+
+        if (!topic && !subTopic && !image && !description) {
+            return;
+        }
+
+        const contentItem =
+            document.createElement('article');
+
+        contentItem.className =
+            'company-content-item';
+
+        if (image && !topic && !subTopic && !description) {
+            contentItem.classList.add(
+                'company-content-image-only'
+            );
+        }
+
+        const topicImageOnly =
+            topic &&
+            image &&
+            !subTopic &&
+            !description;
+
+        if (topicImageOnly) {
+
+            const topicImageWrapper =
+                document.createElement('div');
+
+            topicImageWrapper.className =
+                'company-content-topic-image';
+
+            const topicElement =
+                document.createElement('h2');
+
+            topicElement.textContent = topic;
+
+            topicImageWrapper.appendChild(
+                topicElement
+            );
+
+            const imageElement =
+                document.createElement('img');
+
+            imageElement.src = image;
+
+            imageElement.alt =
+                topic || 'Company content';
+
+            topicImageWrapper.appendChild(
+                imageElement
+            );
+
+            contentItem.appendChild(
+                topicImageWrapper
+            );
+
+        } else {
+
+            if (topic) {
+
+                const topicElement =
+                    document.createElement('h2');
+
+                topicElement.textContent = topic;
+
+                contentItem.appendChild(
+                    topicElement
+                );
+            }
+
+            if (image) {
+
+                const imageElement =
+                    document.createElement('img');
+
+                imageElement.src = image;
+
+                imageElement.alt =
+                    topic || subTopic || 'Company content';
+
+                contentItem.appendChild(
+                    imageElement
+                );
+            }
+        }
+
+        const imageSubtopicOnly =
+            image &&
+            subTopic &&
+            !topic &&
+            !description;
+
+        if (imageSubtopicOnly) {
+
+            const imageSubtopicWrapper =
+                document.createElement('div');
+
+            imageSubtopicWrapper.className =
+                'company-content-image-subtopic';
+
+            const imageElement =
+                contentItem.querySelector('img');
+
+            if (imageElement) {
+                contentItem.removeChild(imageElement);
+
+                imageSubtopicWrapper.appendChild(
+                    imageElement
+                );
+            }
+
+            const subTopicElement =
+                document.createElement('h3');
+
+            subTopicElement.textContent =
+                subTopic;
+
+            imageSubtopicWrapper.appendChild(
+                subTopicElement
+            );
+
+            contentItem.appendChild(
+                imageSubtopicWrapper
+            );
+
+        } else {
+
+        const textContent =
+            document.createElement('div');
+
+        textContent.className =
+            'company-content-text';
+
+        if (subTopic) {
+
+            const subTopicElement =
+                document.createElement('h3');
+
+            subTopicElement.textContent = subTopic;
+
+            textContent.appendChild(
+                subTopicElement
+            );
+        }
+
+        if (description) {
+
+            const descriptionElement =
+                document.createElement('p');
+
+            const urlPattern =
+                /(https?:\/\/[^\s]+)/g;
+
+            let lastIndex = 0;
+            let match;
+
+            while ((match = urlPattern.exec(description)) !== null) {
+
+                descriptionElement.appendChild(
+                    document.createTextNode(
+                        description.slice(
+                            lastIndex,
+                            match.index
+                        )
+                    )
+                );
+
+                const link =
+                    document.createElement('a');
+
+                link.href = match[0];
+                link.textContent = match[0];
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+
+                descriptionElement.appendChild(link);
+
+                lastIndex =
+                    match.index + match[0].length;
+            }
+
+            descriptionElement.appendChild(
+                document.createTextNode(
+                    description.slice(lastIndex)
+                )
+            );
+
+            textContent.appendChild(
+                descriptionElement
+            );
+        }
+
+        if (subTopic || description) {
+
+            contentItem.appendChild(
+                textContent
+            );
+        }
+
+        }
+
+        container.appendChild(
+            contentItem
+        );
+    });
+}
 
 async function loadRestaurantSlides() {
 

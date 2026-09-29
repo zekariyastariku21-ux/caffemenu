@@ -1,4 +1,4 @@
-﻿/* ================================================================
+/* ================================================================
    CAFFE MENU - CAFE ADMIN PANEL
    ================================================================ */
 
@@ -1055,7 +1055,7 @@ function refreshExistingItemsSelect() {
                 `${category}::${index}`;
 
             option.textContent =
-                `${category} â€¢ ${
+                `${category} • ${
                     item.name || 'Unnamed item'
                 }`;
 
@@ -3695,7 +3695,7 @@ function renderCurrentDaySpecialList() {
                                     ${escapeHtmlForAdmin(
                                         special.category
                                     )}
-                                    â€¢
+                                    •
                                     ${escapeHtmlForAdmin(
                                         item.price ?? 0
                                     )}

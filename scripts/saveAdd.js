@@ -2457,6 +2457,11 @@ function setupCartButton() {
             '.container2'
         );
 
+    const cartClose =
+        document.querySelector(
+            '.cart-close'
+        );
+
 
     if (
         !cartButton ||
@@ -2486,6 +2491,19 @@ function setupCartButton() {
             );
         }
     );
+
+    if (cartClose) {
+
+        cartClose.addEventListener(
+            'click',
+            () => {
+
+                container2.classList.remove(
+                    'open'
+                );
+            }
+        );
+    }
 }
 
 

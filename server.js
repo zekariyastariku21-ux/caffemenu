@@ -310,6 +310,11 @@ async function ensureDatabaseStructure() {
       ALTER TABLE company_settings
       ADD COLUMN IF NOT EXISTS phone_numbers JSONB NOT NULL DEFAULT '[]'::jsonb
     `);
+
+    await pool.query(`
+      ALTER TABLE company_settings
+      ADD COLUMN IF NOT EXISTS company_content JSONB NOT NULL DEFAULT '{}'::jsonb
+    `);
     console.log('[db] Database structure checked.');
   } catch (error) {
     console.error(
@@ -3527,7 +3532,9 @@ app.get(
           email,
           address,
           logo,
-          about
+          about,
+          company_content,
+          addresses
         FROM company_settings
         WHERE id = 1
         LIMIT 1
@@ -3544,7 +3551,8 @@ app.get(
             email: '',
             address: '',
             logo: '',
-            about: ''
+            about: '',
+            addresses: []
           }
         });
       }
@@ -3561,7 +3569,9 @@ app.get(
           email: row.email || '',
           address: row.address || '',
           logo: row.logo || '',
-          about: row.about || ''
+          about: row.about || '',
+          companyContent: row.company_content && typeof row.company_content === 'object' ? row.company_content : {},
+          addresses: Array.isArray(row.addresses) ? row.addresses : []
         }
       });
 
@@ -3601,7 +3611,9 @@ app.get(
           email,
           address,
           logo,
-          about
+          about,
+          company_content,
+          addresses
         FROM company_settings
         WHERE id = 1
         LIMIT 1
@@ -3614,11 +3626,11 @@ app.get(
             companyName: '',
             slogan: '',
             phone: '',
-            addresses: [],
             email: '',
             address: '',
             logo: '',
-            about: ''
+            about: '',
+            addresses: []
           }
         });
       }
@@ -3631,14 +3643,12 @@ app.get(
           companyName: row.company_name || '',
           slogan: row.slogan || '',
           phone: row.phone || '',
-          phoneNumbers: Array.isArray(row.phone_numbers) && row.phone_numbers.length > 0 ? row.phone_numbers : (row.phone ? [row.phone] : []),
-          addresses: Array.isArray(row.addresses)
-  ? row.addresses
-  : [],
-          email: row.email || '',
+          phoneNumbers: Array.isArray(row.phone_numbers) && row.phone_numbers.length > 0 ? row.phone_numbers : (row.phone ? [row.phone] : []),          email: row.email || '',
           address: row.address || '',
           logo: row.logo || '',
-          about: row.about || ''
+          about: row.about || '',
+          companyContent: row.company_content && typeof row.company_content === 'object' ? row.company_content : {},
+          addresses: Array.isArray(row.addresses) ? row.addresses : []
         }
       });
 
@@ -3678,7 +3688,8 @@ app.put(
     email,
     address,
     logo,
-    about
+    about,
+    companyContent
 } = req.body;
 
       const normalizedPhoneNumbers = Array.isArray(phoneNumbers)
@@ -3693,11 +3704,7 @@ const normalizedAddresses = Array.isArray(addresses)
           name: String(location?.name || '').trim(),
           url: String(location?.url || '').trim()
       }))
-      .filter(location =>
-          location.name &&
-          location.url &&
-          /^https?:\/\//i.test(location.url)
-      )
+      .filter(location => location.name)
   : [];
 
 
@@ -3713,6 +3720,7 @@ const normalizedAddresses = Array.isArray(addresses)
           address,
           logo,
           about,
+          company_content,
           updated_at
         )
         VALUES (
@@ -3725,7 +3733,8 @@ const normalizedAddresses = Array.isArray(addresses)
   $6,
   $7,
   $8,
-  $9,
+  $9,  $10,
+
   NOW()
 )
         ON CONFLICT (id)
@@ -3739,6 +3748,7 @@ const normalizedAddresses = Array.isArray(addresses)
   address = EXCLUDED.address,
   logo = EXCLUDED.logo,
   about = EXCLUDED.about,
+  company_content = EXCLUDED.company_content,
   updated_at = NOW()
       `, [
         String(companyName || '').trim(),
@@ -3749,7 +3759,8 @@ const normalizedAddresses = Array.isArray(addresses)
         String(email || '').trim(),
         String(address || '').trim(),
         String(logo || ''),
-        String(about || '').trim()
+        String(about || '').trim(),
+        JSON.stringify(Array.isArray(companyContent) ? companyContent : [])
       ]);
 
       return res.json({
