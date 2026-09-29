@@ -1,0 +1,76 @@
+
+.customer-day-special-multiple-modal .customer-day-special-list {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+}
+
+.customer-day-special-multiple-modal .customer-day-special-top,
+.customer-day-special-multiple-modal .customer-day-special-modal-footer {
+    flex: 0 0 auto !important;
+}
+
+.customer-day-special-multiple-modal .customer-day-special-list {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #222;
+}
+
+.customer-day-special-multiple-modal .customer-day-special-list::-webkit-scrollbar {
+    width: 12px;
+}
+
+.customer-day-special-modal .customer-day-special-list::-webkit-scrollbar-track {
+    background: #222;
+}
+
+.customer-day-special-multiple-modal .customer-day-special-list::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+    border: 3px solid #222;
+}
+
+.customer-day-special-multiple-modal {
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh;
+    overflow: hidden;
+}
+
+.customer-day-special-multiple-modal .customer-day-special-top,
+.customer-day-special-multiple-modal .customer-day-special-modal-footer {
+    flex: 0 0 auto;
+}
+
+.customer-day-special-multiple-modal .customer-day-special-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+}
+
+.customer-day-special-multiple-modal {
+    display: flex;
+    flex-direction: column;
+    height: 85vh;
+    max-height: 85vh;
+    overflow: hidden;
+}
+
+.customer-day-special-multiple-modal .customer-day-special-list {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+.customer-day-special-multiple-modal .customer-day-special-list::-webkit-scrollbar {
+    width: 10px;
+}
+
+.customer-day-special-multiple-modal .customer-day-special-list::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 8px;
+}
