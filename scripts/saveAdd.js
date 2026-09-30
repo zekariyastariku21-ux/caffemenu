@@ -803,9 +803,10 @@ async function refreshCustomerMenuSilently() {
         ) {
             restaurantProfile = {
                 logo:
-                    typeof data.profile.logo === 'string'
+                    typeof data.profile.logo === 'string' &&
+                    data.profile.logo.trim()
                         ? data.profile.logo.trim()
-                        : '',
+                        : restaurantProfile.logo,
 
                 phone_numbers:
                     Array.isArray(
