@@ -2226,6 +2226,28 @@ async function submitEditOwnerCafe(
    EDIT CAFÉ ADMIN
    ================================================================ */
 
+
+function toggleOwnerPassword(button) {
+
+    const input =
+        document.getElementById(
+            button.dataset.passwordTarget
+        );
+
+    if (!input) return;
+
+    const isHidden = input.type === 'password';
+
+    input.type = isHidden ? 'text' : 'password';
+
+    button.textContent = isHidden ? '\u25CB' : '\u25C9';
+
+    button.setAttribute(
+        'aria-label',
+        isHidden ? 'Hide password' : 'Show password'
+    );
+}
+
 async function editOwnerCafeAdmin(
     restaurantId
 ) {
@@ -2407,13 +2429,23 @@ async function editOwnerCafeAdmin(
                                 New Password
                             </label>
 
-                            <input
-                                type="password"
-                                id="ownerEditAdminPassword"
-                                autocomplete="new-password"
-                            >
+                                <div class="owner-password-wrapper">
 
-                        </div>
+                                    <input
+                                        type="password"
+                                        id="ownerEditAdminPassword"
+                                        autocomplete="new-password"
+                                    >
+
+                                    <button
+                                        type="button"
+                                        class="owner-password-toggle"
+                                        data-password-target="ownerEditAdminPassword"
+                                        onclick="toggleOwnerPassword(this)"
+                                        aria-label="Show password"
+                                    >&#9673;</button>
+
+                                </div>
 
 
                         <div class="owner-form-field">
@@ -2421,14 +2453,23 @@ async function editOwnerCafeAdmin(
                             <label for="ownerEditAdminPasswordConfirm">
                                 Confirm Password
                             </label>
+                                <div class="owner-password-wrapper">
 
-                            <input
-                                type="password"
-                                id="ownerEditAdminPasswordConfirm"
-                                autocomplete="new-password"
-                            >
+                                    <input
+                                        type="password"
+                                        id="ownerEditAdminPasswordConfirm"
+                                        autocomplete="new-password"
+                                    >
 
-                        </div>
+                                    <button
+                                        type="button"
+                                        class="owner-password-toggle"
+                                        data-password-target="ownerEditAdminPasswordConfirm"
+                                        onclick="toggleOwnerPassword(this)"
+                                        aria-label="Show password"
+                                    >&#9673;</button>
+
+                                </div>
 
                     </div>
 
@@ -2522,7 +2563,7 @@ async function submitEditOwnerCafeAdmin(
     const confirmPassword =
         document
             .getElementById(
-                'ownerConfirmAdminPassword'
+                'ownerEditAdminPasswordConfirm'
             )
             ?.value || '';
 
@@ -3021,7 +3062,7 @@ function openDuplicateCafePanel() {
                     <div class="owner-empty-state">
 
                         <div class="owner-empty-icon">
-                            â†’
+                            →
                         </div>
 
                         <h3 class="owner-empty-title">
@@ -3037,7 +3078,7 @@ function openDuplicateCafePanel() {
                             class="owner-empty-create-btn"
                             onclick="openCreateCafePanel()"
                         >
-                            <span>ï¼‹</span>
+                            <span>＋</span>
                             Create Café
                         </button>
 
@@ -3116,7 +3157,7 @@ function openDuplicateCafePanel() {
                                     font-weight:900;
                                 "
                             >
-                                â†’
+                                →
                             </span>
 
                         </button>
@@ -3929,7 +3970,7 @@ function openPriceManagementPanel() {
                         class="owner-empty-create-btn"
                         onclick="openCreateCafePanel()"
                     >
-                        <span>ï¼‹</span>
+                        <span>＋</span>
                         Create Café
                     </button>
 
@@ -4008,7 +4049,7 @@ function openPriceManagementPanel() {
                                 font-weight:900;
                             "
                         >
-                            â†’
+                            →
                         </span>
 
                     </button>
@@ -4312,7 +4353,7 @@ function renderPriceManagementForm() {
                         class="price-operation-option"
                         data-operation="increase"
                     >
-                        â†‘ Increase Prices
+                        ↑ Increase Prices
                     </button>
 
                     <button
@@ -4320,7 +4361,7 @@ function renderPriceManagementForm() {
                         class="price-operation-option"
                         data-operation="decrease"
                     >
-                        â†“ Decrease Prices
+                        ↓ Decrease Prices
                     </button>
 
                 </div>
@@ -5593,7 +5634,7 @@ function updatePricePreview() {
                                             )}
                                         </span>
 
-                                        &nbsp;â†’&nbsp;
+                                        &nbsp;→&nbsp;
 
                                         <span
                                             class="price-preview-new"

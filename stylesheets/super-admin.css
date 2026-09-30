@@ -3929,6 +3929,33 @@ textarea:focus-visible {
 }
 
 
+
+/* Owner password toggle */
+
+.owner-password-wrapper {
+    position: relative;
+}
+
+.owner-password-wrapper input {
+    width: 100%;
+    padding-right: 48px;
+}
+
+.owner-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #8b4513;
+    cursor: pointer;
+    font-size: 16px;
+    z-index: 10;
+}
 /* Action panel */
 
 .owner-action-header {

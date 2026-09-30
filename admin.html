@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -152,6 +152,40 @@
             box-shadow:
                 0 0 0 3px
                 rgba(139, 69, 19, 0.10);
+        }
+
+        .password-input-wrapper {
+            position: relative;
+        }
+
+        .password-input-wrapper input {
+            padding-right: 48px;
+        }
+
+        .password-toggle {
+            position: absolute;
+
+            top: 50%;
+            right: 12px;
+
+            transform: translateY(-50%);
+            z-index: 10;
+
+
+            width: 30px;
+            height: 30px;
+
+            padding: 0;
+
+            border: none;
+
+            background: transparent;
+
+            color: #8b4513;
+
+            cursor: pointer;
+
+            font-size: 16px;
         }
 
         .login-btn {
@@ -340,14 +374,24 @@
                     Password
                 </label>
 
-                <input
-                    type="password"
-                    id="password"
-                    placeholder="Enter your password"
-                    required
-                    autocomplete="current-password"
-                >
+                <div class="password-input-wrapper">
 
+                    <input
+                        type="password"
+                        id="password"
+                        placeholder="Enter your password"
+                        required
+                        autocomplete="current-password"
+                    >
+
+                    <button
+                        type="button"
+                        id="togglePassword"
+                        class="password-toggle"
+                        aria-label="Show password"
+                    >◉</button>
+
+                </div>
             </div>
 
 
@@ -447,6 +491,36 @@ function clearOldAdminSession() {
    LOGIN
    ============================================================ */
 
+
+const togglePassword =
+    document.getElementById('togglePassword');
+
+const passwordInput =
+    document.getElementById('password');
+
+if (togglePassword && passwordInput) {
+    togglePassword.addEventListener(
+        'click',
+        function () {
+            const isHidden =
+                passwordInput.type === 'password';
+
+            passwordInput.type =
+                isHidden ? 'text' : 'password';
+
+            togglePassword.textContent =
+                isHidden ? '○' : '◉';
+
+            togglePassword.setAttribute(
+                'aria-label',
+                isHidden
+                    ? 'Hide password'
+                    : 'Show password'
+            );
+        }
+    );
+}
+
 loginForm.addEventListener(
     'submit',
     async function (event) {
@@ -460,6 +534,7 @@ loginForm.addEventListener(
                 .value
                 .trim()
                 .toLowerCase();
+
 
 
         const password =
