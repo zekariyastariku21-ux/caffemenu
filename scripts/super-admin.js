@@ -1149,7 +1149,7 @@ function renderOwnerRestaurantRow(
                     "
                 >
                     <span>
-                        ${active ? 'âœ“' : '!'}
+                        ${active ? '✓' : '!'}
                     </span>
                     ${statusText}
                 </span>
@@ -5724,7 +5724,7 @@ function confirmPriceManagement() {
         <div class="price-confirmation">
 
             <div class="price-confirmation-icon">
-                âœ“
+                ✓
             </div>
 
             <div class="price-confirmation-eyebrow">
@@ -7156,7 +7156,7 @@ function showOwnerNotification(
         ) {
 
             icon.textContent =
-                'âœ“';
+                '✓';
 
         } else if (
             type === 'error'
