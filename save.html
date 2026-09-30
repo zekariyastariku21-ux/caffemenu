@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -213,13 +213,13 @@
       </div>
 
 
-      <button
+    <!--  <button
           id="daySpecialBtn"
           class="menu-day-special"
           type="button"
       >
          ✨ DAY SPECIAL ✨
-      </button>
+      </button> -->
 
     </div>
 
@@ -231,11 +231,23 @@
 
     <div class="filter-bar">
 
-      <input
-        id="searchInput"
-        type="text"
-        placeholder="Search items..."
-      >
+      <div class="filter-bar-top">
+
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="Search items..."
+        >
+
+        <button
+            id="daySpecialBtnFilter" onclick="document.getElementById('daySpecialBtn').click()"
+            class="menu-day-special"
+            type="button"
+        >
+           ✨ DAY SPECIAL ✨
+        </button>
+
+      </div>
 
       <div
         class="buttons"
