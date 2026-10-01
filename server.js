@@ -58,6 +58,10 @@ const pool = new Pool({
 
 const menuCache = new Map();
 
+const companySettingsCache = {
+  data: null
+};
+
 
 
 /* ================================================================
@@ -3523,6 +3527,11 @@ app.get(
   '/api/company-settings',
   async (req, res) => {
     try {
+
+      if (companySettingsCache.data) {
+        return res.json(companySettingsCache.data);
+      }
+
       const result = await pool.query(`
         SELECT
           company_name,
@@ -3541,7 +3550,8 @@ app.get(
       `);
 
       if (result.rows.length === 0) {
-        return res.json({
+
+        const emptyResponse = {
           ok: true,
           settings: {
             companyName: '',
@@ -3554,26 +3564,45 @@ app.get(
             about: '',
             addresses: []
           }
-        });
+        };
+
+        companySettingsCache.data = emptyResponse;
+
+        return res.json(emptyResponse);
       }
 
       const row = result.rows[0];
 
-      return res.json({
+      const response = {
         ok: true,
         settings: {
           companyName: row.company_name || '',
           slogan: row.slogan || '',
           phone: row.phone || '',
-          phoneNumbers: Array.isArray(row.phone_numbers) && row.phone_numbers.length > 0 ? row.phone_numbers : (row.phone ? [row.phone] : []),
+          phoneNumbers:
+            Array.isArray(row.phone_numbers) &&
+            row.phone_numbers.length > 0
+              ? row.phone_numbers
+              : (row.phone ? [row.phone] : []),
           email: row.email || '',
           address: row.address || '',
           logo: row.logo || '',
           about: row.about || '',
-          companyContent: row.company_content && typeof row.company_content === 'object' ? row.company_content : {},
-          addresses: Array.isArray(row.addresses) ? row.addresses : []
+          companyContent:
+            row.company_content &&
+            typeof row.company_content === 'object'
+              ? row.company_content
+              : {},
+          addresses:
+            Array.isArray(row.addresses)
+              ? row.addresses
+              : []
         }
-      });
+      };
+
+      companySettingsCache.data = response;
+
+      return res.json(response);
 
     } catch (error) {
       console.error(
@@ -3602,6 +3631,11 @@ app.get(
   requireOwner,
   async (req, res) => {
     try {
+
+      if (companySettingsCache.data) {
+        return res.json(companySettingsCache.data);
+      }
+
       const result = await pool.query(`
         SELECT
           company_name,
@@ -3620,37 +3654,59 @@ app.get(
       `);
 
       if (result.rows.length === 0) {
-        return res.json({
+
+        const emptyResponse = {
           ok: true,
           settings: {
             companyName: '',
             slogan: '',
             phone: '',
+            phoneNumbers: [],
             email: '',
             address: '',
             logo: '',
             about: '',
             addresses: []
           }
-        });
+        };
+
+        companySettingsCache.data = emptyResponse;
+
+        return res.json(emptyResponse);
       }
 
       const row = result.rows[0];
 
-      return res.json({
+      const response = {
         ok: true,
         settings: {
           companyName: row.company_name || '',
           slogan: row.slogan || '',
           phone: row.phone || '',
-          phoneNumbers: Array.isArray(row.phone_numbers) && row.phone_numbers.length > 0 ? row.phone_numbers : (row.phone ? [row.phone] : []),          email: row.email || '',
+          phoneNumbers:
+            Array.isArray(row.phone_numbers) &&
+            row.phone_numbers.length > 0
+              ? row.phone_numbers
+              : (row.phone ? [row.phone] : []),
+          email: row.email || '',
           address: row.address || '',
           logo: row.logo || '',
           about: row.about || '',
-          companyContent: row.company_content && typeof row.company_content === 'object' ? row.company_content : {},
-          addresses: Array.isArray(row.addresses) ? row.addresses : []
+          companyContent:
+            row.company_content &&
+            typeof row.company_content === 'object'
+              ? row.company_content
+              : {},
+          addresses:
+            Array.isArray(row.addresses)
+              ? row.addresses
+              : []
         }
-      });
+      };
+
+      companySettingsCache.data = response;
+
+      return res.json(response);
 
     } catch (error) {
       console.error(
@@ -3762,6 +3818,8 @@ const normalizedAddresses = Array.isArray(addresses)
         String(about || '').trim(),
         JSON.stringify(Array.isArray(companyContent) ? companyContent : [])
       ]);
+
+      companySettingsCache.data = null;
 
       return res.json({
         ok: true,
