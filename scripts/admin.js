@@ -15,6 +15,66 @@ let adminLoadingTimer = null;
 
 const MAX_DAY_SPECIALS = 5;
 
+/* ================================================================
+   ADMIN INACTIVITY TIMEOUT
+   Logs the admin out after 1 hour without activity.
+   ================================================================ */
+
+const ADMIN_INACTIVITY_LIMIT = 60 * 60 * 1000;
+let adminInactivityTimer = null;
+
+function resetAdminInactivityTimer() {
+    clearTimeout(adminInactivityTimer);
+
+    adminInactivityTimer = setTimeout(() => {
+        adminSessionTimeout();
+    }, ADMIN_INACTIVITY_LIMIT);
+}
+
+async function adminSessionTimeout() {
+    clearTimeout(adminInactivityTimer);
+
+    try {
+        await fetch('/api/admin/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+    } catch (error) {
+        console.warn(
+            '[admin] Session timeout logout request failed.',
+            error
+        );
+    }
+
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminRole');
+    localStorage.removeItem('adminRestaurantId');
+    localStorage.removeItem('adminRestaurantSlug');
+    localStorage.removeItem('adminRestaurantName');
+    localStorage.removeItem('selectedRestaurantSlug');
+
+    window.location.href = '/admin.html';
+}
+
+[
+    'mousemove',
+    'mousedown',
+    'keydown',
+    'touchstart',
+    'scroll',
+    'click'
+].forEach(eventName => {
+    document.addEventListener(
+        eventName,
+        resetAdminInactivityTimer,
+        {
+            passive: true
+        }
+    );
+});
+
+resetAdminInactivityTimer();
+
 
 
 /* ================================================================
