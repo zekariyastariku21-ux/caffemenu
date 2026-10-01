@@ -134,9 +134,9 @@ img {
         "Times New Roman",
         serif;
 
-    font-size: 25px;
+    font-size: 27px;
 
-    font-weight: 900px;
+    font-weight: 900;
 
     letter-spacing: 2.2px;
 
@@ -185,7 +185,7 @@ img {
         Helvetica,
         sans-serif;
 
-    font-size: 10px;
+    font-size: 13px;
 
     font-weight: 700;
 
@@ -421,7 +421,7 @@ img {
 
     width: calc(100% - 70px);
 
-    height: 470px;
+    height: 400px;
 
     margin: 108px 35px 30px;
 
@@ -1495,7 +1495,7 @@ footer {
 
     min-width: 0;
 
-    background: white;
+    background: #f3ede7;
 
     border-radius: 20px;
 
@@ -1798,58 +1798,61 @@ footer {
 
 
     .company-content-item {
-        display: flex;
-
-        flex-direction: column;
+        display: block;
 
         padding: 18px;
 
-        border-radius: 16px;
+        background: #f3ede7;
+
+        border-radius: 10px;
+
+        overflow: hidden;
     }
 
 
     .company-content-item h2 {
-        order: 1;
+        margin: 0 0 5px;
 
-        margin: 0 0 16px;
-
-        padding-bottom: 12px;
+        padding-bottom: 4px;
 
         font-size: 22px;
     }
 
 
     .company-content-item img {
-        order: 2;
+        float: left;
 
-        width: 100%;
+        width: 32%;
+
+        max-width: 180px;
 
         height: auto;
 
-        min-height: 0;
+        aspect-ratio: 4 / 3;
 
-        aspect-ratio: 16 / 9;
+        border-radius: 6px;
 
-        border-radius: 12px;
-
-        margin: 0 0 16px;
+        margin: 0 18px 12px 0;
 
         object-fit: cover;
     }
 
 
-    .company-content-item h3 {
-        order: 3;
+    .company-content-text {
+        width: auto;
 
+        display: block;
+    }
+
+
+    .company-content-item h3 {
         font-size: 16px;
 
-        padding: 12px 0;
+        padding: 3px 0;
     }
 
 
     .company-content-item p {
-        order: 4;
-
         font-size: 14px;
 
         line-height: 1.6;
