@@ -445,6 +445,58 @@ img {
     pointer-events: none;
 }
 
+.slider-controls {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    z-index: 5;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 0 18px;
+
+    transform: translateY(-50%);
+
+    pointer-events: none;
+}
+
+.slider-controls button {
+    width: 30px;
+    height: 30px;
+
+    border: none;
+    border-radius: 8px;
+
+    background: #808080;
+
+    color: white;
+
+    font-size: 20px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.25);
+
+    transition:
+        transform 0.2s ease,
+        opacity 0.2s ease;
+
+    pointer-events: auto;
+}
+
+.slider-controls button:hover {
+    transform: scale(1.08);
+    opacity: 0.92;
+}
 .slide.active {
     opacity: 1;
 
@@ -477,7 +529,13 @@ img {
 .slide-content {
     position: absolute;
 
-    left: 55px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 
     bottom: 60px;
 
@@ -487,6 +545,15 @@ img {
 }
 
 .slide-content h1 {
+    background: linear-gradient(
+        135deg,
+        rgba(25, 15, 9, 0.88),
+        rgba(120, 75, 45, 0.82),
+        rgba(25, 15, 9, 0.88)
+    );
+    padding: 8px 16px;
+    border-radius: 8px;
+    display: inline-block;
     font-size: 44px;
 
     text-transform: capitalize;
@@ -504,11 +571,11 @@ img {
 
     border-radius: 10px;
     background: linear-gradient(
-            90deg,
-            rgba(230, 155, 108, 0.72),
-            rgba(156, 144, 102, 0.856),
-            rgba(25, 15, 9, 0.05)
-        );
+        90deg,
+        #c98b5b,
+        #e0b36a,
+        #8b5e3c
+    );
     color: white;
 
     font-weight: 700;
@@ -1078,7 +1145,7 @@ footer {
 
         font-size: 9px;
 
-        border-radius: 8px;
+        border-radius: 4px;
     }
 
 
@@ -1190,7 +1257,7 @@ footer {
 
         gap: 10px;
 
-        border-radius: 14px;
+        border-radius: 8px;
     }
 
     .stat-icon {
@@ -1859,7 +1926,77 @@ footer {
 
         padding: 14px 0 4px;
     }
-}
+    .company-content-item:has(.company-content-topic-image) {
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .company-content-item:has(.company-content-topic-image)
+    .company-content-topic-image {
+        width: fit-content;
+        max-width: 100%;
+    }
+
+    .company-content-item:has(.company-content-topic-image)
+    .company-content-topic-image h2 {
+        width: 100%;
+        box-sizing: border-box;
+        margin: 0;
+        border-radius: 20px 20px 0 0;
+    }
+
+    .company-content-item:has(.company-content-topic-image)
+    .company-content-topic-image img {
+        float: none;
+        width: auto;
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: auto;
+        margin: 0;
+        object-fit: contain;
+        border-radius: 0 0 20px 20px;
+    }
+
+
+
+    .company-content-item:has(.company-content-image-subtopic) {
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .company-content-item:has(.company-content-image-subtopic)
+    .company-content-image-subtopic {
+        display: flex;
+        flex-direction: column;
+        width: fit-content;
+        max-width: 100%;
+        overflow: hidden;
+        border-radius: 4px;
+    }
+
+    .company-content-item:has(.company-content-image-subtopic)
+    .company-content-image-subtopic h3 {
+        order: 1;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+        border-radius: 0;
+    }
+
+    .company-content-item:has(.company-content-image-subtopic)
+    .company-content-image-subtopic img {
+        order: 2;
+        float: none;
+        width: auto;
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: auto;
+        margin: 0;
+        object-fit: contain;
+        border-radius: 0;
+    }
 
 .company-footer-name,
 .company-footer-copy {

@@ -562,9 +562,14 @@ async function loadRestaurantSlides() {
 
 function startRestaurantSlideshow() {
 
+    const slider =
+        document.getElementById(
+            'companyHeroSlider'
+        );
+
     const slides =
-        document.querySelectorAll(
-            '#companyHeroSlider .slide'
+        slider.querySelectorAll(
+            '.slide'
         );
 
     if (slides.length <= 1) {
@@ -573,13 +578,17 @@ function startRestaurantSlideshow() {
 
     let currentSlide = 0;
 
-    setInterval(() => {
+    const showSlide = (index) => {
 
         slides[currentSlide]
             .classList
             .remove('active');
 
-        currentSlide++;
+        currentSlide = index;
+
+        if (currentSlide < 0) {
+            currentSlide = slides.length - 1;
+        }
 
         if (currentSlide >= slides.length) {
             currentSlide = 0;
@@ -588,6 +597,83 @@ function startRestaurantSlideshow() {
         slides[currentSlide]
             .classList
             .add('active');
+    };
+
+    const controls =
+        document.createElement('div');
+
+    controls.className =
+        'slider-controls';
+
+    const previousButton =
+        document.createElement('button');
+
+    previousButton.type =
+        'button';
+
+    previousButton.className =
+        'slider-prev';
+
+    previousButton.textContent =
+        '‹';
+
+    previousButton.setAttribute(
+        'aria-label',
+        'Previous slide'
+    );
+
+    const nextButton =
+        document.createElement('button');
+
+    nextButton.type =
+        'button';
+
+    nextButton.className =
+        'slider-next';
+
+    nextButton.textContent =
+        '›';
+
+    nextButton.setAttribute(
+        'aria-label',
+        'Next slide'
+    );
+
+    previousButton.addEventListener(
+        'click',
+        () => {
+            showSlide(
+                currentSlide - 1
+            );
+        }
+    );
+
+    nextButton.addEventListener(
+        'click',
+        () => {
+            showSlide(
+                currentSlide + 1
+            );
+        }
+    );
+
+    controls.appendChild(
+        previousButton
+    );
+
+    controls.appendChild(
+        nextButton
+    );
+
+    slider.appendChild(
+        controls
+    );
+
+    setInterval(() => {
+
+        showSlide(
+            currentSlide + 1
+        );
 
     }, 5000);
 }
