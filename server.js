@@ -112,7 +112,20 @@ async function warmMenuCache() {
         rp.logo,
         rp.phone_numbers,
         rp.addresses,
-        rp.updated_at AS profile_updated_at
+        rp.updated_at AS profile_updated_at,
+
+        ra.header_background,
+        ra.restaurant_name AS appearance_restaurant_name,
+        ra.restaurant_name_text,
+        ra.button_background,
+        ra.button_text,
+        ra.selected_button,
+        ra.selected_button_text,
+        ra.card_background,
+        ra.item_name,
+        ra.description,
+        ra.price,
+        ra.page_background
 
       FROM restaurants r
 
@@ -121,6 +134,9 @@ async function warmMenuCache() {
 
       LEFT JOIN restaurant_profiles rp
         ON rp.restaurant_id = r.id
+
+      LEFT JOIN restaurant_appearances ra
+        ON ra.restaurant_id = r.id
 
       WHERE r.status = 'active'
 
@@ -167,7 +183,28 @@ async function warmMenuCache() {
 
           updated_at:
             row.profile_updated_at || null
-        }
+
+
+
+        },
+
+        appearance:
+          row.header_background
+            ? {
+                header_background: row.header_background,
+                restaurant_name: row.appearance_restaurant_name,
+                restaurant_name_text: row.restaurant_name_text,
+                button_background: row.button_background,
+                button_text: row.button_text,
+                selected_button: row.selected_button,
+                selected_button_text: row.selected_button_text,
+                card_background: row.card_background,
+                item_name: row.item_name,
+                description: row.description,
+                price: row.price,
+                page_background: row.page_background
+              }
+            : null
       };
 
       menuCache.set(
@@ -319,6 +356,45 @@ async function ensureDatabaseStructure() {
       ALTER TABLE company_settings
       ADD COLUMN IF NOT EXISTS company_content JSONB NOT NULL DEFAULT '{}'::jsonb
     `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS restaurant_appearances (
+        id SERIAL PRIMARY KEY,
+        restaurant_id INTEGER NOT NULL UNIQUE
+          REFERENCES restaurants(id) ON DELETE CASCADE,
+
+        header_background TEXT,
+        restaurant_name TEXT,
+        restaurant_name_text TEXT,
+
+        button_background TEXT,
+        button_text TEXT,
+        selected_button TEXT,
+        selected_button_text TEXT,
+
+        card_background TEXT,
+        item_name TEXT,
+        description TEXT,
+        price TEXT,
+
+        page_background TEXT,
+
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS restaurant_appearance_history (
+        id SERIAL PRIMARY KEY,
+        restaurant_id INTEGER NOT NULL
+          REFERENCES restaurants(id) ON DELETE CASCADE,
+
+        appearance JSONB NOT NULL,
+
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
     console.log('[db] Database structure checked.');
   } catch (error) {
     console.error(
@@ -1108,7 +1184,19 @@ app.get('/api/menu/:slug', async (req, res) => {
 
           rp.phone_numbers,
           rp.addresses,
-          rp.updated_at AS profile_updated_at
+          rp.updated_at AS profile_updated_at,
+          ra.header_background,
+          ra.restaurant_name AS appearance_restaurant_name,
+          ra.restaurant_name_text,
+          ra.button_background,
+          ra.button_text,
+          ra.selected_button,
+          ra.selected_button_text,
+          ra.card_background,
+          ra.item_name,
+          ra.description,
+          ra.price,
+          ra.page_background
 
         FROM restaurants r
 
@@ -1118,6 +1206,9 @@ app.get('/api/menu/:slug', async (req, res) => {
         LEFT JOIN restaurant_profiles rp
           ON rp.restaurant_id = r.id
 
+
+        LEFT JOIN restaurant_appearances ra
+          ON ra.restaurant_id = r.id
         WHERE r.slug = $1
 
         LIMIT 1
@@ -1212,6 +1303,47 @@ app.get('/api/menu/:slug', async (req, res) => {
        BUILD RESPONSE
        ============================================================ */
 
+    const appearance =
+      row.header_background
+        ? {
+            header_background:
+              row.header_background,
+
+            restaurant_name:
+              row.appearance_restaurant_name,
+
+            restaurant_name_text:
+              row.restaurant_name_text,
+
+            button_background:
+              row.button_background,
+
+            button_text:
+              row.button_text,
+
+            selected_button:
+              row.selected_button,
+
+            selected_button_text:
+              row.selected_button_text,
+
+            card_background:
+              row.card_background,
+
+            item_name:
+              row.item_name,
+
+            description:
+              row.description,
+
+            price:
+              row.price,
+
+            page_background:
+              row.page_background
+          }
+        : null;
+
     const responseData = {
       ok: true,
 
@@ -1221,7 +1353,8 @@ app.get('/api/menu/:slug', async (req, res) => {
 
       menuUpdatedAt,
 
-      profile
+      profile,
+      appearance
     };
 
     /* ============================================================
@@ -1274,33 +1407,45 @@ app.get('/api/menu/:slug/logo', async (req, res) => {
     );
 
     /* ============================================================
-       FIND RESTAURANT
+       LOAD RESTAURANT FROM CACHE FIRST
        ============================================================ */
 
-    const restaurantResult = await pool.query(
-      `
-        SELECT
-          id,
-          status
-        FROM restaurants
-        WHERE slug = $1
-        LIMIT 1
-      `,
-      [slug]
-    );
+    const cachedMenu = menuCache.get(slug);
 
-    if (restaurantResult.rows.length === 0) {
-      console.log(
-        `[menu:logo] Restaurant not found: ${slug}`
+    let restaurant = cachedMenu?.restaurant || null;
+
+    /* ============================================================
+       FALLBACK TO DATABASE
+       ============================================================ */
+
+    if (!restaurant) {
+      const restaurantResult = await pool.query(
+        `
+          SELECT
+            id,
+            name,
+            slug,
+            status
+          FROM restaurants
+          WHERE slug = $1
+          LIMIT 1
+        `,
+        [slug]
       );
 
-      return res.status(404).json({
-        ok: false,
-        message: 'Restaurant not found.'
-      });
-    }
+      if (restaurantResult.rows.length === 0) {
+        console.log(
+          `[menu:logo] Restaurant not found: ${slug}`
+        );
 
-    const restaurant = restaurantResult.rows[0];
+        return res.status(404).json({
+          ok: false,
+          message: 'Restaurant not found.'
+        });
+      }
+
+      restaurant = restaurantResult.rows[0];
+    }
 
     /* ============================================================
        CHECK STATUS
@@ -1318,25 +1463,34 @@ app.get('/api/menu/:slug/logo', async (req, res) => {
     }
 
     /* ============================================================
-       LOAD LOGO ONLY
+       LOAD LOGO FROM CACHE
        ============================================================ */
 
-    const logoResult = await pool.query(
-      `
-        SELECT
-          logo
-        FROM restaurant_profiles
-        WHERE restaurant_id = $1
-        LIMIT 1
-      `,
-      [restaurant.id]
-    );
+    let logo =
+      cachedMenu?.profile?.logo || '';
 
-    const logo =
-      logoResult.rows.length > 0 &&
-      typeof logoResult.rows[0].logo === 'string'
-        ? logoResult.rows[0].logo
-        : '';
+    /* ============================================================
+       FALLBACK TO DATABASE
+       ============================================================ */
+
+    if (!logo) {
+      const logoResult = await pool.query(
+        `
+          SELECT
+            logo
+          FROM restaurant_profiles
+          WHERE restaurant_id = $1
+          LIMIT 1
+        `,
+        [restaurant.id]
+      );
+
+      logo =
+        logoResult.rows.length > 0 &&
+        typeof logoResult.rows[0].logo === 'string'
+          ? logoResult.rows[0].logo
+          : '';
+    }
 
     /* ============================================================
        NO LOGO
@@ -1381,7 +1535,6 @@ app.get('/api/menu/:slug/logo', async (req, res) => {
     });
   }
 });
-
 
 /* ================================================================
    TELEBIRR PAYMENT
@@ -2470,6 +2623,337 @@ app.put(
         ok: false,
         message:
           'Unable to update restaurant.'
+      });
+    }
+  }
+);
+
+
+
+
+/* ================================================================
+   SUPER ADMIN
+   RESTAURANT APPEARANCE
+   ================================================================ */
+
+app.get(
+  '/api/owner/restaurants/:id/appearance',
+  requireOwner,
+  async (req, res) => {
+    try {
+      const restaurantId =
+        Number(req.params.id);
+
+      if (
+        !Number.isInteger(restaurantId) ||
+        restaurantId <= 0
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Invalid restaurant ID.'
+        });
+      }
+
+      const restaurant =
+        await pool.query(`
+          SELECT
+            id
+          FROM restaurants
+          WHERE id = $1
+          LIMIT 1
+        `, [
+          restaurantId
+        ]);
+
+      if (restaurant.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message:
+            'Restaurant not found.'
+        });
+      }
+
+      const result =
+        await pool.query(`
+          SELECT
+            header_background,
+            restaurant_name,
+            restaurant_name_text,
+            button_background,
+            button_text,
+            selected_button,
+            selected_button_text,
+            card_background,
+            item_name,
+            description,
+            price,
+            page_background
+          FROM restaurant_appearances
+          WHERE restaurant_id = $1
+          LIMIT 1
+        `, [
+          restaurantId
+        ]);
+
+      return res.json({
+        ok: true,
+        appearance:
+          result.rows.length > 0
+            ? result.rows[0]
+            : null
+      });
+
+    } catch (error) {
+      console.error(
+        '[owner:restaurant:appearance:get] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message:
+          'Unable to load restaurant appearance.'
+      });
+    }
+  }
+);
+
+app.put(
+  '/api/owner/restaurants/:id/appearance',
+  requireOwner,
+  async (req, res) => {
+    try {
+      const restaurantId =
+        Number(req.params.id);
+
+      if (
+        !Number.isInteger(restaurantId) ||
+        restaurantId <= 0
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Invalid restaurant ID.'
+        });
+      }
+
+      const restaurant =
+        await pool.query(`
+          SELECT
+            id
+          FROM restaurants
+          WHERE id = $1
+          LIMIT 1
+        `, [
+          restaurantId
+        ]);
+
+      if (restaurant.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message:
+            'Restaurant not found.'
+        });
+      }
+
+      const fields = [
+        'header_background',
+        'restaurant_name',
+        'restaurant_name_text',
+        'button_background',
+        'button_text',
+        'selected_button',
+        'selected_button_text',
+        'card_background',
+        'item_name',
+        'description',
+        'price',
+        'page_background'
+      ];
+
+      const values =
+        fields.map((field) => {
+          const value = req.body[field];
+
+          if (
+            value === undefined ||
+            value === null
+          ) {
+            return null;
+          }
+
+          return String(value).trim();
+        });
+
+      const result =
+        await pool.query(`
+          INSERT INTO restaurant_appearances (
+            restaurant_id,
+            header_background,
+            restaurant_name,
+            restaurant_name_text,
+            button_background,
+            button_text,
+            selected_button,
+            selected_button_text,
+            card_background,
+            item_name,
+            description,
+            price,
+            page_background,
+            updated_at
+          )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7,
+            $8,
+            $9,
+            $10,
+            $11,
+            $12,
+            $13,
+            NOW()
+          )
+          ON CONFLICT (restaurant_id)
+          DO UPDATE SET
+            header_background = EXCLUDED.header_background,
+            restaurant_name = EXCLUDED.restaurant_name,
+            restaurant_name_text = EXCLUDED.restaurant_name_text,
+            button_background = EXCLUDED.button_background,
+            button_text = EXCLUDED.button_text,
+            selected_button = EXCLUDED.selected_button,
+            selected_button_text = EXCLUDED.selected_button_text,
+            card_background = EXCLUDED.card_background,
+            item_name = EXCLUDED.item_name,
+            description = EXCLUDED.description,
+            price = EXCLUDED.price,
+            page_background = EXCLUDED.page_background,
+            updated_at = NOW()
+          RETURNING
+            header_background,
+            restaurant_name,
+            restaurant_name_text,
+            button_background,
+            button_text,
+            selected_button,
+            selected_button_text,
+            card_background,
+            item_name,
+            description,
+            price,
+            page_background
+        `, [
+          restaurantId,
+          ...values
+        ]);
+
+      const appearance =
+        result.rows[0];
+
+      await pool.query(`
+        INSERT INTO restaurant_appearance_history (
+          restaurant_id,
+          appearance
+        )
+        VALUES ($1, $2::jsonb)
+      `, [
+        restaurantId,
+        JSON.stringify(appearance)
+      ]);
+
+      menuCache.clear();
+
+      return res.json({
+        ok: true,
+        message:
+          'Restaurant appearance updated successfully.',
+        appearance
+      });
+
+    } catch (error) {
+      console.error(
+        '[owner:restaurant:appearance:update] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message:
+          'Unable to update restaurant appearance.'
+      });
+    }
+  }
+);
+
+app.delete(
+  '/api/owner/restaurants/:id/appearance',
+  requireOwner,
+  async (req, res) => {
+    try {
+      const restaurantId =
+        Number(req.params.id);
+
+      if (
+        !Number.isInteger(restaurantId) ||
+        restaurantId <= 0
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            'Invalid restaurant ID.'
+        });
+      }
+
+      const restaurant =
+        await pool.query(`
+          SELECT
+            id
+          FROM restaurants
+          WHERE id = $1
+          LIMIT 1
+        `, [
+          restaurantId
+        ]);
+
+      if (restaurant.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message:
+            'Restaurant not found.'
+        });
+      }
+
+      await pool.query(`
+        DELETE FROM restaurant_appearances
+        WHERE restaurant_id = $1
+      `, [
+        restaurantId
+      ]);
+
+      menuCache.clear();
+
+      return res.json({
+        ok: true,
+        message:
+          'Restaurant appearance reset successfully.'
+      });
+
+    } catch (error) {
+      console.error(
+        '[owner:restaurant:appearance:delete] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message:
+          'Unable to reset restaurant appearance.'
       });
     }
   }
@@ -3898,6 +4382,12 @@ async function startServer() {
        customer traffic.
     */
     await warmDatabaseConnection();
+
+    /*
+       Warm the public menu cache before accepting
+       customer traffic.
+    */
+    await warmMenuCache();
 
     app.listen(PORT, '0.0.0.0', () => {
     console.log(`[server] Caffemenu running on port ${PORT}`);

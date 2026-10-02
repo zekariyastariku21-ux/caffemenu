@@ -6,6 +6,207 @@ let currentCategory = 'all';
 
 let searchTerm = '';
 
+let restaurantAppearance = null;
+
+
+function applyRestaurantAppearance(
+    appearance = null
+) {
+
+    const header =
+        document.querySelector(
+            '.menu-profile-header'
+        );
+
+    if (header) {
+        header.style.background = '';
+    }
+
+
+    const restaurantName =
+        document.getElementById(
+            'restaurantName'
+        );
+
+    if (restaurantName) {
+        restaurantName.style.background = '';
+        restaurantName.style.color = '';
+    }
+
+
+    document
+        .querySelectorAll(
+            '.buttons button'
+        )
+        .forEach(
+            button => {
+                button.style.background = '';
+                button.style.color = '';
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            '.foodd'
+        )
+        .forEach(
+            card => {
+                card.style.background = '';
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            '.divinfo p'
+        )
+        .forEach(
+            element => {
+                element.style.color = '';
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            '.ingredient'
+        )
+        .forEach(
+            element => {
+                element.style.color = '';
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            '.info2 p'
+        )
+        .forEach(
+            element => {
+                element.style.color = '';
+            }
+        );
+
+
+    const container =
+        document.querySelector(
+            '.container'
+        );
+
+    if (container) {
+        container.style.background = '';
+    }
+
+
+    if (!appearance) {
+        return;
+    }
+
+
+    if (header) {
+        header.style.background =
+            appearance.header_background || '';
+    }
+
+
+    if (restaurantName) {
+
+        restaurantName.style.background =
+            appearance.restaurant_name || '';
+
+        restaurantName.style.color =
+            appearance.restaurant_name_text || '';
+    }
+
+
+    document
+        .querySelectorAll(
+            '.buttons button'
+        )
+        .forEach(
+            button => {
+
+                button.style.background =
+                    appearance.button_background || '';
+
+                button.style.color =
+                    appearance.button_text || '';
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            '.buttons button.active'
+        )
+        .forEach(
+            button => {
+
+                button.style.background =
+                    appearance.selected_button || '';
+
+                button.style.color =
+                    appearance.selected_button_text || '';
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            '.foodd'
+        )
+        .forEach(
+            card => {
+                card.style.background =
+                    appearance.card_background || '';
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            '.divinfo p'
+        )
+        .forEach(
+            element => {
+                element.style.color =
+                    appearance.item_name || '';
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            '.ingredient'
+        )
+        .forEach(
+            element => {
+                element.style.color =
+                    appearance.description || '';
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            '.info2 p'
+        )
+        .forEach(
+            element => {
+                element.style.color =
+                    appearance.price || '';
+            }
+        );
+
+
+    if (container) {
+        container.style.background =
+            appearance.page_background || '';
+    }
+}
+
 let restaurantProfile = {
     logo: '',
     phone_numbers: [],
@@ -197,13 +398,13 @@ function showRestaurantHeaderLoading() {
         document.getElementById('restaurantLogo');
 
     if (logoElement) {
-        logoElement.src = 'image/z logo.jpeg';
+        logoElement.src = 'image/z-menu.jpg';
 
         logoElement.alt = '';
 
         logoElement.onerror = function () {
             this.onerror = null;
-            this.src = 'image/z logo.jpeg';
+            this.src = 'image/z-menu.jpg';
             this.alt = '';
         };
 
@@ -281,7 +482,7 @@ function showRestaurantHeaderError() {
     );
 
     logoElement.src =
-        'image/z logo.jpeg';
+        'image/z-menu.jpg';
 
     logoElement.alt = '';
 
@@ -378,7 +579,7 @@ async function loadRestaurantLogo() {
 
             logoElement.onerror = function () {
                 this.onerror = null;
-                this.src = 'image/z logo.jpeg';
+                this.src = 'image/z-menu.jpg';
                 this.alt = '';
             };
 
@@ -422,13 +623,13 @@ async function loadRestaurantLogo() {
         if (logoElement) {
 
             logoElement.src =
-                'image/z logo.jpeg';
+                'image/z-menu.jpg';
 
             logoElement.alt = '';
 
             logoElement.onerror = function () {
                 this.onerror = null;
-                this.src = 'image/z logo.jpeg';
+                this.src = 'image/z-menu.jpg';
                 this.alt = '';
             };
 
@@ -588,6 +789,11 @@ async function loadMenuFromServer() {
         };
 
 
+
+        restaurantAppearance =
+            data.appearance ||
+            null;
+
         /* =========================================================
            MENU
            ========================================================= */
@@ -621,6 +827,10 @@ async function loadMenuFromServer() {
         renderItems();
 
         renderCategoryButtons();
+
+        applyRestaurantAppearance(
+            restaurantAppearance
+        );
 
 
         /* =========================================================
@@ -830,6 +1040,11 @@ async function refreshCustomerMenuSilently() {
             };
         }
 
+        restaurantAppearance =
+            data.appearance ||
+            null;
+
+
         /*
          * Menu
          */
@@ -855,6 +1070,10 @@ async function refreshCustomerMenuSilently() {
 
         renderCategoryButtons();
 
+        applyRestaurantAppearance(
+            restaurantAppearance
+        );
+
         /*
          * Do NOT call setupDaySpecial() repeatedly unless necessary.
          * updateDaySpecialButtonState() is enough because the event
@@ -862,25 +1081,14 @@ async function refreshCustomerMenuSilently() {
          */
         updateDaySpecialButtonState();
 
-        /*
-         * If the Day Special modal is currently open,
-         * leave it alone. The customer can close it normally.
-         */
+
     } catch (error) {
-        /*
-         * Silent refresh errors should not disturb the customer.
-         */
-        console.warn(
-            'Silent menu refresh failed:',
+        console.error(
+            'Silent customer menu refresh failed:',
             error
         );
     }
 }
-
-
-/* ==========================================================================
-   RESTAURANT PROFILE
-   ========================================================================== */
 
 function renderRestaurantProfile() {
 
@@ -905,7 +1113,7 @@ function renderRestaurantProfile() {
             logoElement.style.display = 'block';
             logoElement.alt = '';
         } else {
-            logoElement.src = 'image/z logo.jpeg';
+            logoElement.src = 'image/z-menu.jpg';
             logoElement.style.display = 'block';
             logoElement.alt = '';
         }

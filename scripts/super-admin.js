@@ -53,6 +53,39 @@ function getAdminToken() {
 
 
 /* ================================================================
+   RESTAURANT APPEARANCE
+   ================================================================ */
+
+const DEFAULT_APPEARANCE = {
+    header_background: '#f8e8d6',
+    restaurant_name: '#fff4e8',
+    restaurant_name_text: '#4a2f22',
+    button_background: '#ffffff',
+    button_text: '#563827',
+    selected_button: '#a96327',
+    selected_button_text: '#ffffff',
+    card_background: '#fffdf9',
+    item_name: '#4b2a0a',
+    description: '#745b47',
+    price: '#9a4b09',
+    page_background: '#f4eadf'
+};
+
+const APPEARANCE_FIELDS = [
+    ['header_background', 'Header Background'],
+    ['restaurant_name', 'Restaurant Name'],
+    ['restaurant_name_text', 'Restaurant Name Text'],
+    ['button_background', 'Button Background'],
+    ['button_text', 'Button Text'],
+    ['selected_button', 'Selected Button'],
+    ['selected_button_text', 'Selected Button Text'],
+    ['card_background', 'Card Background'],
+    ['item_name', 'Item Name'],
+    ['description', 'Description'],
+    ['price', 'Price'],
+    ['page_background', 'Page Background']
+];
+/* ================================================================
    GENERAL HELPERS
    ================================================================ */
 
@@ -1210,6 +1243,15 @@ function renderOwnerRestaurantRow(
                     ${active ? '' : 'disabled'}
                 >
                     Prices
+                </button>
+
+                <button
+                    type="button"
+                    class="restaurant-action-btn"
+                    onclick="openRestaurantAppearance(${id})"
+                    ${active ? '' : 'disabled'}
+                >
+                    Appearance
                 </button>
 
                 <button
@@ -6288,7 +6330,7 @@ function openCompanyProfile() {
                     >
                         <img
                             id="companyLogoPreview"
-                            src="image/z logo.jpeg"
+                            src="image/z-menu.jpg"
                             alt="Company Logo"
                             style="
                                 width:80px;
@@ -6717,7 +6759,7 @@ function renderCompanyContent() {
             document.createElement('img');
 
         imagePreview.src =
-            item.image || 'image/z logo.jpeg';
+            item.image || 'image/z-menu.jpg';
 
         imagePreview.alt = 'Content Image';
 
@@ -6893,7 +6935,7 @@ renderCompanyContent();
         if (logoPreview) {
             logoPreview.src =
                 data.settings.logo ||
-                'image/z logo.jpeg';
+                'image/z-menu.jpg';
         }
     } catch (error) {
 
@@ -7770,28 +7812,6 @@ function openOwnerActionPanel(
         }
     );
 
-
-    requestAnimationFrame(
-        () => {
-
-            const firstFocusable =
-                contentElement.querySelector(
-                    'input, select, textarea, button'
-                );
-
-
-            if (firstFocusable) {
-
-                try {
-
-                    firstFocusable.focus();
-
-                } catch {
-                    // Ignore focus errors.
-                }
-            }
-        }
-    );
 }
 
 
@@ -8334,6 +8354,532 @@ function setupRestaurantSearch() {
    ACTION PANEL EVENTS
    ================================================================ */
 
+function appearanceHexToRgb(hex) {
+
+    const clean =
+        String(hex || '').replace('#', '');
+
+
+    if (!/^[0-9a-fA-F]{6}$/.test(clean)) {
+        return '';
+    }
+
+
+    const r =
+        parseInt(
+            clean.slice(0, 2),
+            16
+        );
+
+    const g =
+        parseInt(
+            clean.slice(2, 4),
+            16
+        );
+
+    const b =
+        parseInt(
+            clean.slice(4, 6),
+            16
+        );
+
+
+    return `${r}, ${g}, ${b}`;
+}
+
+
+function appearanceRgbToHex(rgb) {
+
+    const match =
+        String(rgb || '').match(
+            /^\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*$/
+        );
+
+
+    if (!match) {
+        return null;
+    }
+
+
+    const values =
+        match
+            .slice(1)
+            .map(Number);
+
+
+    if (
+        values.some(
+            value =>
+                value < 0 ||
+                value > 255
+        )
+    ) {
+        return null;
+    }
+
+
+    return '#' +
+        values
+            .map(
+                value =>
+                    value
+                        .toString(16)
+                        .padStart(2, '0')
+            )
+            .join('');
+}
+
+
+function getRestaurantAppearanceFormValues() {
+
+    const appearance = {};
+
+
+    for (
+        const [field] of APPEARANCE_FIELDS
+    ) {
+
+        const input =
+            document.getElementById(
+                `appearance_${field}`
+            );
+
+
+        if (
+            !input ||
+            !/^#[0-9a-fA-F]{6}$/.test(
+                input.value
+            )
+        ) {
+            throw new Error(
+                `Invalid color value for ${field}.`
+            );
+        }
+
+
+        appearance[field] =
+            input.value.toLowerCase();
+    }
+
+
+    return appearance;
+}
+
+
+function setRestaurantAppearanceFormValues(
+    appearance
+) {
+
+    for (
+        const [field] of APPEARANCE_FIELDS
+    ) {
+
+        const value =
+            appearance[field] ||
+            DEFAULT_APPEARANCE[field];
+
+
+        const colorInput =
+            document.getElementById(
+                `appearance_${field}`
+            );
+
+
+        const rgbInput =
+            document.getElementById(
+                `appearance_${field}_rgb`
+            );
+
+
+        if (colorInput) {
+
+            colorInput.value =
+                value;
+        }
+
+
+        if (rgbInput) {
+
+            rgbInput.value =
+                appearanceHexToRgb(
+                    value
+                );
+        }
+    }
+}
+
+function appearanceColorChanged(field) {
+
+    const colorInput =
+        document.getElementById(
+            `appearance_${field}`
+        );
+
+
+    const rgbInput =
+        document.getElementById(
+            `appearance_${field}_rgb`
+        );
+
+
+    const hexInput =
+        document.getElementById(
+            `appearance_${field}_hex`
+        );
+
+
+    if (!colorInput) return;
+
+
+    if (rgbInput) {
+
+        rgbInput.value =
+            appearanceHexToRgb(
+                colorInput.value
+            );
+    }
+
+
+    if (hexInput) {
+
+        hexInput.value =
+            colorInput.value.toLowerCase();
+    }
+}
+
+
+function appearanceRgbChanged(field) {
+
+    const rgbInput =
+        document.getElementById(
+            `appearance_${field}_rgb`
+        );
+
+
+    const colorInput =
+        document.getElementById(
+            `appearance_${field}`
+        );
+
+
+    const hexInput =
+        document.getElementById(
+            `appearance_${field}_hex`
+        );
+
+
+    if (!rgbInput || !colorInput) return;
+
+
+    const hex =
+        appearanceRgbToHex(
+            rgbInput.value
+        );
+
+
+    if (!hex) {
+
+        rgbInput.value =
+            appearanceHexToRgb(
+                colorInput.value
+            );
+
+        return;
+    }
+
+
+    colorInput.value =
+        hex;
+
+
+    if (hexInput) {
+
+        hexInput.value =
+            hex;
+    }
+}
+
+
+function appearanceHexChanged(field) {
+
+    const hexInput =
+        document.getElementById(
+            `appearance_${field}_hex`
+        );
+
+
+    const colorInput =
+        document.getElementById(
+            `appearance_${field}`
+        );
+
+
+    const rgbInput =
+        document.getElementById(
+            `appearance_${field}_rgb`
+        );
+
+
+    if (!hexInput || !colorInput) return;
+
+
+    const value =
+        hexInput.value.trim();
+
+
+    if (!/^#[0-9a-fA-F]{6}$/.test(value)) {
+
+        hexInput.value =
+            colorInput.value.toLowerCase();
+
+        return;
+    }
+
+
+    colorInput.value =
+        value.toLowerCase();
+
+
+    if (rgbInput) {
+
+        rgbInput.value =
+            appearanceHexToRgb(
+                colorInput.value
+            );
+    }
+}
+
+function appearanceFieldHtml(field, label, value) {
+    const safeValue =
+        /^#[0-9a-fA-F]{6}$/.test(value || '')
+            ? value
+            : DEFAULT_APPEARANCE[field];
+
+    const jsField =
+        String(field).replace(/'/g, "\\'");
+
+    return `
+        <div class="caffemenu-appearance-field">
+            <label for="appearance_${field}">${label}</label>
+
+            <div class="caffemenu-appearance-controls">
+
+                <input
+                    type="color"
+                    id="appearance_${field}"
+                    value="${safeValue}"
+                    oninput="appearanceColorChanged('${jsField}')">
+
+                <input
+                    type="text"
+                    id="appearance_${field}_rgb"
+                    value="${appearanceHexToRgb(safeValue)}"
+                    placeholder="R, G, B"
+                    onchange="appearanceRgbChanged('${jsField}')">
+
+                <input
+                    type="text"
+                    id="appearance_${field}_hex"
+                    value="${safeValue}"
+                    maxlength="7"
+                    onchange="appearanceHexChanged('${jsField}')">
+
+            </div>
+        </div>
+    `;
+}
+async function openRestaurantAppearance(
+    restaurantId
+    ) {
+
+    if (!restaurantId) return;
+
+
+    try {
+
+        const token =
+            getAdminToken();
+
+
+        const response =
+            await fetch(
+                `/api/owner/restaurants/${restaurantId}/appearance`,
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`,
+                        Accept:
+                            'application/json'
+                    },
+                    credentials:
+                        'same-origin'
+                }
+            );
+
+
+        const data =
+            await readOwnerApiResponse(
+                response
+            );
+
+
+        const appearance = {
+            ...DEFAULT_APPEARANCE,
+            ...(data.appearance || {})
+        };
+
+
+        openOwnerActionPanel(
+            'Appearance',
+
+            '<div class="caffemenu-appearance-wrap" data-appearance-restaurant-id="' +
+                restaurantId +
+                '">' +
+
+                '<div class="caffemenu-appearance-section">' +
+                    '<h3>Header</h3>' +
+                    '<div class="caffemenu-appearance-grid">' +
+
+                        appearanceFieldHtml(
+                            'header_background',
+                            'Header Background',
+                            appearance.header_background
+                        ) +
+
+                        appearanceFieldHtml(
+                            'restaurant_name',
+                            'Restaurant Name',
+                            appearance.restaurant_name
+                        ) +
+
+                        appearanceFieldHtml(
+                            'restaurant_name_text',
+                            'Restaurant Name Text',
+                            appearance.restaurant_name_text
+                        ) +
+
+                    '</div>' +
+                '</div>' +
+
+                '<div class="caffemenu-appearance-section">' +
+                    '<h3>Buttons</h3>' +
+                    '<div class="caffemenu-appearance-grid">' +
+
+                        appearanceFieldHtml(
+                            'button_background',
+                            'Button Background',
+                            appearance.button_background
+                        ) +
+
+                        appearanceFieldHtml(
+                            'button_text',
+                            'Button Text',
+                            appearance.button_text
+                        ) +
+
+                        appearanceFieldHtml(
+                            'selected_button',
+                            'Selected Button',
+                            appearance.selected_button
+                        ) +
+
+                        appearanceFieldHtml(
+                            'selected_button_text',
+                            'Selected Button Text',
+                            appearance.selected_button_text
+                        ) +
+
+                    '</div>' +
+                '</div>' +
+
+                '<div class="caffemenu-appearance-section">' +
+                    '<h3>Menu Items</h3>' +
+                    '<div class="caffemenu-appearance-grid">' +
+
+                        appearanceFieldHtml(
+                            'card_background',
+                            'Card Background',
+                            appearance.card_background
+                        ) +
+
+                        appearanceFieldHtml(
+                            'item_name',
+                            'Item Name',
+                            appearance.item_name
+                        ) +
+
+                        appearanceFieldHtml(
+                            'description',
+                            'Description',
+                            appearance.description
+                        ) +
+
+                        appearanceFieldHtml(
+                            'price',
+                            'Price',
+                            appearance.price
+                        ) +
+
+                    '</div>' +
+                '</div>' +
+
+                '<div class="caffemenu-appearance-section">' +
+                    '<h3>Page</h3>' +
+                    '<div class="caffemenu-appearance-grid">' +
+
+                        appearanceFieldHtml(
+                            'page_background',
+                            'Page Background',
+                            appearance.page_background
+                        ) +
+
+                    '</div>' +
+                '</div>' +
+
+                '<div class="owner-action-actions">' +
+
+                    '<button type="button" ' +
+                        'id="saveRestaurantAppearanceBtn" ' +
+                        'class="owner-action-btn" ' +
+                        'data-restaurant-id="' +
+                        restaurantId +
+                        '">Save Appearance</button>' +
+
+                    '<button type="button" ' +
+                        'id="clearRestaurantAppearanceBtn" ' +
+                        'class="restaurant-action-btn" ' +
+                        'data-restaurant-id="' +
+                        restaurantId +
+                        '">Clear All</button>' +
+
+                '</div>' +
+
+            '</div>'
+        );
+
+
+        setRestaurantAppearanceFormValues(
+            appearance
+        );
+
+    } catch (error) {
+
+        console.error(
+            '[appearance:open]',
+            error
+        );
+
+
+        showOwnerNotification(
+            'Appearance could not be loaded',
+            error.message ||
+                'Unable to load restaurant appearance.',
+            'error'
+        );
+    }
+}
+
 function setupOwnerActionPanelEvents() {
 
     const panel =
@@ -8359,7 +8905,7 @@ function setupOwnerActionPanelEvents() {
 
     panel.addEventListener(
         'click',
-        event => {
+        async event => {
 
             const closeButton =
                 event.target.closest(
@@ -8370,6 +8916,206 @@ function setupOwnerActionPanelEvents() {
             if (closeButton) {
 
                     }
+
+
+            const saveAppearanceButton =
+                event.target.closest(
+                    '#saveRestaurantAppearanceBtn'
+                );
+
+
+            if (saveAppearanceButton) {
+
+                const restaurantId =
+                    saveAppearanceButton.dataset
+                        .restaurantId;
+
+
+                if (!restaurantId) return;
+
+
+                try {
+
+                    const appearance =
+                        getRestaurantAppearanceFormValues();
+
+
+                    saveAppearanceButton.disabled =
+                        true;
+
+
+                    const token =
+                        getAdminToken();
+
+
+                    const response =
+                        await fetch(
+                            `/api/owner/restaurants/${restaurantId}/appearance`,
+                            {
+                                method: 'PUT',
+                                headers: {
+                                    Authorization:
+                                        `Bearer ${token}`,
+                                    'Content-Type':
+                                        'application/json',
+                                    Accept:
+                                        'application/json'
+                                },
+                                credentials:
+                                    'same-origin',
+                                body:
+                                    JSON.stringify(
+                                        appearance
+                                    )
+                            }
+                        );
+
+
+                    const data =
+                        await readOwnerApiResponse(
+                            response
+                        );
+
+
+                    if (
+                        data.appearance &&
+                        typeof data.appearance ===
+                            'object'
+                    ) {
+
+                        setRestaurantAppearanceFormValues(
+                            {
+                                ...DEFAULT_APPEARANCE,
+                                ...data.appearance
+                            }
+                        );
+                    }
+
+
+                    showOwnerNotification(
+                        'Appearance saved',
+                        'Restaurant appearance has been saved successfully.',
+                        'success'
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        '[appearance:save]',
+                        error
+                    );
+
+
+                    showOwnerNotification(
+                        'Appearance could not be saved',
+                        error.message ||
+                            'Unable to save restaurant appearance.',
+                        'error'
+                    );
+
+                } finally {
+
+                    saveAppearanceButton.disabled =
+                        false;
+                }
+
+
+                return;
+            }
+
+
+            const clearAppearanceButton =
+                event.target.closest(
+                    '#clearRestaurantAppearanceBtn'
+                );
+
+
+            if (clearAppearanceButton) {
+
+                const restaurantId =
+                    clearAppearanceButton.dataset
+                        .restaurantId;
+
+
+                if (!restaurantId) return;
+
+
+                if (
+                    !window.confirm(
+                        'Clear all restaurant appearance settings?'
+                    )
+                ) {
+                    return;
+                }
+
+
+                try {
+
+                    clearAppearanceButton.disabled =
+                        true;
+
+
+                    const token =
+                        getAdminToken();
+
+
+                    const response =
+                        await fetch(
+                            `/api/owner/restaurants/${restaurantId}/appearance`,
+                            {
+                                method: 'DELETE',
+                                headers: {
+                                    Authorization:
+                                        `Bearer ${token}`,
+                                    Accept:
+                                        'application/json'
+                                },
+                                credentials:
+                                    'same-origin'
+                            }
+                        );
+
+
+                    await readOwnerApiResponse(
+                        response
+                    );
+
+
+                    setRestaurantAppearanceFormValues(
+                        DEFAULT_APPEARANCE
+                    );
+
+
+                    showOwnerNotification(
+                        'Appearance cleared',
+                        'Restaurant appearance has been reset to the default theme.',
+                        'success'
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        '[appearance:clear]',
+                        error
+                    );
+
+
+                    showOwnerNotification(
+                        'Appearance could not be cleared',
+                        error.message ||
+                            'Unable to clear restaurant appearance.',
+                        'error'
+                    );
+
+                } finally {
+
+                    clearAppearanceButton.disabled =
+                        false;
+                }
+
+
+                return;
+            }
         }
     );
 }

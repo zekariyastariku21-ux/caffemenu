@@ -33,7 +33,7 @@ async function loadCompanySettings() {
     
 
         const companyLogo =
-            settings.logo || 'image/z logo.jpeg';
+            settings.logo || 'image/z-menu.jpg';
 
         document.querySelectorAll(
             '[data-company-logo]'
@@ -462,7 +462,7 @@ async function loadRestaurantSlides() {
                     document.createElement('img');
 
                 image.src =
-                    'image/z logo.jpeg';
+                    'image/z-menu.jpg';
 
                 image.alt =
                     restaurant.name || 'Restaurant';
@@ -494,7 +494,7 @@ async function loadRestaurantSlides() {
                     .catch(() => {
 
                         image.src =
-                            'image/z logo.jpeg';
+                            'image/z-menu.jpg';
 
                     });
 
