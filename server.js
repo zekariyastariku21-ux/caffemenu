@@ -1509,7 +1509,7 @@ app.get('/api/menu/:slug/logo', async (req, res) => {
 
     res.set(
       'Cache-Control',
-      'public, max-age=86400, stale-while-revalidate=604800'
+      'public, max-age=60, stale-while-revalidate=60'
     );
 
     res.set(

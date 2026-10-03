@@ -1763,6 +1763,210 @@ textarea:focus-visible {
    CENTERED ACTION MODAL
    ================================================================ */
 
+
+
+/* ================================================================
+   RESTAURANT STATUS CONFIRMATION
+================================================================ */
+
+.owner-status-confirm {
+    padding: 28px;
+    text-align: center;
+}
+
+.owner-status-confirm-icon {
+    width: 58px;
+    height: 58px;
+
+    margin: 0 auto 15px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 18px;
+
+    font-size: 25px;
+    font-weight: 900;
+
+    box-shadow:
+        0 10px 24px rgba(33, 20, 15, 0.10);
+}
+
+.owner-status-confirm-icon.enable {
+    background:
+        linear-gradient(
+            135deg,
+            #e9f8ef,
+            #d9f1e2
+        );
+
+    color: #187642;
+
+    border: 1px solid #b8dfc6;
+}
+
+.owner-status-confirm-icon.disable {
+    background:
+        linear-gradient(
+            135deg,
+            #fff1ed,
+            #ffe3dc
+        );
+
+    color: #ae4941;
+
+    border: 1px solid #f0c5bc;
+}
+
+.owner-status-confirm-kicker {
+    margin-bottom: 7px;
+
+    color: var(--gold-500);
+
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 2px;
+}
+
+.owner-status-confirm h3 {
+    margin: 0;
+
+    color: var(--espresso-950);
+
+    font-family:
+        Georgia,
+        'Times New Roman',
+        serif;
+
+    font-size: 23px;
+    line-height: 1.25;
+    font-weight: 700;
+}
+
+.owner-status-confirm-name {
+    margin: 9px 0 0;
+
+    color: var(--espresso-800);
+
+    font-size: 13px;
+    font-weight: 850;
+}
+
+.owner-status-confirm-message {
+    max-width: 500px;
+
+    margin: 12px auto 0;
+
+    color: var(--text-600);
+
+    font-size: 12px;
+    line-height: 1.65;
+}
+
+.owner-status-confirm-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    margin-top: 24px;
+}
+
+.owner-status-cancel-btn,
+.owner-status-confirm-btn {
+    min-height: 44px;
+
+    padding: 0 18px;
+
+    border-radius: 11px;
+
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 850;
+
+    cursor: pointer;
+
+    transition:
+        transform 160ms ease,
+        box-shadow 160ms ease,
+        background 160ms ease;
+}
+
+.owner-status-cancel-btn {
+    border: 1px solid var(--border);
+
+    background: #fff;
+
+    color: var(--text-700);
+}
+
+.owner-status-cancel-btn:hover {
+    background: var(--cream-100);
+
+    transform: translateY(-1px);
+}
+
+.owner-status-confirm-btn {
+    border: 1px solid transparent;
+
+    color: #fff;
+}
+
+.owner-status-confirm-btn.enable {
+    background:
+        linear-gradient(
+            135deg,
+            #237f4b,
+            #17663a
+        );
+
+    box-shadow:
+        0 8px 18px rgba(35, 127, 75, 0.20);
+}
+
+.owner-status-confirm-btn.disable {
+    background:
+        linear-gradient(
+            135deg,
+            #b34e45,
+            #963b34
+        );
+
+    box-shadow:
+        0 8px 18px rgba(174, 73, 65, 0.20);
+}
+
+.owner-status-confirm-btn:hover {
+    transform: translateY(-1px);
+}
+
+.owner-status-confirm-btn:active,
+.owner-status-cancel-btn:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 520px) {
+
+    .owner-status-confirm {
+        padding: 23px 17px;
+    }
+
+    .owner-status-confirm h3 {
+        font-size: 20px;
+    }
+
+    .owner-status-confirm-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .owner-status-cancel-btn,
+    .owner-status-confirm-btn {
+        width: 100%;
+    }
+}
 .owner-action-panel {
 
     position: fixed;
@@ -3182,7 +3386,9 @@ textarea:focus-visible {
        MOBILE ACTION MODAL
        ============================================================ */
 
-    .owner-action-panel {
+
+
+.owner-action-panel {
 
         padding: 10px;
 
@@ -3358,7 +3564,9 @@ textarea:focus-visible {
         font-size: 12px;
     }
 
-    .owner-action-panel {
+
+
+.owner-action-panel {
         padding: 8px;
     }
 
@@ -4556,6 +4764,8 @@ label:has(#ownerShowAdminPassword) {
    FORM / ACTION PANEL
    ================================================================ */
 
+
+
 .owner-action-panel {
 
     background:
@@ -5354,6 +5564,8 @@ label:has(#ownerShowAdminPassword) {
 /* ================================================================
    SUPER ADMIN FORMS —
    ================================================================ */
+
+
 
 .owner-action-panel {
     overflow: hidden !important;

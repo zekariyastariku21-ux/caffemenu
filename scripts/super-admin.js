@@ -2729,7 +2729,6 @@ async function submitEditOwnerCafeAdmin(
 /* ================================================================
    ENABLE / DISABLE
    ================================================================ */
-
 async function toggleOwnerCafeStatus(
     restaurantId
 ) {
@@ -2762,8 +2761,78 @@ async function toggleOwnerCafeStatus(
             : 'active';
 
 
-    showOwnerLoading(
+    const restaurantName =
+        getRestaurantName(
+            restaurant
+        );
+
+    openOwnerActionPanel(
         active
+            ? 'Disable Restaurant'
+            : 'Enable Restaurant',
+        `
+            <div class="owner-status-confirm">
+
+                <div class="owner-status-confirm-icon ${active ? 'disable' : 'enable'}">
+                    ${active ? '!' : '✓'}
+                </div>
+
+                <div class="owner-status-confirm-kicker">
+                    ${active ? 'RESTAURANT STATUS' : 'RESTAURANT STATUS'}
+                </div>
+
+                <h3>
+                    ${active
+                        ? 'Disable this restaurant?'
+                        : 'Enable this restaurant?'}
+                </h3>
+
+                <p class="owner-status-confirm-name">
+                    ${escapeHtml(restaurantName)}
+                </p>
+
+                <p class="owner-status-confirm-message">
+                    ${active
+                        ? 'Customers will no longer be able to use this restaurant while it is disabled.'
+                        : 'This restaurant will become active and available to customers again.'}
+                </p>
+
+                <div class="owner-status-confirm-actions">
+
+                    <button
+                        type="button"
+                        class="owner-status-cancel-btn"
+                        onclick="closeOwnerActionPanel()"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="button"
+                        class="owner-status-confirm-btn ${active ? 'disable' : 'enable'}"
+                        onclick="executeOwnerCafeStatus(${Number(restaurantId)}, '${nextStatus}', ${active})"
+                    >
+                        ${active
+                            ? 'Disable Restaurant'
+                            : 'Enable Restaurant'}
+                    </button>
+
+                </div>
+
+            </div>
+        `
+    );
+}
+
+
+async function executeOwnerCafeStatus(
+    restaurantId,
+    nextStatus,
+    wasActive
+) {
+
+    showOwnerLoading(
+        wasActive
             ? 'Disabling restaurant...'
             : 'Enabling restaurant...'
     );
@@ -2823,13 +2892,16 @@ async function toggleOwnerCafeStatus(
         await loadOwnerCafes();
 
 
+        closeOwnerActionPanel();
+
+
         showOwnerNotification(
-            active
+            wasActive
                 ? 'Restaurant disabled'
                 : 'Restaurant enabled',
             data.message ||
                 (
-                    active
+                    wasActive
                         ? 'The restaurant is now disabled.'
                         : 'The restaurant is now active.'
                 ),
@@ -2858,7 +2930,6 @@ async function toggleOwnerCafeStatus(
         cleanupOwnerVisualState();
     }
 }
-
 
 /* ================================================================
    DELETE
