@@ -121,6 +121,10 @@ async function warmMenuCache() {
         ra.button_text,
         ra.selected_button,
         ra.selected_button_text,
+        ra.add_button_background,
+        ra.add_button_text,
+        ra.cart_button_background,
+        ra.cart_button_text,
         ra.card_background,
         ra.item_name,
         ra.description,
@@ -198,6 +202,10 @@ async function warmMenuCache() {
                 button_text: row.button_text,
                 selected_button: row.selected_button,
                 selected_button_text: row.selected_button_text,
+                add_button_background: row.add_button_background,
+                add_button_text: row.add_button_text,
+                cart_button_background: row.cart_button_background,
+                cart_button_text: row.cart_button_text,
                 card_background: row.card_background,
                 item_name: row.item_name,
                 description: row.description,
@@ -363,24 +371,97 @@ async function ensureDatabaseStructure() {
           REFERENCES restaurants(id) ON DELETE CASCADE,
 
         header_background TEXT,
+        header_background_type TEXT NOT NULL DEFAULT 'solid',
         restaurant_name TEXT,
+        restaurant_name_type TEXT NOT NULL DEFAULT 'solid',
         restaurant_name_text TEXT,
 
         button_background TEXT,
+        button_background_type TEXT NOT NULL DEFAULT 'solid',
         button_text TEXT,
         selected_button TEXT,
+        selected_button_type TEXT NOT NULL DEFAULT 'solid',
         selected_button_text TEXT,
+        add_button_background TEXT,
+        add_button_text TEXT,
+        cart_button_background TEXT,
+        cart_button_text TEXT,
 
         card_background TEXT,
+        card_background_type TEXT NOT NULL DEFAULT 'solid',
         item_name TEXT,
         description TEXT,
         price TEXT,
 
         page_background TEXT,
+        page_background_type TEXT NOT NULL DEFAULT 'solid',
 
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
+    `);
+
+    await pool.query(`
+      ALTER TABLE restaurant_appearances
+        ADD COLUMN IF NOT EXISTS add_button_background TEXT,
+        ADD COLUMN IF NOT EXISTS add_button_text TEXT,
+        ADD COLUMN IF NOT EXISTS cart_button_background TEXT,
+        ADD COLUMN IF NOT EXISTS cart_button_text TEXT
+    `);
+
+    await pool.query(`
+      ALTER TABLE restaurant_appearances
+        ADD COLUMN IF NOT EXISTS header_background_type TEXT,
+        ADD COLUMN IF NOT EXISTS restaurant_name_type TEXT,
+        ADD COLUMN IF NOT EXISTS button_background_type TEXT,
+        ADD COLUMN IF NOT EXISTS selected_button_type TEXT,
+        ADD COLUMN IF NOT EXISTS card_background_type TEXT,
+        ADD COLUMN IF NOT EXISTS page_background_type TEXT,
+        ALTER COLUMN header_background_type SET DEFAULT 'solid',
+        ALTER COLUMN restaurant_name_type SET DEFAULT 'solid',
+        ALTER COLUMN button_background_type SET DEFAULT 'solid',
+        ALTER COLUMN selected_button_type SET DEFAULT 'solid',
+        ALTER COLUMN card_background_type SET DEFAULT 'solid',
+        ALTER COLUMN page_background_type SET DEFAULT 'solid'
+    `);
+
+    await pool.query(`
+      UPDATE restaurant_appearances
+      SET
+        header_background_type = CASE
+          WHEN header_background LIKE 'linear-gradient(%' THEN 'gradient'
+          ELSE 'solid'
+        END,
+        restaurant_name_type = CASE
+          WHEN restaurant_name LIKE 'linear-gradient(%' THEN 'gradient'
+          ELSE 'solid'
+        END,
+        button_background_type = CASE
+          WHEN button_background LIKE 'linear-gradient(%' THEN 'gradient'
+          ELSE 'solid'
+        END,
+        selected_button_type = CASE
+          WHEN selected_button LIKE 'linear-gradient(%' THEN 'gradient'
+          ELSE 'solid'
+        END,
+        card_background_type = CASE
+          WHEN card_background LIKE 'linear-gradient(%' THEN 'gradient'
+          ELSE 'solid'
+        END,
+        page_background_type = CASE
+          WHEN page_background LIKE 'linear-gradient(%' THEN 'gradient'
+          ELSE 'solid'
+        END
+    `);
+
+    await pool.query(`
+      ALTER TABLE restaurant_appearances
+        ALTER COLUMN header_background_type SET NOT NULL,
+        ALTER COLUMN restaurant_name_type SET NOT NULL,
+        ALTER COLUMN button_background_type SET NOT NULL,
+        ALTER COLUMN selected_button_type SET NOT NULL,
+        ALTER COLUMN card_background_type SET NOT NULL,
+        ALTER COLUMN page_background_type SET NOT NULL
     `);
 
     await pool.query(`
@@ -1192,6 +1273,10 @@ app.get('/api/menu/:slug', async (req, res) => {
           ra.button_text,
           ra.selected_button,
           ra.selected_button_text,
+          ra.add_button_background,
+          ra.add_button_text,
+          ra.cart_button_background,
+          ra.cart_button_text,
           ra.card_background,
           ra.item_name,
           ra.description,
@@ -1326,6 +1411,18 @@ app.get('/api/menu/:slug', async (req, res) => {
 
             selected_button_text:
               row.selected_button_text,
+
+            add_button_background:
+              row.add_button_background,
+
+            add_button_text:
+              row.add_button_text,
+
+            cart_button_background:
+              row.cart_button_background,
+
+            cart_button_text:
+              row.cart_button_text,
 
             card_background:
               row.card_background,
@@ -2684,6 +2781,10 @@ app.get(
             button_text,
             selected_button,
             selected_button_text,
+            add_button_background,
+            add_button_text,
+            cart_button_background,
+            cart_button_text,
             card_background,
             item_name,
             description,
@@ -2765,6 +2866,10 @@ app.put(
         'button_text',
         'selected_button',
         'selected_button_text',
+        'add_button_background',
+        'add_button_text',
+        'cart_button_background',
+        'cart_button_text',
         'card_background',
         'item_name',
         'description',
@@ -2786,6 +2891,22 @@ app.put(
           return String(value).trim();
         });
 
+      const appearanceTypes =
+        [
+          'header_background',
+          'restaurant_name',
+          'button_background',
+          'selected_button',
+          'card_background',
+          'page_background'
+        ].map((field) =>
+          /^linear-gradient\(/i.test(
+            String(req.body[field] || '').trim()
+          )
+            ? 'gradient'
+            : 'solid'
+        );
+
       const result =
         await pool.query(`
           INSERT INTO restaurant_appearances (
@@ -2797,11 +2918,21 @@ app.put(
             button_text,
             selected_button,
             selected_button_text,
+            add_button_background,
+            add_button_text,
+            cart_button_background,
+            cart_button_text,
             card_background,
             item_name,
             description,
             price,
             page_background,
+            header_background_type,
+            restaurant_name_type,
+            button_background_type,
+            selected_button_type,
+            card_background_type,
+            page_background_type,
             updated_at
           )
           VALUES (
@@ -2818,6 +2949,16 @@ app.put(
             $11,
             $12,
             $13,
+            $14,
+            $15,
+            $16,
+            $17,
+            $18,
+            $19,
+            $20,
+            $21,
+            $22,
+            $23,
             NOW()
           )
           ON CONFLICT (restaurant_id)
@@ -2829,11 +2970,21 @@ app.put(
             button_text = EXCLUDED.button_text,
             selected_button = EXCLUDED.selected_button,
             selected_button_text = EXCLUDED.selected_button_text,
+            add_button_background = EXCLUDED.add_button_background,
+            add_button_text = EXCLUDED.add_button_text,
+            cart_button_background = EXCLUDED.cart_button_background,
+            cart_button_text = EXCLUDED.cart_button_text,
             card_background = EXCLUDED.card_background,
             item_name = EXCLUDED.item_name,
             description = EXCLUDED.description,
             price = EXCLUDED.price,
             page_background = EXCLUDED.page_background,
+            header_background_type = EXCLUDED.header_background_type,
+            restaurant_name_type = EXCLUDED.restaurant_name_type,
+            button_background_type = EXCLUDED.button_background_type,
+            selected_button_type = EXCLUDED.selected_button_type,
+            card_background_type = EXCLUDED.card_background_type,
+            page_background_type = EXCLUDED.page_background_type,
             updated_at = NOW()
           RETURNING
             header_background,
@@ -2843,6 +2994,10 @@ app.put(
             button_text,
             selected_button,
             selected_button_text,
+            add_button_background,
+            add_button_text,
+            cart_button_background,
+            cart_button_text,
             card_background,
             item_name,
             description,
@@ -2850,7 +3005,8 @@ app.put(
             page_background
         `, [
           restaurantId,
-          ...values
+          ...values,
+          ...appearanceTypes
         ]);
 
       const appearance =
@@ -4400,12 +4556,6 @@ async function startServer() {
 }
 
 startServer();
-
-
-
-
-
-
 
 
 

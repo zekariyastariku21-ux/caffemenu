@@ -64,6 +64,10 @@ const DEFAULT_APPEARANCE = {
     button_text: '#563827',
     selected_button: '#a96327',
     selected_button_text: '#ffffff',
+    add_button_background: '#a55d20',
+    add_button_text: '#ffffff',
+    cart_button_background: '#a96832',
+    cart_button_text: '#fffaf5',
     card_background: '#fffdf9',
     item_name: '#4b2a0a',
     description: '#745b47',
@@ -79,12 +83,27 @@ const APPEARANCE_FIELDS = [
     ['button_text', 'Button Text'],
     ['selected_button', 'Selected Button'],
     ['selected_button_text', 'Selected Button Text'],
+    ['add_button_background', '+ Add Button Background'],
+    ['add_button_text', '+ Add Button Text'],
+    ['cart_button_background', 'Cart Button Background'],
+    ['cart_button_text', 'Cart Button Text'],
     ['card_background', 'Card Background'],
     ['item_name', 'Item Name'],
     ['description', 'Description'],
     ['price', 'Price'],
     ['page_background', 'Page Background']
 ];
+
+const APPEARANCE_BACKGROUND_FIELDS = new Set([
+    'header_background',
+    'restaurant_name',
+    'button_background',
+    'selected_button',
+    'add_button_background',
+    'cart_button_background',
+    'card_background',
+    'page_background'
+]);
 /* ================================================================
    GENERAL HELPERS
    ================================================================ */
@@ -315,6 +334,607 @@ function ensureSuperAdminRuntimeStyles() {
             box-sizing:border-box !important;
             overflow-x:hidden !important;
             overflow-y:auto !important;
+        }
+
+        .company-content-edit-hint {
+            margin:6px 0 12px;
+            color:#766960;
+            font-size:11px;
+            line-height:1.5;
+        }
+
+        #companySettingsForm input:disabled,
+        #companySettingsForm textarea:disabled,
+        #companySettingsForm select:disabled {
+            border-color:rgba(66,42,27,.1);
+            background:#f3f0ec;
+            color:#71675f;
+            cursor:not-allowed;
+            opacity:.86;
+        }
+
+        #companyContentList input:disabled,
+        #companyContentList textarea:disabled {
+            background:#f3f0ec;
+        }
+
+        .caffemenu-appearance-wrap {
+            width:min(100%,780px);
+            box-sizing:border-box;
+            margin:0 auto;
+            padding:4px 2px 112px;
+        }
+
+        .caffemenu-appearance-intro {
+            position:relative;
+            overflow:hidden;
+            margin-bottom:18px;
+            padding:22px 24px;
+            border:1px solid rgba(168,121,46,.2);
+            border-radius:18px;
+            background:linear-gradient(120deg,#fffaf0,#fff 70%);
+            box-shadow:0 8px 24px rgba(53,29,18,.045);
+        }
+
+        .caffemenu-appearance-intro::after {
+            position:absolute;
+            top:-38px;
+            right:-22px;
+            width:150px;
+            height:150px;
+            border:24px solid rgba(168,121,46,.07);
+            border-radius:50%;
+            content:"";
+            pointer-events:none;
+        }
+
+        .caffemenu-appearance-intro-kicker {
+            margin:0 0 7px;
+            color:#a8792e;
+            font-size:10px;
+            font-weight:900;
+            letter-spacing:.15em;
+            text-transform:uppercase;
+        }
+
+        .caffemenu-appearance-intro h2 {
+            margin:0;
+            color:#351d12;
+            font-family:Georgia,"Times New Roman",serif;
+            font-size:24px;
+            line-height:1.2;
+        }
+
+        .caffemenu-appearance-intro p:last-child {
+            max-width:560px;
+            margin:8px 0 0;
+            color:#766960;
+            font-size:12px;
+            line-height:1.6;
+        }
+
+        .caffemenu-appearance-editing {
+            position:relative;
+            z-index:1;
+            display:flex;
+            align-items:center;
+            gap:11px;
+            margin-top:17px;
+            padding:10px 12px;
+            border:1px solid rgba(168,121,46,.18);
+            border-radius:12px;
+            background:rgba(255,255,255,.82);
+        }
+
+        .caffemenu-appearance-editing-mark {
+            width:34px;
+            height:34px;
+            flex:0 0 34px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            border-radius:10px;
+            background:#351d12;
+            color:#fff8e9;
+            font-size:13px;
+            font-weight:900;
+        }
+
+        .caffemenu-appearance-editing-copy {
+            display:grid;
+            gap:3px;
+            min-width:0;
+        }
+
+        .caffemenu-appearance-editing-copy span {
+            color:#84776e;
+            font-size:9px;
+            font-weight:850;
+            letter-spacing:.1em;
+            text-transform:uppercase;
+        }
+
+        .caffemenu-appearance-editing-copy strong {
+            overflow:hidden;
+            color:#351d12;
+            font-size:14px;
+            font-weight:850;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+        }
+
+        .caffemenu-appearance-section {
+            margin-bottom:14px;
+            padding:19px;
+            border:1px solid rgba(66,42,27,.1);
+            border-radius:17px;
+            background:rgba(255,255,255,.88);
+            box-shadow:0 6px 20px rgba(53,29,18,.035);
+        }
+
+        .caffemenu-appearance-section-heading {
+            display:flex;
+            align-items:flex-start;
+            gap:11px;
+            margin-bottom:15px;
+        }
+
+        .caffemenu-appearance-section-number {
+            width:30px;
+            height:30px;
+            flex:0 0 30px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            border:1px solid rgba(168,121,46,.2);
+            border-radius:10px;
+            background:#fff8e9;
+            color:#966820;
+            font-size:11px;
+            font-weight:900;
+        }
+
+        .caffemenu-appearance-section-heading h3 {
+            margin:1px 0 3px;
+            color:#351d12;
+            font-family:Georgia,"Times New Roman",serif;
+            font-size:16px;
+            line-height:1.3;
+        }
+
+        .caffemenu-appearance-section-heading p {
+            margin:0;
+            color:#84776e;
+            font-size:11px;
+            line-height:1.45;
+        }
+
+        .caffemenu-appearance-grid {
+            display:grid;
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            gap:11px;
+        }
+
+        .caffemenu-appearance-field {
+            min-width:0;
+            padding:13px;
+            border:1px solid rgba(66,42,27,.09);
+            border-radius:12px;
+            background:#fffdfa;
+            transition:border-color 150ms ease,box-shadow 150ms ease;
+        }
+
+        .caffemenu-appearance-field:focus-within {
+            border-color:rgba(168,121,46,.48);
+            box-shadow:0 0 0 3px rgba(168,121,46,.08);
+        }
+
+        .caffemenu-appearance-label {
+            display:block;
+            margin-bottom:10px;
+            color:#351d12;
+            font-size:11px;
+            font-weight:850;
+        }
+
+        .caffemenu-appearance-mode-label,
+        .caffemenu-gradient-angle-label {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            margin:0 0 9px;
+            color:#766960;
+            font-size:10px;
+            font-weight:700;
+        }
+
+        .caffemenu-appearance-mode {
+            width:68%;
+            min-height:32px;
+            min-width:0;
+            padding:0 9px;
+            border:1px solid rgba(66,42,27,.16);
+            border-radius:8px;
+            background:#fff;
+            color:#351d12;
+            font-family:inherit;
+            font-size:11px;
+            font-weight:700;
+        }
+
+        .caffemenu-appearance-mode:focus,
+        .caffemenu-appearance-controls input:focus {
+            outline:none;
+            border-color:#a8792e;
+            box-shadow:0 0 0 2px rgba(168,121,46,.11);
+        }
+
+        .caffemenu-appearance-controls {
+            display:grid;
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            gap:9px;
+        }
+
+        .caffemenu-appearance-controls input {
+            width:100%;
+            min-width:0;
+            min-height:37px;
+            box-sizing:border-box;
+            border:1px solid rgba(66,42,27,.16);
+            border-radius:8px;
+            background:#fff;
+            color:#351d12;
+            font-family:inherit;
+            font-size:11px;
+        }
+
+        .caffemenu-solid-color-preview {
+            display:flex;
+            align-items:center;
+            gap:11px;
+            min-height:54px;
+            margin-bottom:10px;
+            padding:7px 9px;
+            border:1px solid rgba(66,42,27,.11);
+            border-radius:10px;
+            background:linear-gradient(120deg,#fff,#faf6f0);
+        }
+
+        .caffemenu-solid-color-swatch {
+            width:40px;
+            height:40px;
+            flex:0 0 40px;
+            border:1px solid rgba(35,22,15,.2);
+            border-radius:9px;
+            box-shadow:inset 0 1px 2px rgba(255,255,255,.5),0 2px 5px rgba(35,22,15,.1);
+        }
+
+        .caffemenu-solid-color-info {
+            display:grid;
+            gap:3px;
+            min-width:0;
+        }
+
+        .caffemenu-solid-color-info span {
+            color:#84776e;
+            font-size:9px;
+            font-weight:800;
+            letter-spacing:.08em;
+            text-transform:uppercase;
+        }
+
+        .caffemenu-solid-color-info strong {
+            overflow:hidden;
+            color:#351d12;
+            font-family:Consolas,"Courier New",monospace;
+            font-size:12px;
+            letter-spacing:.03em;
+            text-overflow:ellipsis;
+        }
+
+        .caffemenu-solid-color-preview input[type="color"] {
+            width:40px;
+            height:40px;
+            margin-left:auto;
+            padding:3px;
+            border:1px solid rgba(66,42,27,.16);
+            border-radius:9px;
+            background:#fff;
+            cursor:pointer;
+        }
+
+        .caffemenu-appearance-input-label {
+            display:grid;
+            gap:5px;
+            color:#84776e;
+            font-size:9px;
+            font-weight:800;
+            letter-spacing:.06em;
+            text-transform:uppercase;
+        }
+
+        .caffemenu-appearance-controls input[type="text"] {
+            text-transform:none;
+            padding:0 8px;
+        }
+
+        .caffemenu-appearance-gradient[hidden],
+        .caffemenu-appearance-controls[hidden] {
+            display:none !important;
+        }
+
+        .caffemenu-appearance-gradient {
+            padding-top:2px;
+        }
+
+        .caffemenu-appearance-gradient-preview {
+            height:42px;
+            margin-bottom:13px;
+            border:1px solid rgba(66,42,27,.14);
+            border-radius:9px;
+            box-shadow:inset 0 1px 2px rgba(0,0,0,.06);
+        }
+
+        .caffemenu-gradient-angle-label {
+            margin-bottom:11px;
+        }
+
+        .caffemenu-gradient-angle-label input {
+            flex:1;
+            min-width:50px;
+            accent-color:#a8792e;
+        }
+
+        .caffemenu-gradient-stops {
+            display:grid;
+            gap:6px;
+        }
+
+        .caffemenu-gradient-stop {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:8px;
+            padding:6px 8px;
+            border:1px solid rgba(66,42,27,.1);
+            border-radius:8px;
+            background:#fff;
+        }
+
+        .caffemenu-gradient-stop label {
+            display:flex;
+            align-items:center;
+            gap:9px;
+            color:#4a382d;
+            font-size:10px;
+            font-weight:700;
+        }
+
+        .caffemenu-gradient-stop input[type="color"] {
+            width:34px;
+            height:27px;
+            padding:2px;
+            border:1px solid rgba(66,42,27,.16);
+            border-radius:6px;
+            background:#fff;
+            cursor:pointer;
+        }
+
+        .caffemenu-gradient-stop button,
+        .caffemenu-gradient-add {
+            min-height:28px;
+            padding:0 9px;
+            border:1px solid rgba(66,42,27,.14);
+            border-radius:7px;
+            background:#fff;
+            color:#5b4537;
+            font-family:inherit;
+            font-size:10px;
+            font-weight:700;
+            cursor:pointer;
+        }
+
+        .caffemenu-gradient-stop button:disabled,
+        .caffemenu-gradient-add:disabled {
+            opacity:.45;
+            cursor:not-allowed;
+        }
+
+        .caffemenu-gradient-add {
+            width:100%;
+            margin-top:8px;
+            border-color:rgba(168,121,46,.28);
+            background:#fff9ec;
+            color:#81591e;
+        }
+
+        .caffemenu-appearance-actions {
+            position:fixed;
+            bottom:16px;
+            left:50%;
+            z-index:1;
+
+            display:flex;
+            justify-content:flex-end;
+            width:min(850px,calc(100vw - 32px));
+            gap:10px;
+            box-sizing:border-box;
+            padding:13px 24px;
+            transform:translateX(-50%);
+            border-right:1px solid rgba(66,42,27,.1);
+            border-bottom:1px solid rgba(66,42,27,.1);
+            border-left:1px solid rgba(66,42,27,.1);
+            border-radius:0 0 20px 20px;
+            border-top:1px solid rgba(66,42,27,.14);
+            background:#fffdf9;
+            box-shadow:0 -8px 20px rgba(53,29,18,.08);
+        }
+
+        @media (max-width:600px) {
+            .caffemenu-appearance-wrap {
+                padding:0 0 106px;
+            }
+
+            .caffemenu-appearance-intro {
+                padding:18px;
+            }
+
+            .caffemenu-appearance-intro h2 {
+                font-size:21px;
+            }
+
+            .caffemenu-appearance-section {
+                padding:14px;
+            }
+
+            .caffemenu-appearance-grid {
+                grid-template-columns:minmax(0,1fr);
+                gap:9px;
+            }
+
+            .caffemenu-appearance-field {
+                padding:12px;
+            }
+
+            .caffemenu-appearance-actions {
+                bottom:16px;
+                padding:11px 13px;
+            }
+
+            .caffemenu-appearance-actions button {
+                flex:1;
+                min-width:0;
+                padding:0 8px;
+            }
+        }
+
+        .appearance-clear-confirm-backdrop {
+            position:fixed;
+            inset:0;
+            z-index:1000001;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            box-sizing:border-box;
+            padding:20px;
+            background:rgba(25,15,9,.58);
+            backdrop-filter:blur(5px);
+            -webkit-backdrop-filter:blur(5px);
+        }
+
+        .appearance-clear-confirm-dialog {
+            width:min(420px,100%);
+            box-sizing:border-box;
+            padding:30px;
+            border:1px solid rgba(255,255,255,.75);
+            border-radius:22px;
+            background:#fffdf9;
+            box-shadow:0 28px 80px rgba(0,0,0,.3);
+            text-align:center;
+            animation:appearanceConfirmIn 160ms ease-out;
+        }
+
+        .appearance-clear-confirm-icon {
+            width:54px;
+            height:54px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            margin:0 auto 18px;
+            border:1px solid #f0c5bc;
+            border-radius:17px;
+            background:linear-gradient(135deg,#fff1ed,#ffe3dc);
+            color:#a43f35;
+            font-size:25px;
+            font-weight:800;
+        }
+
+        .appearance-clear-confirm-kicker {
+            margin:0 0 8px;
+            color:#a8792e;
+            font-size:10px;
+            font-weight:900;
+            letter-spacing:.16em;
+            text-transform:uppercase;
+        }
+
+        .appearance-clear-confirm-dialog h2 {
+            margin:0;
+            color:#351d12;
+            font-family:Georgia,"Times New Roman",serif;
+            font-size:24px;
+            line-height:1.25;
+        }
+
+        .appearance-clear-confirm-message {
+            margin:12px 0 0;
+            color:#766960;
+            font-size:13px;
+            line-height:1.6;
+        }
+
+        .appearance-clear-confirm-actions {
+            display:flex;
+            justify-content:center;
+            gap:10px;
+            margin-top:25px;
+        }
+
+        .appearance-clear-confirm-actions button {
+            min-height:44px;
+            padding:0 18px;
+            border-radius:11px;
+            font-family:inherit;
+            font-size:12px;
+            font-weight:800;
+            cursor:pointer;
+            transition:transform 160ms ease,box-shadow 160ms ease;
+        }
+
+        .appearance-clear-cancel {
+            border:1px solid rgba(66,42,27,.17);
+            background:#fff;
+            color:#4a382d;
+        }
+
+        .appearance-clear-confirm {
+            border:1px solid #a43f35;
+            background:linear-gradient(135deg,#b34e45,#963b34);
+            color:#fff;
+            box-shadow:0 7px 16px rgba(174,73,65,.2);
+        }
+
+        .appearance-clear-confirm-actions button:hover {
+            transform:translateY(-1px);
+        }
+
+        .appearance-clear-confirm-actions button:focus-visible {
+            outline:3px solid rgba(168,121,46,.45);
+            outline-offset:2px;
+        }
+
+        @keyframes appearanceConfirmIn {
+            from { opacity:0; transform:translateY(8px) scale(.98); }
+            to { opacity:1; transform:translateY(0) scale(1); }
+        }
+
+        @media (max-width:520px) {
+            .appearance-clear-confirm-dialog {
+                padding:25px 20px;
+            }
+
+            .appearance-clear-confirm-dialog h2 {
+                font-size:21px;
+            }
+
+            .appearance-clear-confirm-actions {
+                flex-direction:column-reverse;
+            }
+
+            .appearance-clear-confirm-actions button {
+                width:100%;
+            }
         }
 
         #ownerLoadingOverlay {
@@ -6344,13 +6964,14 @@ function openCompanyProfile() {
                             id="companyName"
                             type="text"
                             placeholder="Company name"
+                            disabled
                             style="flex:1;"
                         >
 
                         <button
                             type="button"
                             class="restaurant-action-btn"
-                            onclick="document.getElementById('companyName').focus()"
+                            onclick="toggleCompanyFieldEdit(this, ['companyName'])"
                         >
                             &#9998; Edit
                         </button>
@@ -6373,13 +6994,14 @@ function openCompanyProfile() {
             id="companySlogan"
             type="text"
             placeholder="Company slogan"
+            disabled
             style="flex:1;"
         >
 
         <button
             type="button"
             class="restaurant-action-btn"
-            onclick="document.getElementById('companySlogan').focus()"
+            onclick="toggleCompanyFieldEdit(this, ['companySlogan'])"
         >
             &#9998; Edit
         </button>
@@ -6419,10 +7041,18 @@ function openCompanyProfile() {
                                 flex-wrap:wrap;
                             "
                         >
+                            <button
+                                type="button"
+                                class="restaurant-action-btn"
+                                onclick="toggleCompanyFieldEdit(this, ['companyLogoInput', 'companyLogoDeleteButton'])"
+                            >
+                                &#9998; Edit Logo
+                            </button>
+
                             <label
                                 for="companyLogoInput"
                                 class="restaurant-action-btn"
-                                style="cursor:pointer;"
+                                style="cursor:not-allowed;"
                             >
                                 Replace Logo
                             </label>
@@ -6436,8 +7066,10 @@ function openCompanyProfile() {
                             >
 
                             <button
+                                id="companyLogoDeleteButton"
                                 type="button"
                                 class="restaurant-action-btn"
+                                disabled
                                 onclick="deleteCompanyLogo()"
                             >
                                 Delete Logo
@@ -6452,6 +7084,10 @@ function openCompanyProfile() {
                     <label>
                         Company Content
                     </label>
+
+                    <p class="company-content-edit-hint">
+                        Company Profile fields are read-only until you choose Edit for that field or row. Use Save Changes below to save your updates.
+                    </p>
 
                     <div
                         id="companyContentList"
@@ -6526,13 +7162,14 @@ function openCompanyProfile() {
             id="companyEmail"
             type="email"
             placeholder="Email address"
+            disabled
             style="flex:1;"
         >
 
         <button
             type="button"
             class="restaurant-action-btn"
-            onclick="document.getElementById('companyEmail').focus()"
+            onclick="toggleCompanyFieldEdit(this, ['companyEmail'])"
         >
             &#9998; Edit
         </button>
@@ -6576,6 +7213,61 @@ function openCompanyProfile() {
 let companyPhoneNumbers = [];
 let companyLocations = [];
 
+function toggleCompanyFieldEdit(button, fieldIds) {
+
+    const fields =
+        fieldIds
+            .map(id => document.getElementById(id))
+            .filter(Boolean);
+
+    if (!button || !fields.length) {
+        return;
+    }
+
+    const isEditing =
+        fields.some(field => field.disabled);
+
+    fields.forEach(field => {
+        field.disabled = !isEditing;
+    });
+
+    const logoInput =
+        fieldIds.includes('companyLogoInput')
+            ? document.getElementById('companyLogoInput')
+            : null;
+
+    if (logoInput) {
+        const logoLabel =
+            document.querySelector(
+                'label[for="companyLogoInput"]'
+            );
+
+        if (logoLabel) {
+            logoLabel.style.cursor =
+                isEditing
+                    ? 'pointer'
+                    : 'not-allowed';
+        }
+    }
+
+    button.textContent =
+        isEditing
+            ? 'Done'
+            : fieldIds.includes('companyLogoInput')
+                ? '✎ Edit Logo'
+                : '✎ Edit';
+
+    button.setAttribute(
+        'aria-pressed',
+        String(isEditing)
+    );
+
+    if (isEditing && fields[0].type !== 'file') {
+        fields[0].focus();
+    }
+}
+
+
 function renderCompanyPhones() {
     const list =
         document.getElementById('companyPhoneList');
@@ -6598,6 +7290,7 @@ function renderCompanyPhones() {
 
         input.type = 'text';
         input.value = phone;
+        input.disabled = true;
         input.style.cssText =
             'flex:1;border:none;outline:none;background:transparent;font-size:15px;';
 
@@ -6612,11 +7305,29 @@ function renderCompanyPhones() {
         editButton.type = 'button';
         editButton.className =
             'restaurant-action-btn';
-        editButton.innerHTML =
-            '&#9998; Edit';
+        editButton.textContent =
+            '✎ Edit';
 
         editButton.onclick = () => {
-            input.focus();
+            const isEditing =
+                input.disabled;
+
+            input.disabled =
+                !isEditing;
+
+            editButton.textContent =
+                isEditing
+                    ? 'Done'
+                    : '✎ Edit';
+
+            editButton.setAttribute(
+                'aria-pressed',
+                String(isEditing)
+            );
+
+            if (isEditing) {
+                input.focus();
+            }
         };
 
         const deleteButton =
@@ -6644,18 +7355,6 @@ function renderCompanyPhones() {
 function addCompanyPhone() {
     companyPhoneNumbers.push('');
     renderCompanyPhones();
-
-    const list =
-        document.getElementById('companyPhoneList');
-
-    if (list) {
-        const inputs =
-            list.querySelectorAll('input');
-
-        if (inputs.length > 0) {
-            inputs[inputs.length - 1].focus();
-        }
-    }
 }
 
 
@@ -6707,6 +7406,7 @@ function renderCompanyLocations() {
             'Location name';
         nameInput.value =
             location.name || '';
+        nameInput.disabled = true;
 
         nameInput.addEventListener('input', () => {
             companyLocations[index].name =
@@ -6723,6 +7423,7 @@ function renderCompanyLocations() {
             'Google Maps URL';
         urlInput.value =
             location.url || '';
+        urlInput.disabled = true;
 
         urlInput.addEventListener('input', () => {
             companyLocations[index].url =
@@ -6731,6 +7432,47 @@ function renderCompanyLocations() {
 
         fields.appendChild(nameInput);
         fields.appendChild(urlInput);
+
+        const actions =
+            document.createElement('div');
+
+        actions.style.cssText =
+            'display:flex;gap:8px;align-items:center;flex-wrap:wrap;';
+
+        const editButton =
+            document.createElement('button');
+
+        editButton.type = 'button';
+        editButton.className =
+            'restaurant-action-btn';
+        editButton.textContent =
+            '✎ Edit';
+
+        editButton.onclick = () => {
+            const isEditing =
+                nameInput.disabled ||
+                urlInput.disabled;
+
+            nameInput.disabled =
+                !isEditing;
+
+            urlInput.disabled =
+                !isEditing;
+
+            editButton.textContent =
+                isEditing
+                    ? 'Done'
+                    : '✎ Edit';
+
+            editButton.setAttribute(
+                'aria-pressed',
+                String(isEditing)
+            );
+
+            if (isEditing) {
+                nameInput.focus();
+            }
+        };
 
         const deleteButton =
             document.createElement('button');
@@ -6747,8 +7489,11 @@ function renderCompanyLocations() {
 
         };
 
+        actions.appendChild(editButton);
+        actions.appendChild(deleteButton);
+
         row.appendChild(fields);
-        row.appendChild(deleteButton);
+        row.appendChild(actions);
 
         list.appendChild(row);
     });
@@ -6761,18 +7506,6 @@ function addCompanyLocation() {
     });
 
     renderCompanyLocations();
-
-    const list =
-        document.getElementById('companyLocationList');
-
-    if (list) {
-        const inputs =
-            list.querySelectorAll('.profile-location-name');
-
-        if (inputs.length > 0) {
-            inputs[inputs.length - 1].focus();
-        }
-    }
 }
 
 let companyContent = [];
@@ -6800,6 +7533,7 @@ function renderCompanyContent() {
         topicInput.type = 'text';
         topicInput.placeholder = 'Topic';
         topicInput.value = item.topic || '';
+        topicInput.disabled = true;
         topicInput.style.cssText =
             'width:100%;box-sizing:border-box;';
 
@@ -6813,6 +7547,7 @@ function renderCompanyContent() {
         subTopicInput.type = 'text';
         subTopicInput.placeholder = 'Sub Topic';
         subTopicInput.value = item.subTopic || '';
+        subTopicInput.disabled = true;
         subTopicInput.style.cssText =
             'width:100%;box-sizing:border-box;';
 
@@ -6842,6 +7577,7 @@ function renderCompanyContent() {
 
         imageInput.type = 'file';
         imageInput.accept = 'image/*';
+        imageInput.disabled = true;
 
         imageInput.onchange = () => {
             const file =
@@ -6873,6 +7609,7 @@ function renderCompanyContent() {
         descriptionInput.placeholder = 'Description';
         descriptionInput.value =
             item.description || '';
+        descriptionInput.disabled = true;
 
         descriptionInput.style.cssText =
             'width:100%;box-sizing:border-box;resize:vertical;';
@@ -6894,11 +7631,36 @@ function renderCompanyContent() {
         editButton.type = 'button';
         editButton.className =
             'restaurant-action-btn';
-        editButton.innerHTML =
-            '&#9998; Edit';
+        editButton.textContent =
+            '✎ Edit';
+
+        let isEditing = false;
 
         editButton.onclick = () => {
-            topicInput.focus();
+            isEditing = !isEditing;
+
+            [
+                topicInput,
+                subTopicInput,
+                imageInput,
+                descriptionInput
+            ].forEach(input => {
+                input.disabled = !isEditing;
+            });
+
+            editButton.textContent =
+                isEditing
+                    ? 'Done'
+                    : '✎ Edit';
+
+            editButton.setAttribute(
+                'aria-pressed',
+                String(isEditing)
+            );
+
+            if (isEditing) {
+                topicInput.focus();
+            }
         };
 
         const deleteButton =
@@ -6937,18 +7699,6 @@ function addCompanyContent() {
     });
 
     renderCompanyContent();
-
-    const list =
-        document.getElementById('companyContentList');
-
-    if (list) {
-        const inputs =
-            list.querySelectorAll('input[type="text"]');
-
-        if (inputs.length > 0) {
-            inputs[inputs.length - 2].focus();
-        }
-    }
 }
 async function loadCompanySettings() {
 
@@ -8500,6 +9250,199 @@ function appearanceRgbToHex(rgb) {
             .join('');
 }
 
+function parseAppearanceGradient(value) {
+
+    const match =
+        String(value || '').match(
+            /^linear-gradient\(\s*(\d{1,3})deg\s*,\s*(#[0-9a-fA-F]{6}(?:\s*,\s*#[0-9a-fA-F]{6}){1,7})\s*\)$/i
+        );
+
+    if (!match) {
+        return null;
+    }
+
+    const angle =
+        Number(match[1]);
+
+    if (angle > 360) {
+        return null;
+    }
+
+    return {
+        angle,
+        colors: match[2]
+            .split(',')
+            .map(color => color.trim().toLowerCase())
+    };
+}
+
+
+function renderAppearanceGradientStops(field, colors) {
+
+    const stopsContainer =
+        document.getElementById(
+            `appearance_${field}_gradient_stops`
+        );
+
+    if (!stopsContainer) return;
+
+    const safeColors =
+        colors
+            .filter(color =>
+                /^#[0-9a-fA-F]{6}$/.test(color)
+            )
+            .slice(0, 8);
+
+    stopsContainer.innerHTML =
+        safeColors
+            .map((color, index) => `
+                <div class="caffemenu-gradient-stop">
+                    <label>
+                        <span>Stop ${index + 1}</span>
+                        <input
+                            type="color"
+                            class="caffemenu-gradient-stop-color"
+                            value="${color}"
+                            aria-label="Gradient color stop ${index + 1}"
+                            oninput="appearanceGradientChanged('${field}')">
+                    </label>
+                    <button
+                        type="button"
+                        aria-label="Remove color stop ${index + 1}"
+                        ${safeColors.length <= 2 ? 'disabled' : ''}
+                        onclick="removeAppearanceGradientStop('${field}', ${index})">
+                        Remove
+                    </button>
+                </div>
+            `)
+            .join('');
+
+    const addButton =
+        document.getElementById(
+            `appearance_${field}_add_stop`
+        );
+
+    if (addButton) {
+        addButton.disabled =
+            safeColors.length >= 8;
+    }
+
+    appearanceGradientChanged(field);
+}
+
+
+function appearanceGradientChanged(field) {
+
+    const editor =
+        document.getElementById(
+            `appearance_${field}_gradient`
+        );
+
+    const preview =
+        document.getElementById(
+            `appearance_${field}_gradient_preview`
+        );
+
+    const angleInput =
+        document.getElementById(
+            `appearance_${field}_gradient_angle`
+        );
+
+    if (!editor || !preview || !angleInput) return;
+
+    const colors =
+        Array.from(
+            editor.querySelectorAll(
+                '.caffemenu-gradient-stop-color'
+            )
+        ).map(input => input.value);
+
+    preview.style.background =
+        `linear-gradient(${Number(angleInput.value)}deg, ${colors.join(', ')})`;
+}
+
+
+function addAppearanceGradientStop(field) {
+
+    const editor =
+        document.getElementById(
+            `appearance_${field}_gradient`
+        );
+
+    if (!editor) return;
+
+    const colors =
+        Array.from(
+            editor.querySelectorAll(
+                '.caffemenu-gradient-stop-color'
+            )
+        ).map(input => input.value);
+
+    if (colors.length >= 8) return;
+
+    colors.push('#ffffff');
+    renderAppearanceGradientStops(field, colors);
+}
+
+
+function removeAppearanceGradientStop(field, index) {
+
+    const editor =
+        document.getElementById(
+            `appearance_${field}_gradient`
+        );
+
+    if (!editor) return;
+
+    const colors =
+        Array.from(
+            editor.querySelectorAll(
+                '.caffemenu-gradient-stop-color'
+            )
+        ).map(input => input.value);
+
+    if (colors.length <= 2) return;
+
+    colors.splice(index, 1);
+    renderAppearanceGradientStops(field, colors);
+}
+
+
+function appearanceModeChanged(field) {
+
+    const modeInput =
+        document.getElementById(
+            `appearance_${field}_mode`
+        );
+
+    const solidControls =
+        document.getElementById(
+            `appearance_${field}_solid`
+        );
+
+    const gradientEditor =
+        document.getElementById(
+            `appearance_${field}_gradient`
+        );
+
+    if (!modeInput || !solidControls || !gradientEditor) {
+        return;
+    }
+
+    const useGradient =
+        modeInput.value === 'gradient';
+
+    solidControls.hidden =
+        useGradient;
+
+    gradientEditor.hidden =
+        !useGradient;
+
+    if (useGradient) {
+        appearanceGradientChanged(field);
+    }
+}
+
 
 function getRestaurantAppearanceFormValues() {
 
@@ -8509,6 +9452,57 @@ function getRestaurantAppearanceFormValues() {
     for (
         const [field] of APPEARANCE_FIELDS
     ) {
+
+        if (APPEARANCE_BACKGROUND_FIELDS.has(field)) {
+
+            const modeInput =
+                document.getElementById(
+                    `appearance_${field}_mode`
+                );
+
+            if (modeInput?.value === 'gradient') {
+
+                const editor =
+                    document.getElementById(
+                        `appearance_${field}_gradient`
+                    );
+
+                const angleInput =
+                    document.getElementById(
+                        `appearance_${field}_gradient_angle`
+                    );
+
+                const colors =
+                    Array.from(
+                        editor?.querySelectorAll(
+                            '.caffemenu-gradient-stop-color'
+                        ) || []
+                    ).map(input => input.value);
+
+                const angle =
+                    Number(angleInput?.value);
+
+                if (
+                    colors.length < 2 ||
+                    colors.length > 8 ||
+                    !Number.isInteger(angle) ||
+                    angle < 0 ||
+                    angle > 360 ||
+                    colors.some(color =>
+                        !/^#[0-9a-fA-F]{6}$/.test(color)
+                    )
+                ) {
+                    throw new Error(
+                        `Invalid gradient value for ${field}.`
+                    );
+                }
+
+                appearance[field] =
+                    `linear-gradient(${angle}deg, ${colors.join(', ')})`;
+
+                continue;
+            }
+        }
 
         const input =
             document.getElementById(
@@ -8549,6 +9543,46 @@ function setRestaurantAppearanceFormValues(
             appearance[field] ||
             DEFAULT_APPEARANCE[field];
 
+        if (APPEARANCE_BACKGROUND_FIELDS.has(field)) {
+
+            const gradient =
+                parseAppearanceGradient(value);
+
+            const modeInput =
+                document.getElementById(
+                    `appearance_${field}_mode`
+                );
+
+            if (modeInput) {
+
+                modeInput.value =
+                    gradient ? 'gradient' : 'solid';
+
+                renderAppearanceGradientStops(
+                    field,
+                    gradient
+                        ? gradient.colors
+                        : [
+                            DEFAULT_APPEARANCE[field],
+                            '#ffffff'
+                        ]
+                );
+
+                const angleInput =
+                    document.getElementById(
+                        `appearance_${field}_gradient_angle`
+                    );
+
+                if (angleInput) {
+                    angleInput.value =
+                        gradient
+                            ? String(gradient.angle)
+                            : '90';
+                }
+
+                appearanceModeChanged(field);
+            }
+        }
 
         const colorInput =
             document.getElementById(
@@ -8565,7 +9599,9 @@ function setRestaurantAppearanceFormValues(
         if (colorInput) {
 
             colorInput.value =
-                value;
+                /^#[0-9a-fA-F]{6}$/.test(value)
+                    ? value
+                    : DEFAULT_APPEARANCE[field];
         }
 
 
@@ -8573,11 +9609,48 @@ function setRestaurantAppearanceFormValues(
 
             rgbInput.value =
                 appearanceHexToRgb(
-                    value
+                    colorInput?.value ||
+                        DEFAULT_APPEARANCE[field]
                 );
         }
+
+        updateAppearanceSolidColorPreview(field);
     }
 }
+
+function updateAppearanceSolidColorPreview(field) {
+
+    const colorInput =
+        document.getElementById(
+            `appearance_${field}`
+        );
+
+    const swatch =
+        document.getElementById(
+            `appearance_${field}_solid_swatch`
+        );
+
+    const valueLabel =
+        document.getElementById(
+            `appearance_${field}_solid_value`
+        );
+
+    if (!colorInput) return;
+
+    const color =
+        colorInput.value.toLowerCase();
+
+    if (swatch) {
+        swatch.style.backgroundColor =
+            color;
+    }
+
+    if (valueLabel) {
+        valueLabel.textContent =
+            color;
+    }
+}
+
 
 function appearanceColorChanged(field) {
 
@@ -8616,6 +9689,8 @@ function appearanceColorChanged(field) {
         hexInput.value =
             colorInput.value.toLowerCase();
     }
+
+    updateAppearanceSolidColorPreview(field);
 }
 
 
@@ -8668,6 +9743,8 @@ function appearanceRgbChanged(field) {
         hexInput.value =
             hex;
     }
+
+    updateAppearanceSolidColorPreview(field);
 }
 
 
@@ -8718,44 +9795,134 @@ function appearanceHexChanged(field) {
                 colorInput.value
             );
     }
+
+    updateAppearanceSolidColorPreview(field);
 }
 
 function appearanceFieldHtml(field, label, value) {
+    const isBackground =
+        APPEARANCE_BACKGROUND_FIELDS.has(field);
+
     const safeValue =
         /^#[0-9a-fA-F]{6}$/.test(value || '')
             ? value
             : DEFAULT_APPEARANCE[field];
+
+    const savedGradient =
+        isBackground
+            ? parseAppearanceGradient(value)
+            : null;
+
+    const initialGradientColors =
+        savedGradient
+            ? savedGradient.colors
+            : [safeValue, '#ffffff'];
+
+    const initialGradientAngle =
+        savedGradient
+            ? savedGradient.angle
+            : 90;
+
+    const initialGradient =
+        `linear-gradient(${initialGradientAngle}deg, ${initialGradientColors.join(', ')})`;
 
     const jsField =
         String(field).replace(/'/g, "\\'");
 
     return `
         <div class="caffemenu-appearance-field">
-            <label for="appearance_${field}">${label}</label>
+            <label class="caffemenu-appearance-label" for="appearance_${field}">${label}</label>
 
-            <div class="caffemenu-appearance-controls">
+            ${isBackground ? `
+                <label class="caffemenu-appearance-mode-label" for="appearance_${field}_mode">
+                    Fill style
+                    <select
+                        id="appearance_${field}_mode"
+                        class="caffemenu-appearance-mode"
+                        onchange="appearanceModeChanged('${jsField}')">
+                        <option value="solid" ${savedGradient ? '' : 'selected'}>Solid color</option>
+                        <option value="gradient" ${savedGradient ? 'selected' : ''}>Multi-color gradient</option>
+                    </select>
+                </label>
+            ` : ''}
 
-                <input
-                    type="color"
-                    id="appearance_${field}"
-                    value="${safeValue}"
-                    oninput="appearanceColorChanged('${jsField}')">
+            <div
+                id="appearance_${field}_solid"
+                class="caffemenu-appearance-controls"
+                ${savedGradient ? 'hidden' : ''}>
 
-                <input
-                    type="text"
-                    id="appearance_${field}_rgb"
-                    value="${appearanceHexToRgb(safeValue)}"
-                    placeholder="R, G, B"
-                    onchange="appearanceRgbChanged('${jsField}')">
+                <div class="caffemenu-solid-color-preview">
+                    <span
+                        id="appearance_${field}_solid_swatch"
+                        class="caffemenu-solid-color-swatch"
+                        style="background-color:${safeValue}"></span>
+                    <span class="caffemenu-solid-color-info">
+                        <span>Current color</span>
+                        <strong id="appearance_${field}_solid_value">${safeValue.toLowerCase()}</strong>
+                    </span>
+                    <input
+                        type="color"
+                        id="appearance_${field}"
+                        value="${safeValue}"
+                        aria-label="Choose ${label} color"
+                        oninput="appearanceColorChanged('${jsField}')">
+                </div>
 
-                <input
-                    type="text"
-                    id="appearance_${field}_hex"
-                    value="${safeValue}"
-                    maxlength="7"
-                    onchange="appearanceHexChanged('${jsField}')">
+                <label class="caffemenu-appearance-input-label">
+                    RGB
+                    <input
+                        type="text"
+                        id="appearance_${field}_rgb"
+                        value="${appearanceHexToRgb(safeValue)}"
+                        placeholder="R, G, B"
+                        onchange="appearanceRgbChanged('${jsField}')">
+                </label>
+
+                <label class="caffemenu-appearance-input-label">
+                    HEX
+                    <input
+                        type="text"
+                        id="appearance_${field}_hex"
+                        value="${safeValue}"
+                        maxlength="7"
+                        onchange="appearanceHexChanged('${jsField}')">
+                </label>
 
             </div>
+
+            ${isBackground ? `
+                <div
+                    id="appearance_${field}_gradient"
+                    class="caffemenu-appearance-gradient"
+                    ${savedGradient ? '' : 'hidden'}>
+                    <div
+                        id="appearance_${field}_gradient_preview"
+                        class="caffemenu-appearance-gradient-preview"
+                        style="background:${initialGradient}"></div>
+                    <label class="caffemenu-gradient-angle-label">
+                        Direction
+                        <input
+                            type="range"
+                            id="appearance_${field}_gradient_angle"
+                            min="0"
+                            max="360"
+                            step="1"
+                            value="${initialGradientAngle}"
+                            oninput="appearanceGradientChanged('${jsField}')">
+                        <span>0°–360°</span>
+                    </label>
+                    <div
+                        id="appearance_${field}_gradient_stops"
+                        class="caffemenu-gradient-stops"></div>
+                    <button
+                        type="button"
+                        id="appearance_${field}_add_stop"
+                        class="caffemenu-gradient-add"
+                        onclick="addAppearanceGradientStop('${jsField}')">
+                        + Add color stop
+                    </button>
+                </div>
+            ` : ''}
         </div>
     `;
 }
@@ -8800,6 +9967,12 @@ async function openRestaurantAppearance(
             ...(data.appearance || {})
         };
 
+        const restaurant =
+            getRestaurantById(restaurantId);
+
+        const restaurantName =
+            getRestaurantName(restaurant);
+
 
         openOwnerActionPanel(
             'Appearance',
@@ -8808,8 +9981,26 @@ async function openRestaurantAppearance(
                 restaurantId +
                 '">' +
 
+                '<div class="caffemenu-appearance-intro">' +
+                    '<p class="caffemenu-appearance-intro-kicker">Restaurant styling</p>' +
+                    '<h2>Make the menu yours</h2>' +
+                    '<p>Choose colors for the customer menu. Use solid colors or build multi-color gradients for background areas.</p>' +
+                    '<div class="caffemenu-appearance-editing">' +
+                        '<span class="caffemenu-appearance-editing-mark" aria-hidden="true">R</span>' +
+                        '<span class="caffemenu-appearance-editing-copy">' +
+                            '<span>Currently editing</span>' +
+                            '<strong>' +
+                                escapeHtml(restaurantName) +
+                            '</strong>' +
+                        '</span>' +
+                    '</div>' +
+                '</div>' +
+
                 '<div class="caffemenu-appearance-section">' +
-                    '<h3>Header</h3>' +
+                    '<div class="caffemenu-appearance-section-heading">' +
+                        '<span class="caffemenu-appearance-section-number">01</span>' +
+                        '<div><h3>Header</h3><p>Set the header surface and restaurant name styling.</p></div>' +
+                    '</div>' +
                     '<div class="caffemenu-appearance-grid">' +
 
                         appearanceFieldHtml(
@@ -8834,7 +10025,10 @@ async function openRestaurantAppearance(
                 '</div>' +
 
                 '<div class="caffemenu-appearance-section">' +
-                    '<h3>Buttons</h3>' +
+                    '<div class="caffemenu-appearance-section-heading">' +
+                        '<span class="caffemenu-appearance-section-number">02</span>' +
+                        '<div><h3>Category buttons</h3><p>Choose the default button colors and the colors for the selected category.</p></div>' +
+                    '</div>' +
                     '<div class="caffemenu-appearance-grid">' +
 
                         appearanceFieldHtml(
@@ -8865,7 +10059,39 @@ async function openRestaurantAppearance(
                 '</div>' +
 
                 '<div class="caffemenu-appearance-section">' +
-                    '<h3>Menu Items</h3>' +
+                    '<div class="caffemenu-appearance-section-heading">' +
+                        '<span class="caffemenu-appearance-section-number">03</span>' +
+                        '<div><h3>Action buttons</h3><p>Style the add-to-cart button on each menu item and the fixed Cart button separately.</p></div>' +
+                    '</div>' +
+                    '<div class="caffemenu-appearance-grid">' +
+                        appearanceFieldHtml(
+                            'add_button_background',
+                            '+ Add Button Background',
+                            appearance.add_button_background
+                        ) +
+                        appearanceFieldHtml(
+                            'add_button_text',
+                            '+ Add Button Text',
+                            appearance.add_button_text
+                        ) +
+                        appearanceFieldHtml(
+                            'cart_button_background',
+                            'Cart Button Background',
+                            appearance.cart_button_background
+                        ) +
+                        appearanceFieldHtml(
+                            'cart_button_text',
+                            'Cart Button Text',
+                            appearance.cart_button_text
+                        ) +
+                    '</div>' +
+                '</div>' +
+
+                '<div class="caffemenu-appearance-section">' +
+                    '<div class="caffemenu-appearance-section-heading">' +
+                        '<span class="caffemenu-appearance-section-number">04</span>' +
+                        '<div><h3>Menu items</h3><p>Adjust item cards, names, descriptions, and prices.</p></div>' +
+                    '</div>' +
                     '<div class="caffemenu-appearance-grid">' +
 
                         appearanceFieldHtml(
@@ -8896,7 +10122,10 @@ async function openRestaurantAppearance(
                 '</div>' +
 
                 '<div class="caffemenu-appearance-section">' +
-                    '<h3>Page</h3>' +
+                    '<div class="caffemenu-appearance-section-heading">' +
+                        '<span class="caffemenu-appearance-section-number">05</span>' +
+                        '<div><h3>Page background</h3><p>Set the canvas behind the menu content.</p></div>' +
+                    '</div>' +
                     '<div class="caffemenu-appearance-grid">' +
 
                         appearanceFieldHtml(
@@ -8908,7 +10137,7 @@ async function openRestaurantAppearance(
                     '</div>' +
                 '</div>' +
 
-                '<div class="owner-action-actions">' +
+                '<div class="owner-action-actions caffemenu-appearance-actions">' +
 
                     '<button type="button" ' +
                         'id="saveRestaurantAppearanceBtn" ' +
@@ -8949,6 +10178,151 @@ async function openRestaurantAppearance(
             'error'
         );
     }
+}
+
+function confirmClearRestaurantAppearance() {
+
+    const previousFocus =
+        document.activeElement;
+
+    const backdrop =
+        document.createElement('div');
+
+    backdrop.className =
+        'appearance-clear-confirm-backdrop';
+
+    backdrop.innerHTML = `
+        <section
+            class="appearance-clear-confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="appearanceClearConfirmTitle"
+            aria-describedby="appearanceClearConfirmMessage"
+            tabindex="-1">
+            <div class="appearance-clear-confirm-icon" aria-hidden="true">↺</div>
+            <p class="appearance-clear-confirm-kicker">Reset appearance</p>
+            <h2 id="appearanceClearConfirmTitle">Clear all appearance settings?</h2>
+            <p
+                class="appearance-clear-confirm-message"
+                id="appearanceClearConfirmMessage">
+                This restores the restaurant's appearance to its default colors.
+                Your restaurant and menu content will not be changed.
+            </p>
+            <div class="appearance-clear-confirm-actions">
+                <button type="button" class="appearance-clear-cancel">
+                    Keep current settings
+                </button>
+                <button type="button" class="appearance-clear-confirm">
+                    Reset appearance
+                </button>
+            </div>
+        </section>
+    `;
+
+    const dialog =
+        backdrop.querySelector(
+            '.appearance-clear-confirm-dialog'
+        );
+
+    const cancelButton =
+        backdrop.querySelector(
+            '.appearance-clear-cancel'
+        );
+
+    const confirmButton =
+        backdrop.querySelector(
+            '.appearance-clear-confirm'
+        );
+
+    if (!dialog || !cancelButton || !confirmButton) {
+        throw new Error(
+            'Unable to create the appearance confirmation dialog.'
+        );
+    }
+
+    document.body.appendChild(backdrop);
+    cancelButton.focus();
+
+    return new Promise(resolve => {
+
+        const finish = confirmed => {
+            document.removeEventListener(
+                'keydown',
+                handleDialogKeydown
+            );
+            backdrop.remove();
+
+            if (
+                previousFocus instanceof HTMLElement &&
+                previousFocus.isConnected
+            ) {
+                previousFocus.focus();
+            }
+
+            resolve(confirmed);
+        };
+
+        const handleDialogKeydown = event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                finish(false);
+                return;
+            }
+
+            if (event.key === 'Tab') {
+                const focusable = [
+                    cancelButton,
+                    confirmButton
+                ];
+
+                const currentIndex =
+                    focusable.indexOf(document.activeElement);
+
+                if (currentIndex === -1) {
+                    event.preventDefault();
+                    cancelButton.focus();
+                } else if (
+                    event.shiftKey &&
+                    (currentIndex <= 0)
+                ) {
+                    event.preventDefault();
+                    confirmButton.focus();
+                } else if (
+                    !event.shiftKey &&
+                    currentIndex === focusable.length - 1
+                ) {
+                    event.preventDefault();
+                    cancelButton.focus();
+                }
+            }
+        };
+
+        cancelButton.addEventListener(
+            'click',
+            () => finish(false),
+            { once: true }
+        );
+
+        confirmButton.addEventListener(
+            'click',
+            () => finish(true),
+            { once: true }
+        );
+
+        backdrop.addEventListener(
+            'click',
+            event => {
+                if (event.target === backdrop) {
+                    finish(false);
+                }
+            }
+        );
+
+        document.addEventListener(
+            'keydown',
+            handleDialogKeydown
+        );
+    });
 }
 
 function setupOwnerActionPanelEvents() {
@@ -9014,6 +10388,9 @@ function setupOwnerActionPanelEvents() {
                     saveAppearanceButton.disabled =
                         true;
 
+                    showOwnerLoading(
+                        'Saving appearance...'
+                    );
 
                     const token =
                         getAdminToken();
@@ -9046,6 +10423,26 @@ function setupOwnerActionPanelEvents() {
                         await readOwnerApiResponse(
                             response
                         );
+
+                    const buttonAppearanceFields = [
+                        'add_button_background',
+                        'add_button_text',
+                        'cart_button_background',
+                        'cart_button_text'
+                    ];
+
+                    const unsavedButtonFields =
+                        buttonAppearanceFields.filter(
+                            field =>
+                                data.appearance?.[field] !==
+                                appearance[field]
+                        );
+
+                    if (unsavedButtonFields.length) {
+                        throw new Error(
+                            'The + Add and Cart settings were not confirmed by the server. Restart or redeploy the latest server.js, then save again.'
+                        );
+                    }
 
 
                     if (
@@ -9088,6 +10485,8 @@ function setupOwnerActionPanelEvents() {
 
                     saveAppearanceButton.disabled =
                         false;
+
+                    hideOwnerLoading();
                 }
 
 
@@ -9111,13 +10510,15 @@ function setupOwnerActionPanelEvents() {
                 if (!restaurantId) return;
 
 
-                if (
-                    !window.confirm(
-                        'Clear all restaurant appearance settings?'
-                    )
-                ) {
+                const confirmed =
+                    await confirmClearRestaurantAppearance();
+
+                if (!confirmed) {
                     return;
                 }
+
+                clearAppearanceButton.disabled =
+                    true;
 
 
                 try {
@@ -9482,4 +10883,3 @@ if (
 
     initializeSuperAdminDashboard();
 }
-

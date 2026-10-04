@@ -9,9 +9,79 @@ let searchTerm = '';
 let restaurantAppearance = null;
 
 
+function applyMenuButtonAppearance(
+    appearance = restaurantAppearance
+) {
+
+    document
+        .querySelectorAll(
+            '.buttons button'
+        )
+        .forEach(button => {
+
+            button.style.background = '';
+            button.style.color = '';
+
+            if (!appearance) {
+                return;
+            }
+
+            button.style.background =
+                appearance.button_background || '';
+
+            button.style.color =
+                appearance.button_text || '';
+
+            if (button.classList.contains('active')) {
+                button.style.background =
+                    appearance.selected_button || '';
+
+                button.style.color =
+                    appearance.selected_button_text || '';
+            }
+        });
+
+    document
+        .querySelectorAll(
+            '.addbutton:not([disabled])'
+        )
+        .forEach(button => {
+            button.style.background =
+                appearance
+                    ? appearance.add_button_background || ''
+                    : '';
+
+            button.style.color =
+                appearance
+                    ? appearance.add_button_text || ''
+                    : '';
+        });
+
+    const cartButton =
+        document.querySelector(
+            '.cartbutton'
+        );
+
+    if (cartButton) {
+        cartButton.style.background =
+            appearance
+                ? appearance.cart_button_background || ''
+                : '';
+
+        cartButton.style.color =
+            appearance
+                ? appearance.cart_button_text || ''
+                : '';
+    }
+}
+
+
 function applyRestaurantAppearance(
     appearance = null
 ) {
+
+    restaurantAppearance =
+        appearance;
 
     const header =
         document.querySelector(
@@ -99,6 +169,7 @@ function applyRestaurantAppearance(
         container.style.background = '';
     }
 
+    applyMenuButtonAppearance();
 
     if (!appearance) {
         return;
@@ -119,38 +190,6 @@ function applyRestaurantAppearance(
         restaurantName.style.color =
             appearance.restaurant_name_text || '';
     }
-
-
-    document
-        .querySelectorAll(
-            '.buttons button'
-        )
-        .forEach(
-            button => {
-
-                button.style.background =
-                    appearance.button_background || '';
-
-                button.style.color =
-                    appearance.button_text || '';
-            }
-        );
-
-
-    document
-        .querySelectorAll(
-            '.buttons button.active'
-        )
-        .forEach(
-            button => {
-
-                button.style.background =
-                    appearance.selected_button || '';
-
-                button.style.color =
-                    appearance.selected_button_text || '';
-            }
-        );
 
 
     document
@@ -1368,6 +1407,8 @@ function renderCategoryButtons() {
             button
         );
     });
+
+    applyMenuButtonAppearance();
 }
 
 
@@ -1610,6 +1651,8 @@ function renderItems() {
                 }
             );
         });
+
+    applyMenuButtonAppearance();
 }
 
 
@@ -3347,6 +3390,3 @@ setInterval(
     refreshCustomerMenuSilently,
     60000
 );
-
-
-
