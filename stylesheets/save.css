@@ -10,6 +10,7 @@ html,
 body {
     margin: 0;
     padding: 0;
+    overflow-x: hidden;
 }
 
 body {
@@ -1011,7 +1012,8 @@ select:disabled {
 .container {
     display: grid;
 
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    direction: ltr;
 
     column-gap: 7px;
     row-gap: 7px;
@@ -1025,9 +1027,13 @@ select:disabled {
 
     margin-top: 0 !important;
 
-    padding: 7px;
+    padding: 7px 7px 84px;
 
-    margin-bottom: 200px;
+    margin-bottom: 0;
+}
+
+html[dir="rtl"] .container .foodd {
+    direction: rtl;
 }
 
 
@@ -1055,6 +1061,7 @@ select:disabled {
 
 .foodd {
     position: relative;
+    min-width: 0;
     border: 1px solid #d6c0a6;
 
     border-radius: 16px;
@@ -3029,13 +3036,17 @@ select:disabled {
     align-items: center;
 
     gap: 16px;
+    padding-top: 34px;
 }
 
 .customer-language-control {
-    position: relative;
+    position: absolute;
+    top: 8px;
+    right: 10px;
     flex: 0 0 auto;
-    width: 96px;
-    min-height: 32px;
+    width: 76px;
+    min-height: 26px;
+    z-index: 111;
     border: 1px solid rgba(74, 47, 34, 0.2);
     border-radius: 7px;
     background:
@@ -3051,11 +3062,11 @@ select:disabled {
 .customer-language-toggle {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     width: 100%;
-    min-height: 30px;
+    min-height: 24px;
     box-sizing: border-box;
-    padding: 0 7px;
+    padding: 0 5px;
     border: 0;
     border-radius: inherit;
     background: transparent;
@@ -3070,7 +3081,7 @@ select:disabled {
 }
 
 .customer-language-icon {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 800;
 }
 
@@ -3078,7 +3089,7 @@ select:disabled {
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     text-align: start;
     text-overflow: ellipsis;
