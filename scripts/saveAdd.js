@@ -7,6 +7,344 @@ let currentCategory = 'all';
 let searchTerm = '';
 
 let restaurantAppearance = null;
+let defaultCompanyImage = 'image/z-menu.jpg';
+
+const CUSTOMER_LANGUAGE_KEY = 'customer-menu-language';
+let customerLanguage = 'en';
+let customerTranslationTimer = null;
+
+async function loadDefaultCompanyImage() {
+    try {
+        const response =
+            await fetch('/api/company-settings');
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.message || 'Unable to load the shared default image.'
+            );
+        }
+
+        defaultCompanyImage =
+            data.settings?.defaultImage || 'image/z-menu.jpg';
+
+        if (!restaurantProfile.logo) {
+            const logoElement =
+                document.getElementById('restaurantLogo');
+
+            if (logoElement) {
+                logoElement.src = defaultCompanyImage;
+            }
+        }
+    } catch (error) {
+        console.warn(
+            '[menu:default-image] Could not load shared default image:',
+            error.message || error
+        );
+    }
+}
+
+
+function formatCustomerNumber(value) {
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return '0';
+    }
+
+    const locales = {
+        en: 'en',
+        am: 'am-ET',
+        ar: 'ar-EG-u-nu-arab',
+        'zh-CN': 'zh-CN'
+    };
+
+    return new Intl.NumberFormat(
+        locales[customerLanguage] || 'en',
+        { maximumFractionDigits: 2 }
+    ).format(number);
+}
+
+
+function localizeCustomerDigits(value) {
+    if (customerLanguage !== 'ar') {
+        return String(value);
+    }
+
+    const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+
+    return String(value).replace(
+        /[0-9]/g,
+        digit => arabicDigits[Number(digit)]
+    );
+}
+
+
+function protectCustomerNumbers(root = document.body) {
+    const walker =
+        document.createTreeWalker(
+            root,
+            NodeFilter.SHOW_TEXT
+        );
+
+    const textNodes = [];
+    let textNode;
+
+    while ((textNode = walker.nextNode())) {
+        if (!/\d/.test(textNode.nodeValue)) {
+            continue;
+        }
+
+        if (textNode.parentElement?.closest(
+            'input, textarea, select, script, style, .notranslate, [translate="no"], [class*="goog-te"], .customer-language-control'
+        )) {
+            continue;
+        }
+
+        textNodes.push(textNode);
+    }
+
+    textNodes.forEach(node => {
+        const fragment =
+            document.createDocumentFragment();
+
+        node.nodeValue
+            .split(/(\d+(?:[,.٬٫]\d+)*)/g)
+            .forEach(part => {
+                if (!part) {
+                    return;
+                }
+
+                if (/^\d+(?:[,.٬٫]\d+)*$/.test(part)) {
+                    const number =
+                        document.createElement('span');
+
+                    number.className = 'notranslate';
+                    number.setAttribute('translate', 'no');
+                    number.textContent =
+                        localizeCustomerDigits(part);
+
+                    fragment.appendChild(number);
+                    return;
+                }
+
+                fragment.appendChild(
+                    document.createTextNode(part)
+                );
+            });
+
+        node.parentNode.replaceChild(fragment, node);
+    });
+}
+
+
+function formatCustomerCurrency(value) {
+    return `<span class="notranslate" translate="no">${formatCustomerNumber(value)}</span> <span class="notranslate" translate="no">ETB</span>`;
+}
+
+
+function applyCustomerLanguageAppearance(background) {
+    const control =
+        document.querySelector('.customer-language-control');
+
+    const menu =
+        document.getElementById('customerLanguageMenu');
+
+    if (!control || !menu || !background) {
+        return;
+    }
+
+    const popupBackground =
+        String(background).match(/#[0-9a-fA-F]{6}/)?.[0] ||
+        background;
+
+    control.style.background = background;
+    menu.style.background = popupBackground;
+}
+
+
+function updateCustomerLanguageControl() {
+    const selector =
+        document.getElementById('customerLanguage');
+
+    const label =
+        document.getElementById('customerLanguageLabel');
+
+    const toggle =
+        document.getElementById('customerLanguageToggle');
+
+    const options =
+        document.querySelectorAll('[data-language-option]');
+
+    if (selector) {
+        selector.value = customerLanguage;
+    }
+
+    options.forEach(option => {
+        const selected =
+            option.dataset.languageOption === customerLanguage;
+
+        option.setAttribute(
+            'aria-checked',
+            String(selected)
+        );
+
+        if (selected && label) {
+            label.textContent =
+                option.querySelector('.customer-language-name')?.textContent ||
+                'English';
+        }
+    });
+
+    if (toggle && label) {
+        toggle.setAttribute(
+            'aria-label',
+            `Menu language: ${label.textContent}`
+        );
+    }
+}
+
+
+function setCustomerLanguageMenuOpen(open, focusOption = false) {
+    const toggle =
+        document.getElementById('customerLanguageToggle');
+
+    const menu =
+        document.getElementById('customerLanguageMenu');
+
+    const control =
+        document.getElementById('customerLanguageControl');
+
+    if (!toggle || !menu || !control) {
+        return;
+    }
+
+    menu.hidden = !open;
+    control.classList.toggle('is-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+
+    if (open && focusOption) {
+        const selectedOption =
+            menu.querySelector('[aria-checked="true"]') ||
+            menu.querySelector('[data-language-option]');
+
+        selectedOption?.focus();
+    }
+}
+
+
+function setCustomerLanguage(language) {
+    const supportedLanguages = ['en', 'am', 'ar', 'zh-CN'];
+
+    customerLanguage = supportedLanguages.includes(language)
+        ? language
+        : 'en';
+
+    localStorage.setItem(
+        CUSTOMER_LANGUAGE_KEY,
+        customerLanguage
+    );
+
+    document.documentElement.lang =
+        customerLanguage === 'zh-CN'
+            ? 'zh-CN'
+            : customerLanguage;
+
+    document.documentElement.dir =
+        customerLanguage === 'ar'
+            ? 'rtl'
+            : 'ltr';
+
+    updateCustomerLanguageControl();
+    setCustomerLanguageMenuOpen(false);
+
+    if (Object.keys(foods).length) {
+        renderItems();
+        renderCategoryButtons();
+        renderCart();
+    }
+
+    applyCustomerLanguage();
+}
+
+
+function applyCustomerLanguage() {
+    updateCustomerLanguageControl();
+
+    const translatorSelect =
+        document.querySelector('.goog-te-combo');
+
+    if (!translatorSelect) {
+        return false;
+    }
+
+    if (customerLanguage === 'en') {
+        const translated =
+            Boolean(translatorSelect.value) ||
+            document.documentElement.classList.contains('translated-ltr') ||
+            document.documentElement.classList.contains('translated-rtl');
+
+        if (translated) {
+            const expiredCookie =
+                'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+
+            document.cookie = expiredCookie;
+            document.cookie =
+                `${expiredCookie}; domain=${location.hostname}`;
+
+            window.location.reload();
+            return true;
+        }
+    }
+
+    translatorSelect.value =
+        customerLanguage;
+
+    translatorSelect.dispatchEvent(
+        new Event('change')
+    );
+
+    return true;
+}
+
+
+function queueCustomerTranslation() {
+    if (customerLanguage === 'en') {
+        return;
+    }
+
+    protectCustomerNumbers();
+
+    clearTimeout(customerTranslationTimer);
+
+    customerTranslationTimer = setTimeout(
+        applyCustomerLanguage,
+        250
+    );
+}
+
+
+window.googleTranslateElementInit = function () {
+    if (!window.google?.translate?.TranslateElement) {
+        return;
+    }
+
+    new google.translate.TranslateElement(
+        {
+            pageLanguage: 'en',
+            includedLanguages: 'am,ar,zh-CN',
+            autoDisplay: false
+        },
+        'google_translate_element'
+    );
+
+    const storedLanguage =
+        localStorage.getItem(CUSTOMER_LANGUAGE_KEY) || 'en';
+
+    setCustomerLanguage(storedLanguage);
+};
 
 
 function applyMenuButtonAppearance(
@@ -90,6 +428,27 @@ function applyRestaurantAppearance(
 
     if (header) {
         header.style.background = '';
+    }
+
+    const languageControl =
+        document.querySelector('.customer-language-control');
+
+    const languageSelector =
+        document.getElementById('customerLanguage');
+
+    if (languageControl) {
+        languageControl.style.background = '';
+    }
+
+    if (languageSelector) {
+        languageSelector.value = customerLanguage;
+    }
+
+    const languageMenu =
+        document.getElementById('customerLanguageMenu');
+
+    if (languageMenu) {
+        languageMenu.style.background = '';
     }
 
 
@@ -179,6 +538,11 @@ function applyRestaurantAppearance(
     if (header) {
         header.style.background =
             appearance.header_background || '';
+
+        applyCustomerLanguageAppearance(
+            appearance.header_background ||
+                getComputedStyle(header).background
+        );
     }
 
 
@@ -322,6 +686,8 @@ function showToast(
             }, 300);
         }, duration);
     }
+
+    queueCustomerTranslation();
 }
 
 
@@ -437,13 +803,13 @@ function showRestaurantHeaderLoading() {
         document.getElementById('restaurantLogo');
 
     if (logoElement) {
-        logoElement.src = 'image/z-menu.jpg';
+        logoElement.src = defaultCompanyImage;
 
         logoElement.alt = '';
 
         logoElement.onerror = function () {
             this.onerror = null;
-            this.src = 'image/z-menu.jpg';
+            this.src = defaultCompanyImage;
             this.alt = '';
         };
 
@@ -521,7 +887,7 @@ function showRestaurantHeaderError() {
     );
 
     logoElement.src =
-        'image/z-menu.jpg';
+        defaultCompanyImage;
 
     logoElement.alt = '';
 
@@ -618,7 +984,7 @@ async function loadRestaurantLogo() {
 
             logoElement.onerror = function () {
                 this.onerror = null;
-                this.src = 'image/z-menu.jpg';
+                this.src = defaultCompanyImage;
                 this.alt = '';
             };
 
@@ -662,13 +1028,13 @@ async function loadRestaurantLogo() {
         if (logoElement) {
 
             logoElement.src =
-                'image/z-menu.jpg';
+                defaultCompanyImage;
 
             logoElement.alt = '';
 
             logoElement.onerror = function () {
                 this.onerror = null;
-                this.src = 'image/z-menu.jpg';
+                this.src = defaultCompanyImage;
                 this.alt = '';
             };
 
@@ -1152,7 +1518,7 @@ function renderRestaurantProfile() {
             logoElement.style.display = 'block';
             logoElement.alt = '';
         } else {
-            logoElement.src = 'image/z-menu.jpg';
+            logoElement.src = defaultCompanyImage;
             logoElement.style.display = 'block';
             logoElement.alt = '';
         }
@@ -1328,6 +1694,8 @@ function renderRestaurantProfile() {
             </div>
         `;
     }
+
+    queueCustomerTranslation();
 }
 
 
@@ -1409,6 +1777,7 @@ function renderCategoryButtons() {
     });
 
     applyMenuButtonAppearance();
+    queueCustomerTranslation();
 }
 
 
@@ -1582,9 +1951,9 @@ function renderItems() {
 
                                 <p>
                                     <strong>
-                                        ${escapeHtml(
+                                        ${formatCustomerCurrency(
                                             food.price || 0
-                                        )} ETB
+                                        )}
                                     </strong>
                                 </p>
 
@@ -1653,6 +2022,7 @@ function renderItems() {
         });
 
     applyMenuButtonAppearance();
+    queueCustomerTranslation();
 }
 
 
@@ -1875,6 +2245,8 @@ function openCustomerDaySpecial() {
             'customer-day-special-open'
         );
 
+        queueCustomerTranslation();
+
         requestAnimationFrame(() => {
 
             overlay.classList.add(
@@ -1969,7 +2341,7 @@ function openCustomerDaySpecial() {
                             <div
                                 class="customer-day-special-price"
                             >
-                                ${escapeHtml(price)} ETB
+                                ${formatCustomerCurrency(price)}
                             </div>
 
                         </div>
@@ -2075,6 +2447,8 @@ function openCustomerDaySpecial() {
     document.body.classList.add(
         'customer-day-special-open'
     );
+
+    queueCustomerTranslation();
 
 
     /* ============================================================
@@ -2543,10 +2917,9 @@ function renderCart() {
 
 
                             <td>
-                                ${
-                                    itemPrice *
-                                    quantity
-                                }
+                                ${formatCustomerCurrency(
+                                    itemPrice * quantity
+                                )}
                             </td>
 
 
@@ -2565,7 +2938,7 @@ function renderCart() {
                                     </button>
 
 
-                                    ${quantity}
+                                    <span class="notranslate" translate="no">${formatCustomerNumber(quantity)}</span>
 
 
                                     <button
@@ -2609,9 +2982,11 @@ function renderCart() {
 
     if (totalElement) {
 
-        totalElement.textContent =
-            `${total} ETB`;
+        totalElement.innerHTML =
+            formatCustomerCurrency(total);
     }
+
+    queueCustomerTranslation();
 }
 
 
@@ -2853,6 +3228,109 @@ function setupSearch() {
 }
 
 
+function setupCustomerLanguageSelector() {
+    const selector =
+        document.getElementById('customerLanguage');
+
+    const control =
+        document.getElementById('customerLanguageControl');
+
+    const toggle =
+        document.getElementById('customerLanguageToggle');
+
+    const menu =
+        document.getElementById('customerLanguageMenu');
+
+    if (!selector || !control || !toggle || !menu) {
+        return;
+    }
+
+    const storedLanguage =
+        localStorage.getItem(CUSTOMER_LANGUAGE_KEY) || 'en';
+
+    selector.value =
+        ['en', 'am', 'ar', 'zh-CN'].includes(storedLanguage)
+            ? storedLanguage
+            : 'en';
+
+    setCustomerLanguage(selector.value);
+
+    toggle.addEventListener(
+        'click',
+        () => setCustomerLanguageMenuOpen(menu.hidden)
+    );
+
+    menu.addEventListener(
+        'click',
+        event => {
+            const option =
+                event.target.closest('[data-language-option]');
+
+            if (option) {
+                setCustomerLanguage(option.dataset.languageOption);
+                toggle.focus();
+            }
+        }
+    );
+
+    toggle.addEventListener(
+        'keydown',
+        event => {
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+                return;
+            }
+
+            event.preventDefault();
+            setCustomerLanguageMenuOpen(true, true);
+        }
+    );
+
+    menu.addEventListener(
+        'keydown',
+        event => {
+            const options =
+                Array.from(
+                    menu.querySelectorAll('[data-language-option]')
+                );
+
+            const currentIndex =
+                options.indexOf(document.activeElement);
+
+            let nextIndex = currentIndex;
+
+            if (event.key === 'ArrowDown') {
+                nextIndex = (currentIndex + 1) % options.length;
+            } else if (event.key === 'ArrowUp') {
+                nextIndex = (currentIndex - 1 + options.length) % options.length;
+            } else if (event.key === 'Home') {
+                nextIndex = 0;
+            } else if (event.key === 'End') {
+                nextIndex = options.length - 1;
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                setCustomerLanguageMenuOpen(false);
+                toggle.focus();
+                return;
+            } else {
+                return;
+            }
+
+            event.preventDefault();
+            options[nextIndex]?.focus();
+        }
+    );
+
+    document.addEventListener(
+        'click',
+        event => {
+            if (!control.contains(event.target)) {
+                setCustomerLanguageMenuOpen(false);
+            }
+        }
+    );
+}
+
+
 /* ==========================================================================
    PAYMENT MODAL
    ========================================================================== */
@@ -2900,8 +3378,8 @@ function openPaymentModal() {
 
     if (paymentTotal) {
 
-        paymentTotal.textContent =
-            `${total} ETB`;
+        paymentTotal.innerHTML =
+            formatCustomerCurrency(total);
     }
 
 
@@ -3353,7 +3831,11 @@ window.addEventListener(
     'DOMContentLoaded',
     async () => {
 
+        loadDefaultCompanyImage();
+
         setupSearch();
+
+        setupCustomerLanguageSelector();
 
         setupPayment();
 

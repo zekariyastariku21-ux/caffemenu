@@ -107,7 +107,7 @@
       <p class="payment-total">
         Total to pay:
         <strong id="payment-total">
-          0 ETB
+          0 <span class="notranslate" translate="no">ETB</span>
         </strong>
       </p>
 
@@ -212,12 +212,63 @@
 
       </div>
 
+      <div class="customer-language-control" id="customerLanguageControl">
+        <button
+          type="button"
+          class="customer-language-toggle"
+          id="customerLanguageToggle"
+          aria-label="Choose menu language"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-controls="customerLanguageMenu"
+        >
+          <span class="customer-language-icon" aria-hidden="true">文</span>
+          <span
+            class="customer-language-current notranslate"
+            id="customerLanguageLabel"
+            translate="no"
+          >English</span>
+          <span class="customer-language-chevron" aria-hidden="true"></span>
+        </button>
 
-      
+        <div
+          class="customer-language-menu"
+          id="customerLanguageMenu"
+          role="menu"
+          aria-label="Choose menu language"
+          hidden
+        >
+          <button type="button" role="menuitemradio" aria-checked="true" data-language-option="en">
+            <span class="customer-language-name notranslate" translate="no">English</span>
+            <span class="customer-language-code notranslate" translate="no" aria-hidden="true">EN</span>
+          </button>
+          <button type="button" role="menuitemradio" aria-checked="false" data-language-option="am">
+            <span class="customer-language-name notranslate" translate="no">አማርኛ</span>
+            <span class="customer-language-code notranslate" translate="no" aria-hidden="true">AM</span>
+          </button>
+          <button type="button" role="menuitemradio" aria-checked="false" data-language-option="ar">
+            <span class="customer-language-name notranslate" translate="no">العربية</span>
+            <span class="customer-language-code notranslate" translate="no" aria-hidden="true">AR</span>
+          </button>
+          <button type="button" role="menuitemradio" aria-checked="false" data-language-option="zh-CN">
+            <span class="customer-language-name notranslate" translate="no">中文</span>
+            <span class="customer-language-code notranslate" translate="no" aria-hidden="true">ZH</span>
+          </button>
+        </div>
+
+        <select id="customerLanguage" class="customer-language-state" tabindex="-1" aria-hidden="true">
+          <option value="en">English</option>
+          <option value="am">አማርኛ</option>
+          <option value="ar">العربية</option>
+          <option value="zh-CN">中文</option>
+        </select>
+      </div>
 
     </div>
 
   </header>
+
+  <div id="google_translate_element" class="customer-translation-widget" aria-hidden="true"></div>
 
 
   <!-- MAIN MENU -->
@@ -339,6 +390,7 @@
 
 
   <script src="scripts/saveAdd.js"></script>
+  <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 
 </body>
 </html>

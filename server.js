@@ -51,6 +51,13 @@ const pool = new Pool({
 
 });
 
+pool.on('error', error => {
+  console.error(
+    '[db] Idle PostgreSQL client error:',
+    error.message
+  );
+});
+
 
 /* ================================================================
    MENU CACHE
@@ -345,9 +352,14 @@ async function ensureDatabaseStructure() {
       ADD COLUMN IF NOT EXISTS logo TEXT NOT NULL DEFAULT ''
     `);
 
+        await pool.query(`
+          ALTER TABLE company_settings
+          ADD COLUMN IF NOT EXISTS default_image TEXT NOT NULL DEFAULT ''
+        `);
 
-    await pool.query(`
-      ALTER TABLE company_settings
+
+        await pool.query(`
+          ALTER TABLE company_settings
       ADD COLUMN IF NOT EXISTS about TEXT NOT NULL DEFAULT ''
     `);
         await pool.query(`
@@ -981,6 +993,247 @@ app.get(
 
 
 /* ================================================================
+   SUPER ADMIN ACCOUNT SETTINGS
+   ================================================================ */
+
+app.put(
+  '/api/owner/account',
+  requireOwner,
+  async (req, res) => {
+    try {
+      if (req.user.role !== 'super_admin') {
+        return res.status(403).json({
+          ok: false,
+          message: 'Super admin access required.'
+        });
+      }
+
+      const email =
+        String(req.body.email || '')
+          .trim()
+          .toLowerCase();
+
+      const currentPassword =
+        String(req.body.currentPassword || '');
+
+      const newPassword =
+        String(req.body.newPassword || '');
+
+      const defaultImageProvided =
+        Object.prototype.hasOwnProperty.call(
+          req.body,
+          'defaultImage'
+        );
+
+      const defaultImage =
+        defaultImageProvided
+          ? String(req.body.defaultImage || '')
+          : '';
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Enter a valid email address.'
+        });
+      }
+
+      if (!currentPassword) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Enter your current password to continue.'
+        });
+      }
+
+      if (newPassword && newPassword.length < 6) {
+        return res.status(400).json({
+          ok: false,
+          message: 'The new password must contain at least 6 characters.'
+        });
+      }
+
+      if (
+        defaultImageProvided &&
+        defaultImage &&
+        (
+          !/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(defaultImage) ||
+          Math.floor((defaultImage.split(',')[1].length * 3) / 4) > 5 * 1024 * 1024
+        )
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Choose a JPEG, PNG, or WebP image smaller than 5 MB.'
+        });
+      }
+
+      const userResult = await pool.query(`
+        SELECT
+          id,
+          email,
+          password,
+          role,
+          restaurant_id
+        FROM users
+        WHERE id = $1
+        LIMIT 1
+      `, [
+        req.user.id
+      ]);
+
+      if (
+        userResult.rows.length === 0 ||
+        userResult.rows[0].role !== 'super_admin'
+      ) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Super admin account not found.'
+        });
+      }
+
+      const user = userResult.rows[0];
+
+      if (user.password !== currentPassword) {
+        return res.status(401).json({
+          ok: false,
+          message: 'Current password is incorrect.'
+        });
+      }
+
+      const duplicateEmail = await pool.query(`
+        SELECT id
+        FROM users
+        WHERE LOWER(email) = LOWER($1)
+          AND id <> $2
+        LIMIT 1
+      `, [
+        email,
+        user.id
+      ]);
+
+      if (duplicateEmail.rows.length > 0) {
+        return res.status(409).json({
+          ok: false,
+          message: 'That email is already used by another account.'
+        });
+      }
+
+      const client = await pool.connect();
+      let transactionStarted = false;
+      let updatedResult;
+
+      try {
+        await client.query('BEGIN');
+        transactionStarted = true;
+
+        updatedResult = await client.query(`
+          UPDATE users
+          SET
+            email = $1,
+            password = $2
+          WHERE id = $3
+          RETURNING id, email, role, restaurant_id
+        `, [
+          email,
+          newPassword || user.password,
+          user.id
+        ]);
+
+        if (defaultImageProvided) {
+          await client.query(`
+            INSERT INTO company_settings (
+              id,
+              default_image
+            )
+            VALUES (1, $1)
+            ON CONFLICT (id)
+            DO UPDATE SET
+              default_image = EXCLUDED.default_image,
+              updated_at = NOW()
+          `, [
+            defaultImage
+          ]);
+        }
+
+        await client.query('COMMIT');
+        transactionStarted = false;
+      } catch (error) {
+        if (transactionStarted) {
+          try {
+            await client.query('ROLLBACK');
+          } catch (rollbackError) {
+            console.error(
+              '[owner:account:update] Rollback failed:',
+              rollbackError
+            );
+          }
+        }
+
+        throw error;
+      } finally {
+        client.release();
+      }
+
+      if (defaultImageProvided) {
+        companySettingsCache.data = null;
+      }
+
+      const updatedUser = updatedResult.rows[0];
+
+      const token = jwt.sign(
+        {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          restaurant_id: updatedUser.restaurant_id
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '30d' }
+      );
+
+      res.cookie(
+        'adminToken',
+        token,
+        {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 7 * 24 * 60 * 60 * 1000
+        }
+      );
+
+      return res.json({
+        ok: true,
+        message: 'Super admin account updated.',
+        token,
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          role: updatedUser.role
+        }
+      });
+
+    } catch (error) {
+      console.error(
+        '[owner:account:update] Error:',
+        error
+      );
+
+      if (error.code === '23505') {
+        return res.status(409).json({
+          ok: false,
+          message: 'That email is already used by another account.'
+        });
+      }
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to update super admin account.'
+      });
+    }
+  }
+);
+
+
+/* ================================================================
    RESTAURANT PROFILE - GET
    ================================================================ */
 
@@ -1571,16 +1824,35 @@ app.get('/api/menu/:slug/logo', async (req, res) => {
        ============================================================ */
 
     if (!logo) {
-      const logoResult = await pool.query(
-        `
+      const logoQuery = `
           SELECT
             logo
           FROM restaurant_profiles
           WHERE restaurant_id = $1
           LIMIT 1
-        `,
-        [restaurant.id]
-      );
+        `;
+
+      let logoResult;
+
+      try {
+        logoResult = await pool.query(
+          logoQuery,
+          [restaurant.id]
+        );
+      } catch (error) {
+        if (error.code !== 'ECONNRESET') {
+          throw error;
+        }
+
+        console.warn(
+          `[menu:logo] Retrying after PostgreSQL connection reset for ${slug}.`
+        );
+
+        logoResult = await pool.query(
+          logoQuery,
+          [restaurant.id]
+        );
+      }
 
       logo =
         logoResult.rows.length > 0 &&
@@ -4181,6 +4453,7 @@ app.get(
           email,
           address,
           logo,
+          default_image,
           about,
           company_content,
           addresses
@@ -4201,6 +4474,7 @@ app.get(
             email: '',
             address: '',
             logo: '',
+            defaultImage: '',
             about: '',
             addresses: []
           }
@@ -4227,6 +4501,7 @@ app.get(
           email: row.email || '',
           address: row.address || '',
           logo: row.logo || '',
+          defaultImage: row.default_image || '',
           about: row.about || '',
           companyContent:
             row.company_content &&
@@ -4285,6 +4560,7 @@ app.get(
           email,
           address,
           logo,
+          default_image,
           about,
           company_content,
           addresses
@@ -4305,6 +4581,7 @@ app.get(
             email: '',
             address: '',
             logo: '',
+            defaultImage: '',
             about: '',
             addresses: []
           }
@@ -4331,6 +4608,7 @@ app.get(
           email: row.email || '',
           address: row.address || '',
           logo: row.logo || '',
+          defaultImage: row.default_image || '',
           about: row.about || '',
           companyContent:
             row.company_content &&
@@ -4556,8 +4834,6 @@ async function startServer() {
 }
 
 startServer();
-
-
 
 
 

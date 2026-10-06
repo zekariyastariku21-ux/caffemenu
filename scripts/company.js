@@ -1,4 +1,6 @@
 
+let companyDefaultImage = 'image/z-menu.jpg';
+
 async function loadCompanySettings() {
 
     try {
@@ -18,6 +20,9 @@ async function loadCompanySettings() {
         const settings =
             data.settings || {};
 
+        companyDefaultImage =
+            settings.defaultImage || 'image/z-menu.jpg';
+
         const companyName =
             settings.companyName || '';
 
@@ -33,7 +38,7 @@ async function loadCompanySettings() {
     
 
         const companyLogo =
-            settings.logo || 'image/z-menu.jpg';
+            settings.logo || companyDefaultImage;
 
         document.querySelectorAll(
             '[data-company-logo]'
@@ -462,7 +467,7 @@ async function loadRestaurantSlides() {
                     document.createElement('img');
 
                 image.src =
-                    'image/z-menu.jpg';
+                    companyDefaultImage;
 
                 image.alt =
                     restaurant.name || 'Restaurant';
@@ -494,7 +499,7 @@ async function loadRestaurantSlides() {
                     .catch(() => {
 
                         image.src =
-                            'image/z-menu.jpg';
+                            companyDefaultImage;
 
                     });
 
@@ -683,4 +688,3 @@ document.addEventListener(
     'DOMContentLoaded',
     loadRestaurantSlides
 );
-

@@ -437,6 +437,43 @@ const message =
         'message'
     );
 
+fetch('/api/company-settings', {
+    cache: 'no-store'
+})
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Unable to load shared image settings.');
+        }
+
+        return response.json();
+    })
+    .then(data => {
+        if (!data.ok) {
+            throw new Error(
+                data.message || 'Unable to load shared image settings.'
+            );
+        }
+
+        const defaultImage =
+            data.settings &&
+            typeof data.settings.defaultImage === 'string'
+                ? data.settings.defaultImage.trim()
+                : '';
+
+        const logo =
+            document.querySelector('.login-card .logo');
+
+        if (logo && defaultImage) {
+            logo.src = defaultImage;
+        }
+    })
+    .catch(error => {
+        console.warn(
+            '[admin:shared-image] Could not load shared default image:',
+            error.message || error
+        );
+    });
+
 
 /* ============================================================
    SHOW MESSAGE

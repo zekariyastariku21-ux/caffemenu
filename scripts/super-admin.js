@@ -27,6 +27,10 @@ let ownerPriceOperation = 'increase';
 let ownerPreviousFocus = null;
 
 let duplicateSourceRestaurant = null;
+let ownerDefaultImage = 'image/z-menu.jpg';
+let accountDefaultImage = '';
+let accountDefaultImageChanged = false;
+let accountDefaultImageLoading = false;
 
 
 /* ================================================================
@@ -914,6 +918,103 @@ function ensureSuperAdminRuntimeStyles() {
             outline-offset:2px;
         }
 
+        .company-content-delete-backdrop {
+            position:fixed;
+            inset:0;
+            z-index:1000002;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            box-sizing:border-box;
+            padding:20px;
+            background:rgba(25,15,9,.58);
+            backdrop-filter:blur(5px);
+            -webkit-backdrop-filter:blur(5px);
+        }
+
+        .company-content-delete-dialog {
+            width:min(420px,100%);
+            box-sizing:border-box;
+            padding:30px;
+            border:1px solid rgba(255,255,255,.75);
+            border-radius:22px;
+            background:#fffdf9;
+            box-shadow:0 28px 80px rgba(0,0,0,.3);
+            text-align:center;
+            animation:appearanceConfirmIn 160ms ease-out;
+        }
+
+        .company-content-delete-icon {
+            width:54px;
+            height:54px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            margin:0 auto 18px;
+            border:1px solid #f0c5bc;
+            border-radius:17px;
+            background:linear-gradient(135deg,#fff1ed,#ffe3dc);
+            color:#a43f35;
+            font-size:25px;
+            font-weight:800;
+        }
+
+        .company-content-delete-dialog h2 {
+            margin:0;
+            color:#351d12;
+            font-family:Georgia,"Times New Roman",serif;
+            font-size:24px;
+            line-height:1.25;
+        }
+
+        .company-content-delete-message {
+            margin:12px 0 0;
+            color:#766960;
+            font-size:13px;
+            line-height:1.6;
+            overflow-wrap:anywhere;
+        }
+
+        .company-content-delete-actions {
+            display:flex;
+            justify-content:center;
+            gap:10px;
+            margin-top:25px;
+        }
+
+        .company-content-delete-actions button {
+            min-height:44px;
+            padding:0 18px;
+            border-radius:11px;
+            font-family:inherit;
+            font-size:12px;
+            font-weight:800;
+            cursor:pointer;
+            transition:transform 160ms ease,box-shadow 160ms ease;
+        }
+
+        .company-content-delete-cancel {
+            border:1px solid rgba(66,42,27,.17);
+            background:#fff;
+            color:#4a382d;
+        }
+
+        .company-content-delete-confirm {
+            border:1px solid #a43f35;
+            background:linear-gradient(135deg,#b34e45,#963b34);
+            color:#fff;
+            box-shadow:0 7px 16px rgba(174,73,65,.2);
+        }
+
+        .company-content-delete-actions button:hover {
+            transform:translateY(-1px);
+        }
+
+        .company-content-delete-actions button:focus-visible {
+            outline:3px solid rgba(168,121,46,.45);
+            outline-offset:2px;
+        }
+
         @keyframes appearanceConfirmIn {
             from { opacity:0; transform:translateY(8px) scale(.98); }
             to { opacity:1; transform:translateY(0) scale(1); }
@@ -984,6 +1085,59 @@ function ensureSuperAdminRuntimeStyles() {
             display:grid;
             grid-template-columns:repeat(2,minmax(0,1fr));
             gap:16px;
+        }
+
+        .owner-account-profile {
+            display:flex;
+            align-items:center;
+            gap:16px;
+            margin-bottom:20px;
+            padding:16px;
+            border:1px solid rgba(168,121,46,.18);
+            border-radius:14px;
+            background:linear-gradient(120deg,#fffaf0,#fff 75%);
+        }
+
+        .owner-account-avatar {
+            width:72px;
+            height:72px;
+            flex:none;
+            border:2px solid rgba(168,121,46,.35);
+            border-radius:50%;
+            object-fit:cover;
+            box-shadow:0 4px 12px rgba(66,42,27,.14);
+        }
+
+        .owner-account-profile-name {
+            margin:0 0 4px;
+            color:#351d12;
+            font-family:Georgia,"Times New Roman",serif;
+            font-size:18px;
+            font-weight:700;
+        }
+
+        .owner-account-profile-email {
+            margin:0;
+            color:#766960;
+            font-size:13px;
+            overflow-wrap:anywhere;
+        }
+
+        .owner-account-image-field {
+            display:flex;
+            align-items:center;
+            flex-wrap:wrap;
+            gap:10px;
+            margin-bottom:18px;
+        }
+
+        .owner-account-image-field label {
+            width:100%;
+        }
+
+        .owner-account-image-field input {
+            flex:1;
+            min-width:200px;
         }
 
         .owner-form-field {
@@ -6933,6 +7087,446 @@ function manageOwnerCafeMenu(
 
 
 /* ================================================================
+   SUPER ADMIN ACCOUNT SETTINGS
+   ================================================================ */
+
+async function openSuperAdminAccountSettings() {
+    closeSuperAdminMenu();
+
+    const token = getAdminToken();
+
+    if (!token) {
+        clearAdminSession();
+        window.location.href = '/admin.html';
+        return;
+    }
+
+    showOwnerLoading('Loading account settings...');
+
+    try {
+        const response = await fetch(
+            '/api/admin/session',
+            {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }
+        );
+
+        const data = await readOwnerApiResponse(response);
+        const user = data.user || {};
+
+        if (!data.ok || user.role !== 'super_admin') {
+            throw new Error('Super admin account details are unavailable.');
+        }
+
+        const settingsResponse = await fetch(
+            '/api/owner/company-settings',
+            {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }
+        );
+
+        const settingsData =
+            await readOwnerApiResponse(settingsResponse);
+
+        if (!settingsData.ok) {
+            throw new Error(
+                'Unable to load the shared default image.'
+            );
+        }
+
+        accountDefaultImage =
+            settingsData.settings?.defaultImage || '';
+
+        ownerDefaultImage =
+            accountDefaultImage || 'image/z-menu.jpg';
+
+        accountDefaultImageChanged = false;
+
+        openOwnerActionPanel(
+            'Account Settings',
+            `
+                <form
+                    id="ownerSuperAdminAccountForm"
+                    onsubmit="submitSuperAdminAccountSettings(event)"
+                >
+                    <div class="owner-account-profile">
+                        <img
+                            id="ownerDefaultImagePreview"
+                            class="owner-account-avatar"
+                            src="${escapeHtml(ownerDefaultImage)}"
+                            alt="Shared default image preview"
+                        >
+                        <div>
+                            <p class="owner-account-profile-name">Default App Image</p>
+                            <p class="owner-account-profile-email">Used anywhere the app would otherwise show the Z Menu placeholder. Custom restaurant logos are not changed.</p>
+                        </div>
+                    </div>
+
+                    <div class="owner-form-field owner-account-image-field">
+                        <label for="ownerDefaultImageInput">Change shared default image</label>
+                        <input
+                            id="ownerDefaultImageInput"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onchange="previewAccountDefaultImage(event)"
+                        >
+                        <button
+                            type="button"
+                            class="restaurant-action-btn"
+                            onclick="resetAccountDefaultImage()"
+                        >
+                            Restore original default
+                        </button>
+                    </div>
+
+                    <div class="owner-form-grid">
+                        <div class="owner-form-field">
+                            <label for="ownerAccountCurrentEmail">Current Email</label>
+                            <input
+                                id="ownerAccountCurrentEmail"
+                                type="email"
+                                value="${escapeHtml(user.email || '')}"
+                                readonly
+                            >
+                        </div>
+
+                        <div class="owner-form-field">
+                            <label for="ownerAccountNewEmail">New Email</label>
+                            <input
+                                id="ownerAccountNewEmail"
+                                type="email"
+                                value="${escapeHtml(user.email || '')}"
+                                autocomplete="email"
+                                required
+                            >
+                        </div>
+
+                        <div class="owner-form-field">
+                            <label for="ownerAccountPasswordReadOnly">Current Password</label>
+                            <input
+                                id="ownerAccountPasswordReadOnly"
+                                type="password"
+                                value="********"
+                                aria-label="Saved password is hidden"
+                                readonly
+                            >
+                        </div>
+
+                        <div class="owner-form-field">
+                            <label for="ownerAccountVerifyPassword">Verify Current Password</label>
+                            <div class="owner-password-wrapper">
+                                <input
+                                    id="ownerAccountVerifyPassword"
+                                    type="password"
+                                    autocomplete="current-password"
+                                    required
+                                >
+                                <button
+                                    type="button"
+                                    class="owner-password-toggle"
+                                    data-password-target="ownerAccountVerifyPassword"
+                                    onclick="toggleOwnerPassword(this)"
+                                    aria-label="Show password"
+                                >&#9673;</button>
+                            </div>
+                        </div>
+
+                        <div class="owner-form-field">
+                            <label for="ownerAccountNewPassword">New Password</label>
+                            <div class="owner-password-wrapper">
+                                <input
+                                    id="ownerAccountNewPassword"
+                                    type="password"
+                                    autocomplete="new-password"
+                                    minlength="6"
+                                >
+                                <button
+                                    type="button"
+                                    class="owner-password-toggle"
+                                    data-password-target="ownerAccountNewPassword"
+                                    onclick="toggleOwnerPassword(this)"
+                                    aria-label="Show password"
+                                >&#9673;</button>
+                            </div>
+                        </div>
+
+                        <div class="owner-form-field">
+                            <label for="ownerAccountConfirmPassword">Confirm New Password</label>
+                            <div class="owner-password-wrapper">
+                                <input
+                                    id="ownerAccountConfirmPassword"
+                                    type="password"
+                                    autocomplete="new-password"
+                                    minlength="6"
+                                >
+                                <button
+                                    type="button"
+                                    class="owner-password-toggle"
+                                    data-password-target="ownerAccountConfirmPassword"
+                                    onclick="toggleOwnerPassword(this)"
+                                    aria-label="Show password"
+                                >&#9673;</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="company-content-edit-hint">
+                        Verify your password to save changes. Leave the new password fields blank to update only your email. Image changes are shared across the app and apply after saving.
+                    </p>
+
+                    <div class="owner-form-actions">
+                        <button
+                            type="button"
+                            class="restaurant-action-btn"
+                            onclick="closeOwnerActionPanel()"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            id="ownerAccountSaveButton"
+                            class="owner-action-btn"
+                        >
+                            Save Account Changes
+                        </button>
+                    </div>
+                </form>
+            `
+        );
+
+        requestAnimationFrame(() => {
+            document
+                .getElementById('ownerAccountNewEmail')
+                ?.focus();
+        });
+
+    } catch (error) {
+        showOwnerNotification(
+            'Unable to load account settings',
+            error.message || 'Please try again.',
+            'error'
+        );
+    } finally {
+        hideOwnerLoading();
+    }
+}
+
+
+async function submitSuperAdminAccountSettings(event) {
+    event.preventDefault();
+
+    const email =
+        document.getElementById('ownerAccountNewEmail')?.value.trim();
+
+    const currentPassword =
+        document.getElementById('ownerAccountVerifyPassword')?.value || '';
+
+    const newPassword =
+        document.getElementById('ownerAccountNewPassword')?.value || '';
+
+    const confirmPassword =
+        document.getElementById('ownerAccountConfirmPassword')?.value || '';
+
+    const submitButton =
+        document.getElementById('ownerAccountSaveButton');
+
+    if (accountDefaultImageLoading) {
+        showOwnerNotification(
+            'Image is still loading',
+            'Please wait for the selected image to finish loading.',
+            'error'
+        );
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        showOwnerNotification(
+            'Passwords do not match',
+            'New password and confirmation must match.',
+            'error'
+        );
+        return;
+    }
+
+    if (newPassword && newPassword.length < 6) {
+        showOwnerNotification(
+            'Password too short',
+            'The new password must contain at least 6 characters.',
+            'error'
+        );
+        return;
+    }
+
+    const token = getAdminToken();
+
+    if (!token) {
+        clearAdminSession();
+        window.location.href = '/admin.html';
+        return;
+    }
+
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Saving...';
+    }
+
+    showOwnerLoading('Updating account...');
+
+    try {
+        const response = await fetch(
+            '/api/owner/account',
+            {
+                method: 'PUT',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    email,
+                    currentPassword,
+                    newPassword,
+                    ...(accountDefaultImageChanged
+                        ? { defaultImage: accountDefaultImage }
+                        : {})
+                })
+            }
+        );
+
+        const data = await readOwnerApiResponse(response);
+
+        if (data.token) {
+            localStorage.setItem('adminToken', data.token);
+        }
+
+        ownerDefaultImage =
+            accountDefaultImage || 'image/z-menu.jpg';
+
+        closeOwnerActionPanel();
+        showOwnerNotification(
+            'Account updated',
+            data.message || 'Super admin account updated successfully.',
+            'success'
+        );
+
+    } catch (error) {
+        showOwnerNotification(
+            'Unable to update account',
+            error.message || 'Please check your details and try again.',
+            'error'
+        );
+    } finally {
+        hideOwnerLoading();
+
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Save Account Changes';
+        }
+    }
+}
+
+function previewAccountDefaultImage(event) {
+    const file =
+        event.target.files && event.target.files[0];
+
+    if (!file) {
+        return;
+    }
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        showOwnerNotification(
+            'Unsupported image type',
+            'Choose a JPEG, PNG, or WebP image.',
+            'error'
+        );
+        event.target.value = '';
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        showOwnerNotification(
+            'Image is too large',
+            'Choose an image smaller than 5 MB.',
+            'error'
+        );
+        event.target.value = '';
+        return;
+    }
+
+    accountDefaultImageLoading = true;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+        if (typeof reader.result !== 'string') {
+            accountDefaultImageLoading = false;
+            showOwnerNotification(
+                'Unable to preview image',
+                'Select the image again and retry.',
+                'error'
+            );
+            return;
+        }
+
+        accountDefaultImage = reader.result;
+        accountDefaultImageChanged = true;
+        accountDefaultImageLoading = false;
+
+        const preview =
+            document.getElementById('ownerDefaultImagePreview');
+
+        if (preview) {
+            preview.src = accountDefaultImage;
+        }
+    };
+
+    reader.onerror = () => {
+        accountDefaultImageLoading = false;
+        showOwnerNotification(
+            'Unable to read image',
+            'Select the image again and retry.',
+            'error'
+        );
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function resetAccountDefaultImage() {
+    accountDefaultImage = '';
+    accountDefaultImageChanged = true;
+    accountDefaultImageLoading = false;
+
+    const preview =
+        document.getElementById('ownerDefaultImagePreview');
+
+    if (preview) {
+        preview.src = 'image/z-menu.jpg';
+    }
+
+    const input =
+        document.getElementById('ownerDefaultImageInput');
+
+    if (input) {
+        input.value = '';
+    }
+}
+
+
+/* ================================================================
    COMPANY PROFILE
    ================================================================ */
 
@@ -7023,7 +7617,7 @@ function openCompanyProfile() {
                     >
                         <img
                             id="companyLogoPreview"
-                            src="image/z-menu.jpg"
+                            src="${escapeHtml(ownerDefaultImage)}"
                             alt="Company Logo"
                             style="
                                 width:80px;
@@ -7086,7 +7680,7 @@ function openCompanyProfile() {
                     </label>
 
                     <p class="company-content-edit-hint">
-                        Company Profile fields are read-only until you choose Edit for that field or row. Use Save Changes below to save your updates.
+                        Company Profile fields are read-only until you choose Edit for that field or row. Hold and drag the grip to reorder; the Company Profile page follows this order after you save.
                     </p>
 
                     <div
@@ -7510,7 +8104,7 @@ function addCompanyLocation() {
 
 let companyContent = [];
 
-function renderCompanyContent() {
+function renderCompanyContent(expandedIndex = -1) {
     const list =
         document.getElementById('companyContentList');
 
@@ -7524,8 +8118,198 @@ function renderCompanyContent() {
         const row =
             document.createElement('div');
 
+        row.dataset.companyContentRow = 'true';
+        row.dataset.companyContentIndex = String(index);
         row.style.cssText =
             'display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid #ddd;border-radius:10px;background:#fff;margin-bottom:10px;';
+
+        const summary =
+            document.createElement('div');
+
+        summary.style.cssText =
+            'display:flex;align-items:center;gap:12px;min-width:0;';
+
+        const summaryText =
+            document.createElement('div');
+
+        summaryText.style.cssText =
+            'display:flex;flex:1;flex-direction:column;gap:4px;min-width:0;';
+
+        const positionLabel =
+            document.createElement('span');
+
+        const ordinalSuffix =
+            index % 10 === 1 && index % 100 !== 11
+                ? 'st'
+                : index % 10 === 2 && index % 100 !== 12
+                    ? 'nd'
+                    : index % 10 === 3 && index % 100 !== 13
+                        ? 'rd'
+                        : 'th';
+
+        positionLabel.textContent =
+            `${index + 1}${ordinalSuffix}`;
+
+        positionLabel.style.cssText =
+            'color:#766960;font-size:12px;font-weight:600;flex:none;';
+
+        const topicSummary =
+            document.createElement('strong');
+
+        const subTopicSummary =
+            document.createElement('span');
+
+        subTopicSummary.style.cssText =
+            'color:#766960;font-size:13px;';
+
+        const summaryImage =
+            document.createElement('img');
+
+        summaryImage.src =
+            item.image || ownerDefaultImage;
+
+        summaryImage.alt =
+            item.topic || item.subTopic || 'Content Image';
+
+        summaryImage.style.cssText =
+            'width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid #ddd;flex:none;';
+
+        const updateSummary = () => {
+            topicSummary.textContent =
+                item.topic || 'Untitled topic';
+
+            subTopicSummary.textContent =
+                item.subTopic || 'No subtopic';
+
+            summaryImage.src =
+                item.image || ownerDefaultImage;
+
+            summaryImage.alt =
+                item.topic || item.subTopic || 'Content Image';
+        };
+
+        updateSummary();
+
+        summaryText.appendChild(topicSummary);
+        summaryText.appendChild(subTopicSummary);
+        summary.appendChild(positionLabel);
+        summary.appendChild(summaryText);
+        summary.appendChild(summaryImage);
+
+        const dragHandle =
+            document.createElement('button');
+
+        dragHandle.type = 'button';
+        dragHandle.textContent = '☷';
+        dragHandle.title = 'Hold and drag to reorder';
+        dragHandle.setAttribute(
+            'aria-label',
+            `Hold and drag to reorder content item ${index + 1}`
+        );
+        dragHandle.style.cssText =
+            'border:0;background:transparent;color:#766960;font-size:22px;cursor:grab;touch-action:none;padding:6px;flex:none;';
+        summary.appendChild(dragHandle);
+
+        let holdTimer;
+        let isDragging = false;
+        let pointerStartX = 0;
+        let pointerStartY = 0;
+
+        const finishReordering = () => {
+            if (!isDragging) {
+                return;
+            }
+
+            isDragging = false;
+            row.style.opacity = '';
+            row.style.borderColor = '#ddd';
+            row.style.boxShadow = '';
+
+            const reorderedIndexes =
+                Array.from(list.children).map(element =>
+                    Number(element.dataset.companyContentIndex)
+                );
+
+            const reorderedIndex =
+                reorderedIndexes.indexOf(
+                    Number(row.dataset.companyContentIndex)
+                );
+
+            companyContent =
+                reorderedIndexes.map(oldIndex => companyContent[oldIndex]);
+
+            renderCompanyContent(
+                row.querySelector('[aria-expanded="true"]')
+                    ? reorderedIndex
+                    : -1
+            );
+        };
+
+        dragHandle.addEventListener('pointerdown', event => {
+            if (event.button !== 0 || !event.isPrimary) {
+                return;
+            }
+
+            pointerStartX = event.clientX;
+            pointerStartY = event.clientY;
+
+            if (dragHandle.setPointerCapture) {
+                dragHandle.setPointerCapture(event.pointerId);
+            }
+
+            holdTimer = setTimeout(() => {
+                isDragging = true;
+                row.style.opacity = '0.65';
+                row.style.borderColor = '#a8792e';
+                row.style.boxShadow = '0 4px 14px rgba(0,0,0,.16)';
+            }, 450);
+        });
+
+        dragHandle.addEventListener('pointermove', event => {
+            if (!isDragging) {
+                if (
+                    Math.abs(event.clientX - pointerStartX) > 8 ||
+                    Math.abs(event.clientY - pointerStartY) > 8
+                ) {
+                    clearTimeout(holdTimer);
+                }
+                return;
+            }
+
+            const target =
+                document.elementFromPoint(event.clientX, event.clientY);
+
+            const targetRow =
+                target && target.closest('[data-company-content-row]');
+
+            if (!targetRow || targetRow === row || targetRow.parentElement !== list) {
+                return;
+            }
+
+            const targetBounds =
+                targetRow.getBoundingClientRect();
+
+            if (event.clientY < targetBounds.top + targetBounds.height / 2) {
+                list.insertBefore(row, targetRow);
+            } else {
+                list.insertBefore(row, targetRow.nextSibling);
+            }
+        });
+
+        dragHandle.addEventListener('pointerup', () => {
+            clearTimeout(holdTimer);
+            finishReordering();
+        });
+
+        dragHandle.addEventListener('pointercancel', () => {
+            clearTimeout(holdTimer);
+            finishReordering();
+        });
+
+        dragHandle.addEventListener('lostpointercapture', () => {
+            clearTimeout(holdTimer);
+            finishReordering();
+        });
 
         const topicInput =
             document.createElement('input');
@@ -7539,6 +8323,7 @@ function renderCompanyContent() {
 
         topicInput.oninput = () => {
             item.topic = topicInput.value;
+            updateSummary();
         };
 
         const subTopicInput =
@@ -7553,6 +8338,7 @@ function renderCompanyContent() {
 
         subTopicInput.oninput = () => {
             item.subTopic = subTopicInput.value;
+            updateSummary();
         };
 
         const imageRow =
@@ -7565,7 +8351,7 @@ function renderCompanyContent() {
             document.createElement('img');
 
         imagePreview.src =
-            item.image || 'image/z-menu.jpg';
+            item.image || ownerDefaultImage;
 
         imagePreview.alt = 'Content Image';
 
@@ -7594,6 +8380,7 @@ function renderCompanyContent() {
             reader.onload = () => {
                 item.image = reader.result;
                 imagePreview.src = reader.result;
+                updateSummary();
             };
 
             reader.readAsDataURL(file);
@@ -7619,6 +8406,12 @@ function renderCompanyContent() {
                 descriptionInput.value;
         };
 
+        const editorFields =
+            document.createElement('div');
+
+        editorFields.style.cssText =
+            'display:flex;flex-direction:column;gap:10px;';
+
         const actions =
             document.createElement('div');
 
@@ -7634,10 +8427,33 @@ function renderCompanyContent() {
         editButton.textContent =
             '✎ Edit';
 
-        let isEditing = false;
+        let isEditing = index === expandedIndex;
+
+        editorFields.style.display =
+            isEditing ? 'flex' : 'none';
+
+        [
+            topicInput,
+            subTopicInput,
+            imageInput,
+            descriptionInput
+        ].forEach(input => {
+            input.disabled = !isEditing;
+        });
+
+        editButton.textContent =
+            isEditing ? 'Done' : '✎ Edit';
+
+        editButton.setAttribute(
+            'aria-expanded',
+            String(isEditing)
+        );
 
         editButton.onclick = () => {
             isEditing = !isEditing;
+
+            editorFields.style.display =
+                isEditing ? 'flex' : 'none';
 
             [
                 topicInput,
@@ -7654,7 +8470,7 @@ function renderCompanyContent() {
                     : '✎ Edit';
 
             editButton.setAttribute(
-                'aria-pressed',
+                'aria-expanded',
                 String(isEditing)
             );
 
@@ -7672,18 +8488,70 @@ function renderCompanyContent() {
         deleteButton.innerHTML =
             '&#128465; Delete';
 
-        deleteButton.onclick = () => {
+        deleteButton.onclick = async () => {
+            const confirmed =
+                await confirmDeleteCompanyContent(
+                    item.topic || item.subTopic || `item ${index + 1}`
+                );
+
+            if (!confirmed) {
+                return;
+            }
+
             companyContent.splice(index, 1);
             renderCompanyContent();
         };
 
+        const moveButton =
+            (direction, label) => {
+                const button =
+                    document.createElement('button');
+
+                button.type = 'button';
+                button.className =
+                    'restaurant-action-btn';
+                button.textContent = label;
+                button.title =
+                    direction < 0
+                        ? 'Move content up'
+                        : 'Move content down';
+                button.disabled =
+                    direction < 0
+                        ? index === 0
+                        : index === companyContent.length - 1;
+
+                button.onclick = () => {
+                    const [movedItem] =
+                        companyContent.splice(index, 1);
+
+                    companyContent.splice(
+                        index + direction,
+                        0,
+                        movedItem
+                    );
+
+                    renderCompanyContent(
+                        isEditing
+                            ? index + direction
+                            : -1
+                    );
+                };
+
+                return button;
+            };
+
+        actions.appendChild(moveButton(-1, '↑'));
+        actions.appendChild(moveButton(1, '↓'));
         actions.appendChild(editButton);
         actions.appendChild(deleteButton);
 
-        row.appendChild(topicInput);
-        row.appendChild(subTopicInput);
-        row.appendChild(imageRow);
-        row.appendChild(descriptionInput);
+        row.appendChild(summary);
+        summary.insertBefore(dragHandle, summary.firstChild);
+        editorFields.appendChild(topicInput);
+        editorFields.appendChild(subTopicInput);
+        editorFields.appendChild(imageRow);
+        editorFields.appendChild(descriptionInput);
+        row.appendChild(editorFields);
         row.appendChild(actions);
 
         list.appendChild(row);
@@ -7698,8 +8566,144 @@ function addCompanyContent() {
         description: ''
     });
 
-    renderCompanyContent();
+    renderCompanyContent(companyContent.length - 1);
 }
+
+function confirmDeleteCompanyContent(itemLabel) {
+    const previousFocus =
+        document.activeElement;
+
+    const backdrop =
+        document.createElement('div');
+
+    backdrop.className =
+        'company-content-delete-backdrop';
+
+    backdrop.innerHTML = `
+        <section
+            class="company-content-delete-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="companyContentDeleteTitle"
+            aria-describedby="companyContentDeleteMessage"
+            tabindex="-1">
+            <div class="company-content-delete-icon" aria-hidden="true">!</div>
+            <h2 id="companyContentDeleteTitle">Delete this content?</h2>
+            <p class="company-content-delete-message" id="companyContentDeleteMessage"></p>
+            <div class="company-content-delete-actions">
+                <button type="button" class="company-content-delete-cancel">
+                    Keep content
+                </button>
+                <button type="button" class="company-content-delete-confirm">
+                    Yes, delete
+                </button>
+            </div>
+        </section>
+    `;
+
+    const dialog =
+        backdrop.querySelector('.company-content-delete-dialog');
+
+    const message =
+        backdrop.querySelector('#companyContentDeleteMessage');
+
+    const cancelButton =
+        backdrop.querySelector('.company-content-delete-cancel');
+
+    const confirmButton =
+        backdrop.querySelector('.company-content-delete-confirm');
+
+    if (!dialog || !message || !cancelButton || !confirmButton) {
+        throw new Error(
+            'Unable to create the company content delete confirmation dialog.'
+        );
+    }
+
+    message.textContent =
+        `“${itemLabel}” will be removed from the Company Profile when you save. This action cannot be undone.`;
+
+    document.body.appendChild(backdrop);
+    cancelButton.focus();
+
+    return new Promise(resolve => {
+        let finished = false;
+
+        const finish = confirmed => {
+            if (finished) {
+                return;
+            }
+
+            finished = true;
+            document.removeEventListener(
+                'keydown',
+                handleDialogKeydown
+            );
+            backdrop.remove();
+
+            if (
+                previousFocus instanceof HTMLElement &&
+                previousFocus.isConnected
+            ) {
+                previousFocus.focus();
+            }
+
+            resolve(confirmed);
+        };
+
+        const handleDialogKeydown = event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                finish(false);
+                return;
+            }
+
+            if (event.key === 'Tab') {
+                const focusable = [
+                    cancelButton,
+                    confirmButton
+                ];
+
+                const currentIndex =
+                    focusable.indexOf(document.activeElement);
+
+                if (currentIndex === -1) {
+                    event.preventDefault();
+                    cancelButton.focus();
+                } else if (event.shiftKey && currentIndex === 0) {
+                    event.preventDefault();
+                    confirmButton.focus();
+                } else if (!event.shiftKey && currentIndex === 1) {
+                    event.preventDefault();
+                    cancelButton.focus();
+                }
+            }
+        };
+
+        cancelButton.addEventListener(
+            'click',
+            () => finish(false),
+            { once: true }
+        );
+
+        confirmButton.addEventListener(
+            'click',
+            () => finish(true),
+            { once: true }
+        );
+
+        backdrop.addEventListener('click', event => {
+            if (event.target === backdrop) {
+                finish(false);
+            }
+        });
+
+        document.addEventListener(
+            'keydown',
+            handleDialogKeydown
+        );
+    });
+}
+
 async function loadCompanySettings() {
 
     try {
@@ -7745,6 +8749,8 @@ renderCompanyLocations();
 document.getElementById('companyEmail').value =
     data.settings.email || '';
 
+ownerDefaultImage =
+    data.settings.defaultImage || 'image/z-menu.jpg';
 
 companyContent = Array.isArray(data.settings.companyContent) ? data.settings.companyContent : [];
 
@@ -7756,7 +8762,7 @@ renderCompanyContent();
         if (logoPreview) {
             logoPreview.src =
                 data.settings.logo ||
-                'image/z-menu.jpg';
+                ownerDefaultImage;
         }
     } catch (error) {
 
