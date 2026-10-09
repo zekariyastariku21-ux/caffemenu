@@ -189,7 +189,13 @@
 
       <div class="menu-profile-image">
 
-        <img id="restaurantLogo" src="" alt="Restaurant">
+        <img
+          id="restaurantLogo"
+          src=""
+          alt="Restaurant"
+          fetchpriority="high"
+          decoding="async"
+        >
 
       </div>
 
@@ -310,20 +316,52 @@
 
 
     <!-- CART -->
-    <div class="container2">
+    <div class="container2" id="cartSheet">
+
+      <img
+        id="cartSheetBackground"
+        class="cart-sheet-background"
+        src=""
+        alt=""
+        aria-hidden="true"
+        fetchpriority="high"
+        decoding="async"
+      >
+
+      <button
+        class="cart-sheet-handle"
+        type="button"
+        aria-label="Expand cart"
+      >
+        <span aria-hidden="true"></span>
+      </button>
 
       <div class="cart">
 
-        <button
-          class="cart-close"
-          type="button"
-          aria-label="Close cart"
-        >
-          ×
-        </button>
+        <div class="cart-header">
+          <div>
+            <h2>Your cart</h2>
+            <p>Review your order</p>
+          </div>
 
-        <div class="cart-actions">
-          <!-- Cart persists per-device via localStorage -->
+          <div class="cart-header-actions">
+            <button
+              id="clearCartButton"
+              class="cart-clear-button"
+              type="button"
+              disabled
+            >
+              Clear all
+            </button>
+
+            <button
+              class="cart-close"
+              type="button"
+              aria-label="Close cart"
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         <table>
@@ -380,6 +418,8 @@
       <button
         class="cartbutton"
         type="button"
+        aria-expanded="false"
+        aria-controls="cartSheet"
       >
         Cart
       </button>
@@ -394,4 +434,3 @@
 
 </body>
 </html>
-

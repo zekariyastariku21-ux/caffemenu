@@ -1,6 +1,5 @@
 let cart = [];
-
-const STORAGE_KEY = 'simple-cart';
+let editingCartNoteName = null;
 
 let currentCategory = 'all';
 
@@ -37,6 +36,7 @@ async function loadDefaultCompanyImage() {
             if (logoElement) {
                 logoElement.src = defaultCompanyImage;
             }
+
         }
     } catch (error) {
         console.warn(
@@ -633,6 +633,9 @@ const CAFE_SLUG =
         : null) ||
     localStorage.getItem('selectedRestaurantSlug') ||
     'etete-coffee';
+
+const STORAGE_KEY =
+    `simple-cart:${encodeURIComponent(CAFE_SLUG)}`;
 
 let foods = {};
 
@@ -1512,6 +1515,8 @@ function renderRestaurantProfile() {
             : '';
 
     if (logoElement) {
+        logoElement.fetchPriority = 'high';
+        logoElement.decoding = 'async';
 
         if (logo) {
             logoElement.src = logo;
@@ -1524,6 +1529,53 @@ function renderRestaurantProfile() {
         }
     }
 
+    const cartSheet =
+        document.getElementById('cartSheet');
+
+    const cartSheetBackground =
+        document.getElementById('cartSheetBackground');
+
+    if (cartSheet && cartSheetBackground) {
+        cartSheet.classList.remove(
+            'has-restaurant-background'
+        );
+
+        const clearCartBackground = () => {
+            cartSheet.classList.remove(
+                'has-restaurant-background'
+            );
+            cartSheetBackground.removeAttribute('src');
+        };
+
+        cartSheetBackground.onload = () => {
+            cartSheet.classList.add(
+                'has-restaurant-background'
+            );
+        };
+
+        cartSheetBackground.onerror = () => {
+            clearCartBackground();
+        };
+
+        if (logo) {
+            cartSheetBackground.src =
+                logoElement?.currentSrc ||
+                logoElement?.src ||
+                logo;
+
+            if (cartSheetBackground.complete) {
+                if (cartSheetBackground.naturalWidth) {
+                    cartSheet.classList.add(
+                        'has-restaurant-background'
+                    );
+                } else {
+                    clearCartBackground();
+                }
+            }
+        } else {
+            clearCartBackground();
+        }
+    }
 
     /* ----------------------------------------------------------------------
        CONTACT CONTAINER
@@ -2697,6 +2749,9 @@ function saveToLocalStorage() {
                 item.ingredient ||
                 '',
 
+            note:
+                String(item.note || ''),
+
             quantity:
                 Number(item.quantity) || 1
         }));
@@ -2882,6 +2937,13 @@ function renderCart() {
         return;
     }
 
+    const clearCartButton =
+        document.getElementById('clearCartButton');
+
+    if (clearCartButton) {
+        clearCartButton.disabled = cart.length === 0;
+    }
+
 
     if (!cart.length) {
 
@@ -2905,14 +2967,49 @@ function renderCart() {
                     const quantity =
                         Number(item.quantity) || 0;
 
+                    const itemName =
+                        String(item.name ?? '');
+
+                    const note =
+                        String(item.note || '').trim();
+
+                    const isEditingNote =
+                        editingCartNoteName === itemName;
 
                     return `
                         <tr>
 
                             <td>
-                                ${escapeHtml(
-                                    item.name
-                                )}
+                                <div class="cart-item-details">
+                                    <div class="cart-item-heading">
+                                        <span class="cart-item-name">${escapeHtml(itemName)}</span>
+                                        <button
+                                            type="button"
+                                            class="cart-note-toggle"
+                                            data-action="edit-note"
+                                            data-name="${escapeAttribute(itemName)}"
+                                            aria-label="Add or edit note for ${escapeAttribute(itemName)}"
+                                            title="Add or edit item note"
+                                        >✎</button>
+                                    </div>
+                                    ${note ? `<span class="cart-item-note">(${escapeHtml(note)})</span>` : ''}
+                                    ${isEditingNote ? `
+                                        <div class="cart-note-editor">
+                                            <input
+                                                type="text"
+                                                class="cart-note-input"
+                                                value="${escapeAttribute(note)}"
+                                                maxlength="200"
+                                                aria-label="Note for ${escapeAttribute(itemName)}"
+                                                placeholder="e.g. No sugar, extra spicy"
+                                            >
+                                            <div class="cart-note-actions">
+                                                <button type="button" data-action="save-note" data-name="${escapeAttribute(itemName)}">Done</button>
+                                                <button type="button" data-action="cancel-note" data-name="${escapeAttribute(itemName)}">Cancel</button>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
                             </td>
 
 
@@ -2930,9 +3027,8 @@ function renderCart() {
                                     <button
                                         type="button"
                                         class="minus"
-                                        onclick="decreaseQuantity('${escapeJs(
-                                            item.name
-                                        )}')"
+                                        data-action="decrease"
+                                        data-name="${escapeAttribute(itemName)}"
                                     >
                                         -
                                     </button>
@@ -2944,9 +3040,8 @@ function renderCart() {
                                     <button
                                         type="button"
                                         class="plus"
-                                        onclick="increaseQuantity('${escapeJs(
-                                            item.name
-                                        )}')"
+                                        data-action="increase"
+                                        data-name="${escapeAttribute(itemName)}"
                                     >
                                         +
                                     </button>
@@ -2960,6 +3055,57 @@ function renderCart() {
                 })
                 .join('');
     }
+
+    cartBody.querySelectorAll('button[data-action]').forEach(button => {
+        button.addEventListener('click', () => {
+            const action = button.dataset.action;
+            const name = button.dataset.name;
+
+            if (!name) {
+                return;
+            }
+
+            if (action === 'increase') {
+                increaseQuantity(name);
+                return;
+            }
+
+            if (action === 'decrease') {
+                decreaseQuantity(name);
+                return;
+            }
+
+            if (action === 'edit-note') {
+                editingCartNoteName = name;
+                renderCart();
+                cartBody.querySelector('.cart-note-input')?.focus();
+                return;
+            }
+
+            if (action === 'save-note') {
+                const noteInput =
+                    button.closest('tr')?.querySelector('.cart-note-input');
+
+                const item =
+                    cart.find(currentItem => currentItem.name === name);
+
+                if (!item || !noteInput) {
+                    return;
+                }
+
+                item.note = noteInput.value.trim();
+                editingCartNoteName = null;
+                saveCart();
+                renderCart();
+                return;
+            }
+
+            if (action === 'cancel-note') {
+                editingCartNoteName = null;
+                renderCart();
+            }
+        });
+    });
 
 
     const total =
@@ -2987,6 +3133,14 @@ function renderCart() {
     }
 
     queueCustomerTranslation();
+}
+
+function escapeAttribute(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
 
@@ -3067,6 +3221,17 @@ function decreaseQuantity(name) {
     renderCart();
 }
 
+function clearCart() {
+    if (!cart.length) {
+        return;
+    }
+
+    cart = [];
+    editingCartNoteName = null;
+    saveCart();
+    renderCart();
+}
+
 
 /* ==========================================================================
    CART BUTTON
@@ -3089,6 +3254,14 @@ function setupCartButton() {
             '.cart-close'
         );
 
+    const cartHandle =
+        document.querySelector(
+            '.cart-sheet-handle'
+        );
+
+    const clearCartButton =
+        document.getElementById('clearCartButton');
+
 
     if (
         !cartButton ||
@@ -3108,13 +3281,72 @@ function setupCartButton() {
     cartButton.dataset.cartReady =
         'true';
 
+    clearCartButton?.addEventListener(
+        'click',
+        clearCart
+    );
+
+    function setCartOpen(open) {
+        container2.classList.toggle(
+            'open',
+            open
+        );
+
+        container2.classList.remove(
+            'expanded',
+            'dragging'
+        );
+
+        container2.style.removeProperty(
+            '--cart-sheet-drag-offset'
+        );
+
+        cartButton.setAttribute(
+            'aria-expanded',
+            String(open)
+        );
+
+        if (cartHandle) {
+            cartHandle.setAttribute(
+                'aria-label',
+                'Expand cart'
+            );
+        }
+    }
+
+    function setCartExpanded(expanded) {
+        container2.classList.toggle(
+            'expanded',
+            expanded
+        );
+
+        if (cartHandle) {
+            cartHandle.setAttribute(
+                'aria-label',
+                expanded ? 'Collapse cart' : 'Expand cart'
+            );
+        }
+    }
+
+    function getCartPeekHeight(sheetHeight) {
+        const configuredPeekHeight =
+            Number.parseFloat(
+                getComputedStyle(container2).getPropertyValue(
+                    '--cart-sheet-peek'
+                )
+            ) || 190;
+
+        return Math.min(
+            configuredPeekHeight,
+            sheetHeight * 0.35
+        );
+    }
 
     cartButton.addEventListener(
         'click',
         () => {
-
-            container2.classList.toggle(
-                'open'
+            setCartOpen(
+                !container2.classList.contains('open')
             );
         }
     );
@@ -3124,12 +3356,148 @@ function setupCartButton() {
         cartClose.addEventListener(
             'click',
             () => {
-
-                container2.classList.remove(
-                    'open'
-                );
+                setCartOpen(false);
             }
         );
+    }
+
+    if (cartHandle) {
+        let pointerStartY = 0;
+        let startingOffset = 0;
+        let activePointerId = null;
+        let didDrag = false;
+        let suppressHandleClick = false;
+
+        cartHandle.addEventListener('click', event => {
+            if (suppressHandleClick) {
+                suppressHandleClick = false;
+                event.preventDefault();
+                return;
+            }
+
+            setCartExpanded(
+                !container2.classList.contains('expanded')
+            );
+        });
+
+        cartHandle.addEventListener('pointerdown', event => {
+            if (!event.isPrimary || event.button !== 0) {
+                return;
+            }
+
+            activePointerId = event.pointerId;
+            pointerStartY = event.clientY;
+            didDrag = false;
+
+            const sheetHeight =
+                container2.getBoundingClientRect().height;
+
+            const peekHeight =
+                getCartPeekHeight(sheetHeight);
+
+            startingOffset =
+                container2.classList.contains('expanded')
+                    ? 0
+                    : sheetHeight - peekHeight;
+
+            cartHandle.setPointerCapture(event.pointerId);
+        });
+
+        const handlePointerMove = event => {
+            if (event.pointerId !== activePointerId) {
+                return;
+            }
+
+            const deltaY = event.clientY - pointerStartY;
+
+            if (Math.abs(deltaY) > 5) {
+                didDrag = true;
+                container2.classList.add('dragging');
+            }
+
+            if (!didDrag) {
+                return;
+            }
+
+            const sheetHeight =
+                container2.getBoundingClientRect().height;
+
+            const offset = Math.max(
+                0,
+                Math.min(sheetHeight, startingOffset + deltaY)
+            );
+
+            container2.style.setProperty(
+                '--cart-sheet-drag-offset',
+                `${offset}px`
+            );
+        };
+        cartHandle.addEventListener('pointermove', handlePointerMove);
+
+        function finishCartDrag(event) {
+            if (event.pointerId !== activePointerId) {
+                return;
+            }
+
+            activePointerId = null;
+
+            if (!didDrag) {
+                return;
+            }
+
+            suppressHandleClick = true;
+            setTimeout(() => {
+                suppressHandleClick = false;
+            }, 0);
+
+            const sheetHeight =
+                container2.getBoundingClientRect().height;
+
+            const peekHeight =
+                getCartPeekHeight(sheetHeight);
+
+            const collapsedOffset =
+                sheetHeight - peekHeight;
+
+            const currentOffset =
+                Number.parseFloat(
+                    container2.style.getPropertyValue(
+                        '--cart-sheet-drag-offset'
+                    )
+                ) || 0;
+
+            const snapPoints = [
+                { offset: 0, state: 'expanded' },
+                { offset: collapsedOffset, state: 'peek' },
+                { offset: sheetHeight, state: 'closed' }
+            ];
+
+            const nearestSnap = snapPoints.reduce(
+                (nearest, point) =>
+                    Math.abs(point.offset - currentOffset) <
+                    Math.abs(nearest.offset - currentOffset)
+                        ? point
+                        : nearest
+            );
+
+            if (nearestSnap.state === 'closed') {
+                setCartOpen(false);
+                return;
+            }
+
+            container2.classList.remove('dragging');
+
+            container2.style.removeProperty(
+                '--cart-sheet-drag-offset'
+            );
+
+            setCartExpanded(
+                nearestSnap.state === 'expanded'
+            );
+        }
+
+        cartHandle.addEventListener('pointerup', finishCartDrag);
+        cartHandle.addEventListener('pointercancel', finishCartDrag);
     }
 }
 

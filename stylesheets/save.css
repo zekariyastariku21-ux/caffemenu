@@ -1250,9 +1250,10 @@ html[dir="rtl"] .container .foodd {
 
 .cartbutton {
     position: fixed;
-
-    bottom: 18px;
+    bottom: 1px;
     left: 50%;
+    z-index: 1000;
+    margin: 0;
 
     width: min(420px, calc(100vw - 32px));
 
@@ -1278,8 +1279,6 @@ html[dir="rtl"] .container .foodd {
     font-size: 15px;
 
     letter-spacing: 0.2px;
-
-    z-index: 1000;
 
     box-shadow:
         0 8px 24px rgba(54, 28, 10, 0.28);
@@ -1317,25 +1316,28 @@ html[dir="rtl"] .container .foodd {
 .container2 {
     background:
         linear-gradient(
-            145deg,
-            #3a2a20,
-            #241914
+            180deg,
+            rgba(53, 38, 31, 0.98),
+            rgba(29, 20, 16, 0.98)
         );
 
     color: #f5f0ea;
 
     position: fixed;
 
-    top: 50%;
-    left: 50%;
+    left: 0;
+    right: 0;
+    bottom: 0;
 
-    width: min(900px, calc(100vw - 32px));
+    width: 100vw;
+    max-width: 100vw;
 
-    max-height: min(82vh, 720px);
+    height: min(88vh, 760px);
+    height: min(88dvh, 760px);
 
-    transform:
-        translate(-50%, -50%)
-        scale(0.96);
+    --cart-sheet-peek: 200px;
+
+    transform: translateY(100%);
 
     opacity: 0;
 
@@ -1343,16 +1345,17 @@ html[dir="rtl"] .container .foodd {
 
     transition:
         opacity 0.22s ease,
-        transform 0.22s ease,
+        transform 0.28s cubic-bezier(0.2, 0.7, 0.2, 1),
         visibility 0.22s ease;
 
-    border-radius: 24px;
+    border-radius: 28px 28px 0 0;
 
-    border: 1px solid rgba(213, 173, 131, 0.35);
+    border: 1px solid rgba(213, 173, 131, 0.28);
+    border-bottom: 0;
 
     box-shadow:
-        0 24px 70px rgba(0, 0, 0, 0.45),
-        0 4px 18px rgba(0, 0, 0, 0.20);
+        0 -12px 30px rgba(0, 0, 0, 0.28),
+        0 0 0 1px rgba(255, 255, 255, 0.04);
 
     z-index: 1500;
 
@@ -1360,11 +1363,17 @@ html[dir="rtl"] .container .foodd {
 
     overflow-x: hidden;
 
+    overscroll-behavior: contain;
+
     scrollbar-width: thin;
 
     scrollbar-color:
         #8f684c
         #2c2019;
+
+    will-change: transform;
+    display: flex;
+    flex-direction: column;
 }
 
 .container2.open {
@@ -1372,9 +1381,71 @@ html[dir="rtl"] .container .foodd {
 
     visibility: visible;
 
-    transform:
-        translate(-50%, -50%)
-        scale(1);
+    transform: translateY(calc(100% - var(--cart-sheet-peek)));
+}
+
+.container2.open.expanded {
+    transform: translateY(0);
+}
+
+.container2.dragging {
+    transition: none;
+
+    transform: translateY(var(--cart-sheet-drag-offset));
+}
+
+.cart-sheet-handle {
+    position: sticky;
+    top: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 100%;
+
+    height: 30px;
+
+    padding: 10px 0 8px;
+
+    border: 0;
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(29, 20, 16, 0.92),
+            rgba(29, 20, 16, 0)
+        );
+
+    cursor: grab;
+
+    touch-action: none;
+}
+
+.cart-sheet-handle:active {
+    cursor: grabbing;
+}
+
+.cart-sheet-handle span {
+    display: block;
+
+    width: 54px;
+
+    height: 6px;
+
+    border-radius: 999px;
+
+    background: rgba(245, 240, 234, 0.6);
+
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.cart-sheet-handle:focus-visible {
+    outline: 2px solid #d5ad83;
+
+    outline-offset: -3px;
 }
 
 .container2::-webkit-scrollbar {
@@ -1456,6 +1527,8 @@ html[dir="rtl"] .container .foodd {
 
 .cart {
     padding: 12px 14px 16px;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .cart table {
@@ -1551,12 +1624,32 @@ html[dir="rtl"] .container .foodd {
 
 .cart-actions {
     display: flex;
-
     justify-content: flex-end;
-
     gap: 8px;
-
     margin-bottom: 8px;
+}
+
+.cart-clear-button {
+    min-height: 36px;
+    padding: 7px 13px;
+    border: 1px solid rgba(255, 205, 190, 0.28);
+    border-radius: 10px;
+    background: rgba(96, 43, 32, 0.72);
+    color: #ffe2d8;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.18s ease, opacity 0.18s ease;
+}
+
+.cart-clear-button:hover:not(:disabled) {
+    background: rgba(126, 52, 38, 0.92);
+}
+
+.cart-clear-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 @media (max-width: 600px) {
@@ -1570,11 +1663,12 @@ html[dir="rtl"] .container .foodd {
     }
 
     .container2 {
-        width: calc(100vw - 20px);
+        width: 100vw;
+        max-width: 100vw;
 
-        max-height: 86vh;
+        --cart-sheet-peek: 180px;
 
-        border-radius: 20px;
+        border-radius: 20px 20px 0 0;
     }
 
     .cart {
@@ -3860,6 +3954,365 @@ html body {
 .cart .qty-controls .plus:active {
     transform: scale(0.94);
     opacity: 0.9;
+}
+
+.container2 {
+    isolation: isolate;
+    background: #39271c;
+    border-color: rgba(229, 190, 149, 0.26);
+    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.35);
+}
+
+.cart-sheet-background {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    opacity: 0;
+    filter: sepia(0.25) saturate(0.75);
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.container2.has-restaurant-background .cart-sheet-background {
+    opacity: 0.14;
+}
+
+.cart-sheet-handle {
+    z-index: 3;
+    height: 58px;
+    flex: 0 0 58px;
+    flex-direction: column;
+    gap: 7px;
+    background: rgba(57, 39, 28, 0.94);
+}
+
+.cart-sheet-handle span {
+    width: 48px;
+    height: 6px;
+    background: #b8aaa0;
+    box-shadow: none;
+}
+
+.cart-sheet-handle::after {
+    content: "Drag up or down";
+    color: #c9bdb4;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1;
+}
+
+.cart {
+    position: relative;
+    z-index: 1;
+    padding: 4px clamp(16px, 4vw, 28px) 28px;
+}
+
+.cart-header {
+    position: sticky;
+    top: 58px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 224, 187, 0.14);
+    border-radius: 18px;
+    background: rgba(74, 51, 35, 0.96);
+    box-shadow: 0 6px 18px rgba(20, 12, 8, 0.18);
+}
+
+.cart-header h2 {
+    margin: 0;
+    color: #fffaf5;
+    font-size: clamp(21px, 5vw, 26px);
+    font-weight: 750;
+    letter-spacing: -0.04em;
+}
+
+.cart-header p {
+    margin: 4px 0 0;
+    color: #d0c4bb;
+    font-size: 14px;
+}
+
+.cart-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.cart-header .cart-clear-button {
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 205, 190, 0.28);
+    border-radius: 11px;
+    background: rgba(96, 43, 32, 0.58);
+    color: #ffe2d8;
+    font-size: 12px;
+    letter-spacing: 0.01em;
+}
+
+.cart-header .cart-clear-button:hover:not(:disabled) {
+    background: rgba(126, 52, 38, 0.82);
+}
+
+.cart-header .cart-clear-button:disabled {
+    opacity: 0.42;
+}
+
+.cart-close {
+    position: static;
+    flex: 0 0 38px;
+    margin: 0;
+    border-color: rgba(255, 224, 187, 0.16);
+    background: rgba(29, 20, 16, 0.58);
+    color: #f8f1eb;
+}
+
+.cart-close:hover {
+    transform: none;
+    background: rgba(29, 20, 16, 0.82);
+    border-color: rgba(255, 224, 187, 0.32);
+}
+
+.cart table {
+    border-spacing: 0 7px;
+    border-radius: 0;
+    margin-top: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.cart th,
+.cart td {
+    border: 0;
+    padding: 13px 12px;
+}
+
+.cart th {
+    color: #e0d6cf;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+
+.cart thead,
+.cart thead tr {
+    background: transparent;
+    color: inherit;
+}
+
+.cart thead th:first-child,
+.cart thead th:last-child {
+    border-radius: 0;
+}
+
+.cart tbody tr:nth-child(odd),
+.cart tbody tr:nth-child(even),
+.cart tbody tr:hover {
+    background: rgba(74, 51, 35, 0.9);
+}
+
+.cart tbody td {
+    border-top: 1px solid rgba(255, 255, 255, 0.035);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+    color: #fffaf5;
+    font-size: 15px;
+    line-height: 1.45;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    vertical-align: middle;
+}
+
+.cart tbody td:first-child {
+    border-left: 1px solid rgba(255, 255, 255, 0.035);
+    border-radius: 14px 0 0 14px;
+    font-weight: 600;
+}
+
+.cart-item-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+.cart-item-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+}
+
+.cart-item-name {
+    overflow-wrap: anywhere;
+}
+
+.cart-note-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffe0bb;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.cart-note-toggle:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.cart-item-note {
+    color: #ffe0bb;
+    font-size: 13px;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.cart-note-editor {
+    display: grid;
+    gap: 7px;
+    width: min(100%, 320px);
+    margin-top: 4px;
+}
+
+.cart-note-input {
+    width: 100%;
+    min-height: 40px;
+    padding: 9px 11px;
+    border: 1px solid rgba(255, 224, 187, 0.35);
+    border-radius: 10px;
+    background: rgba(24, 17, 13, 0.72);
+    color: #fffaf5;
+    font: inherit;
+}
+
+.cart-note-input::placeholder {
+    color: #c7b9af;
+}
+
+.cart-note-input:focus {
+    outline: 2px solid #d5ad83;
+    outline-offset: 1px;
+}
+
+.cart-note-actions {
+    display: flex;
+    gap: 7px;
+}
+
+.cart-note-actions button {
+    min-height: 30px;
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background: #49392d;
+    color: #fffaf5;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.cart-note-actions button:first-child {
+    border-color: rgba(255, 224, 187, 0.4);
+    background: #704321;
+}
+
+.cart tbody td:last-child {
+    border-right: 1px solid rgba(255, 255, 255, 0.035);
+    border-radius: 0 14px 14px 0;
+}
+
+.cart tfoot {
+    background: rgba(57, 39, 28, 0.95);
+}
+
+.cart tfoot td {
+    padding: 16px 12px;
+    border: 0;
+    border-top: 1px solid rgba(213, 173, 131, 0.24);
+}
+
+.cart tfoot td:first-child {
+    border-radius: 14px 0 0 14px;
+    color: #e6dad1;
+}
+
+.cart tfoot td:last-child {
+    border-radius: 0 14px 14px 0;
+    color: #ffe0bb;
+    text-align: right;
+    font-size: 17px;
+}
+
+.cart .qty-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    vertical-align: middle;
+}
+
+.cart .qty-controls .minus,
+.cart .qty-controls .plus {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 11px;
+    background: #342c27;
+    box-shadow: none;
+    color: #f8f1eb;
+}
+
+.cart .qty-controls .minus:hover,
+.cart .qty-controls .plus:hover {
+    transform: translateY(-1px);
+    background: #49392d;
+}
+
+.cart .qty-controls span {
+    min-width: 18px;
+    color: #fffaf5;
+    font-weight: 700;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .cart {
+        padding: 2px 14px 24px;
+    }
+
+    .cart-sheet-handle {
+        height: 58px;
+        flex-basis: 58px;
+    }
+
+    .cart-header {
+        padding-bottom: 14px;
+    }
+
+    .cart th,
+    .cart td {
+        padding: 14px 8px;
+        font-size: 14px;
+    }
 }
 
 /* Day Special items scroll area */
