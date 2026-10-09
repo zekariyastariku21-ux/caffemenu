@@ -1004,6 +1004,43 @@ async function loadRestaurantLogo() {
         }
 
 
+        const cartSheet =
+            document.getElementById('cartSheet');
+
+        const cartSheetBackground =
+            document.getElementById('cartSheetBackground');
+
+        if (cartSheet && cartSheetBackground) {
+            cartSheetBackground.fetchPriority = 'high';
+            cartSheetBackground.decoding = 'async';
+
+            cartSheetBackground.onload = () => {
+                cartSheet.classList.add(
+                    'has-restaurant-background'
+                );
+            };
+
+            cartSheetBackground.onerror = () => {
+                cartSheet.classList.remove(
+                    'has-restaurant-background'
+                );
+            };
+
+            if (
+                cartSheetBackground.getAttribute('src') !== logo
+            ) {
+                cartSheetBackground.src = logo;
+            }
+
+            if (
+                cartSheetBackground.complete &&
+                cartSheetBackground.naturalWidth > 0
+            ) {
+                cartSheet.classList.add(
+                    'has-restaurant-background'
+                );
+            }
+        }
         console.log(
             '[menu:logo] Restaurant logo loaded successfully.'
         );
@@ -1536,9 +1573,8 @@ function renderRestaurantProfile() {
         document.getElementById('cartSheetBackground');
 
     if (cartSheet && cartSheetBackground) {
-        cartSheet.classList.remove(
-            'has-restaurant-background'
-        );
+        cartSheetBackground.fetchPriority = 'high';
+        cartSheetBackground.decoding = 'async';
 
         const clearCartBackground = () => {
             cartSheet.classList.remove(
@@ -1558,25 +1594,30 @@ function renderRestaurantProfile() {
         };
 
         if (logo) {
-            cartSheetBackground.src =
+            const backgroundSource =
                 logoElement?.currentSrc ||
                 logoElement?.src ||
                 logo;
 
-            if (cartSheetBackground.complete) {
-                if (cartSheetBackground.naturalWidth) {
-                    cartSheet.classList.add(
-                        'has-restaurant-background'
-                    );
-                } else {
-                    clearCartBackground();
-                }
+            if (
+                cartSheetBackground.getAttribute('src') !==
+                backgroundSource
+            ) {
+                cartSheetBackground.src = backgroundSource;
+            }
+
+            if (
+                cartSheetBackground.complete &&
+                cartSheetBackground.naturalWidth
+            ) {
+                cartSheet.classList.add(
+                    'has-restaurant-background'
+                );
             }
         } else {
             clearCartBackground();
         }
     }
-
     /* ----------------------------------------------------------------------
        CONTACT CONTAINER
        ---------------------------------------------------------------------- */
