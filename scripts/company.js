@@ -449,6 +449,16 @@ async function loadRestaurantSlides() {
                     restaurant.status === 'active'
             );
 
+        const restaurantCount =
+            document.getElementById(
+                'activeRestaurantCount'
+            );
+
+        if (restaurantCount) {
+            restaurantCount.textContent =
+                activeRestaurants.length.toLocaleString();
+        }
+
         slider.innerHTML = '';
 
         activeRestaurants.forEach(
@@ -524,7 +534,7 @@ async function loadRestaurantSlides() {
                 button.type = 'button';
 
                 button.textContent =
-                    'View Menu';
+                    'View Menu \u2192';
 
                 button.addEventListener(
                     'click',
@@ -561,6 +571,271 @@ async function loadRestaurantSlides() {
             error
         );
 
+    }
+}
+
+async function loadClientDirectory() {
+    const container =
+        document.getElementById('clientDirectoryGrid');
+
+    const directory =
+        document.getElementById('ourClients');
+
+    if (!container || !directory) {
+        return;
+    }
+
+    if (directory.dataset.loaded === 'true') {
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            '/api/company-client-directory'
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.message || 'Unable to load the client directory.'
+            );
+        }
+
+        const restaurants =
+            Array.isArray(data.restaurants)
+                ? data.restaurants
+                : [];
+
+        directory.dataset.loaded = 'true';
+        container.replaceChildren();
+
+        const searchInput =
+            document.getElementById('clientDirectorySearch');
+        const resultCount =
+            document.getElementById('clientDirectoryCount');
+
+        if (!restaurants.length) {
+            const emptyState = document.createElement('p');
+            emptyState.className = 'client-directory-status';
+            emptyState.textContent =
+                'No active cafés or restaurants are listed yet.';
+            container.appendChild(emptyState);
+            if (resultCount) {
+                resultCount.textContent = 'No clients to show';
+            }
+            return;
+        }
+
+        const cards = [];
+
+        restaurants.forEach(restaurant => {
+            const card = document.createElement('article');
+            card.className = 'client-directory-card';
+
+            const heading = document.createElement('div');
+            heading.className = 'client-directory-card-heading';
+
+            const logo = document.createElement('img');
+            logo.className = 'client-directory-logo';
+            logo.src = companyDefaultImage;
+            logo.alt = '';
+            logo.loading = 'lazy';
+
+            fetch(
+                `/api/menu/${encodeURIComponent(restaurant.slug)}/logo`
+            )
+                .then(logoResponse => {
+                    if (!logoResponse.ok) {
+                        throw new Error('Restaurant logo not found.');
+                    }
+
+                    return logoResponse.text();
+                })
+                .then(logoData => {
+                    if (logoData) {
+                        logo.src = logoData;
+                    }
+                })
+                .catch(error => {
+                    console.warn(
+                        `[company:client-directory] Logo unavailable for ${restaurant.slug}:`,
+                        error
+                    );
+                });
+
+            const name = document.createElement('h3');
+            name.textContent = restaurant.name || 'Café or restaurant';
+
+            heading.append(logo, name);
+            card.appendChild(heading);
+
+            const contactList = document.createElement('div');
+            contactList.className = 'client-directory-details';
+
+            const phoneNumbers = Array.isArray(restaurant.phone_numbers)
+                ? restaurant.phone_numbers.filter(
+                    phone => typeof phone === 'string' && phone.trim()
+                )
+                : [];
+
+            const phoneRow = document.createElement('div');
+            phoneRow.className = 'client-directory-detail';
+            const phoneLabel = document.createElement('strong');
+            phoneLabel.textContent = 'Mobile';
+            const phoneContent = document.createElement('div');
+
+            if (phoneNumbers.length) {
+                phoneNumbers.forEach(phone => {
+                    const phoneLink = document.createElement('a');
+                    phoneLink.href = `tel:${phone.trim()}`;
+                    phoneLink.textContent = phone.trim();
+                    phoneContent.appendChild(phoneLink);
+                });
+            } else {
+                phoneContent.textContent = 'Not provided';
+            }
+
+            phoneRow.append(phoneLabel, phoneContent);
+            contactList.appendChild(phoneRow);
+
+            const addresses = Array.isArray(restaurant.addresses)
+                ? restaurant.addresses.filter(
+                    address =>
+                        address &&
+                        typeof address === 'object' &&
+                        typeof address.name === 'string' &&
+                        address.name.trim()
+                )
+                : [];
+
+            const addressRow = document.createElement('div');
+            addressRow.className = 'client-directory-detail';
+            const addressLabel = document.createElement('strong');
+            addressLabel.textContent = 'Address';
+            const addressContent = document.createElement('div');
+
+            if (addresses.length) {
+                addresses.forEach(address => {
+                    const url = String(address.url || '').trim();
+                    let safeUrl = '';
+
+                    if (url) {
+                        try {
+                            const parsedUrl = new URL(url, window.location.origin);
+                            if (
+                                parsedUrl.protocol === 'https:' ||
+                                parsedUrl.protocol === 'http:'
+                            ) {
+                                safeUrl = parsedUrl.href;
+                            }
+                        } catch (error) {
+                            console.warn(
+                                '[company:client-directory] Ignoring invalid address link:',
+                                error
+                            );
+                        }
+                    }
+
+                    const location = safeUrl
+                        ? document.createElement('a')
+                        : document.createElement('span');
+
+                    if (safeUrl) {
+                        location.href = safeUrl;
+                        location.target = '_blank';
+                        location.rel = 'noopener noreferrer';
+                    }
+
+                    location.textContent = address.name.trim();
+                    addressContent.appendChild(location);
+                });
+            } else {
+                addressContent.textContent = 'Not provided';
+            }
+
+            addressRow.append(addressLabel, addressContent);
+            contactList.appendChild(addressRow);
+            card.appendChild(contactList);
+
+            const cardFooter =
+                document.createElement('div');
+            cardFooter.className =
+                'client-directory-card-footer';
+
+            const viewMenu =
+                document.createElement('a');
+            viewMenu.className =
+                'client-directory-menu-button';
+            viewMenu.href =
+                `/${encodeURIComponent(restaurant.slug)}`;
+            viewMenu.textContent =
+                'View Menu \u2192';
+
+            cardFooter.appendChild(viewMenu);
+            card.appendChild(cardFooter);
+            card.dataset.searchText = [
+                restaurant.name || '',
+                ...phoneNumbers,
+                ...addresses.map(address => address.name)
+            ].join(' ').toLocaleLowerCase();
+
+            container.appendChild(card);
+            cards.push(card);
+        });
+
+        const searchPrompt =
+            document.createElement('p');
+        searchPrompt.className =
+            'client-directory-status';
+        searchPrompt.textContent =
+            'Search by café name, mobile number, or address to see matching clients.';
+        container.appendChild(searchPrompt);
+
+        const noResults =
+            document.createElement('p');
+        noResults.className =
+            'client-directory-status';
+        noResults.textContent =
+            'No cafés or restaurants match your search.';
+        noResults.hidden = true;
+        container.appendChild(noResults);
+
+        const updateResults = () => {
+            const query =
+                String(searchInput?.value || '')
+                    .trim()
+                    .toLocaleLowerCase();
+
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const matches = card.dataset.searchText.includes(query);
+                card.hidden = !query || !matches;
+                if (matches) {
+                    visibleCount += 1;
+                }
+            });
+
+            searchPrompt.hidden = Boolean(query);
+            noResults.hidden = !query || visibleCount > 0;
+
+            if (resultCount) {
+                resultCount.textContent = query
+                    ? `Showing ${visibleCount} of ${cards.length} clients`
+                    : 'Search to see clients';
+            }
+        };
+
+        searchInput?.addEventListener('input', updateResults);
+        updateResults();
+    } catch (error) {
+        console.error(
+            '[company:client-directory] Error:',
+            error
+        );
+        container.textContent =
+            'Unable to load cafés and restaurants right now.';
     }
 }
 
@@ -684,7 +959,102 @@ function startRestaurantSlideshow() {
 }
 
 
-document.addEventListener(
-    'DOMContentLoaded',
-    loadRestaurantSlides
-);
+function initializeHeaderMenu() {
+    const toggle =
+        document.getElementById('headerMenuToggle');
+
+    const header =
+        document.querySelector('.main-header');
+
+    if (!toggle || !header) {
+        return;
+    }
+
+    const closeMenu = () => {
+        header.classList.remove('menu-open');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', 'Open navigation menu');
+
+        const panel = document.getElementById('headerMenu');
+
+        if (panel) {
+            panel.hidden = true;
+        }
+    };
+
+    toggle.addEventListener('click', () => {
+        const isOpen =
+            header.classList.toggle('menu-open');
+
+        const panel = document.getElementById('headerMenu');
+
+        if (panel) {
+            panel.hidden = !isOpen;
+        }
+
+        toggle.setAttribute(
+            'aria-expanded',
+            String(isOpen)
+        );
+        toggle.setAttribute(
+            'aria-label',
+            isOpen ? 'Close navigation menu' : 'Open navigation menu'
+        );
+    });
+
+    document.querySelectorAll(
+        'a[href="#ourClients"]'
+    ).forEach(link => {
+        link.addEventListener('click', async event => {
+            event.preventDefault();
+            closeMenu();
+
+            const directory =
+                document.getElementById('ourClients');
+
+            if (!directory) {
+                return;
+            }
+
+            directory.hidden = false;
+            await loadClientDirectory();
+            directory.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+
+            const searchInput =
+                document.getElementById('clientDirectorySearch');
+
+            requestAnimationFrame(() => {
+                searchInput?.focus({
+                    preventScroll: true
+                });
+            });
+        });
+    });
+
+    document.querySelectorAll(
+        '.header-menu-panel a:not([href="#ourClients"])'
+    ).forEach(link => {
+        link.addEventListener('click', closeMenu);
+    });
+
+    document.addEventListener('click', event => {
+        if (!header.contains(event.target)) {
+            closeMenu();
+        }
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            closeMenu();
+            toggle.focus();
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadRestaurantSlides();
+    initializeHeaderMenu();
+});

@@ -1796,6 +1796,33 @@ function renderRestaurantProfile() {
    CATEGORY BUTTONS
    ========================================================================== */
 
+function getOrderedMenuCategories() {
+    const categories = Object.keys(foods).filter(category =>
+        Array.isArray(foods[category])
+    );
+    const originalPositions = new Map(
+        categories.map((category, index) => [category, index])
+    );
+
+    const getPosition = category => {
+        const item = foods[category].find(
+            value =>
+                value &&
+                typeof value === 'object' &&
+                Number.isInteger(value.__categoryOrder)
+        );
+
+        return item
+            ? item.__categoryOrder
+            : originalPositions.get(category);
+    };
+
+    return categories.sort(
+        (firstCategory, secondCategory) =>
+            getPosition(firstCategory) - getPosition(secondCategory)
+    );
+}
+
 function renderCategoryButtons() {
 
     const container =
@@ -1842,7 +1869,7 @@ function renderCategoryButtons() {
        ---------------------------------------------------------------------- */
 
     const categories =
-        Object.keys(foods);
+        getOrderedMenuCategories();
 
     categories.forEach(category => {
 
@@ -1908,9 +1935,8 @@ function renderItems() {
     if (currentCategory === 'all') {
 
         items =
-            Object.values(foods)
-                .filter(Array.isArray)
-                .flat();
+            getOrderedMenuCategories()
+                .flatMap(category => foods[category]);
 
     } else {
 
@@ -2134,7 +2160,7 @@ function getDaySpecialItems() {
 
     const specials = [];
 
-    Object.keys(foods).forEach(category => {
+    getOrderedMenuCategories().forEach(category => {
 
         const categoryItems =
             Array.isArray(foods[category])

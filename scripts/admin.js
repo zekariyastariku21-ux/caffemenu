@@ -4,6 +4,7 @@
 
 let currentRestaurant = null;
 let foods = {};
+const MENU_CATEGORY_ORDER_FIELD = '__categoryOrder';
 
 let restaurantProfile = {
     logo: '',
@@ -157,6 +158,45 @@ function removeEmptyCategories() {
         ) {
             delete foods[category];
         }
+    });
+}
+
+function getOrderedMenuCategories() {
+    const categories = Object.keys(foods).filter(category =>
+        Array.isArray(foods[category])
+    );
+    const originalPositions = new Map(
+        categories.map((category, index) => [category, index])
+    );
+
+    return categories.sort((firstCategory, secondCategory) => {
+        const getPosition = category => {
+            const item = foods[category].find(
+                value =>
+                    value &&
+                    typeof value === 'object' &&
+                    Number.isInteger(value[MENU_CATEGORY_ORDER_FIELD])
+            );
+
+            return item
+                ? item[MENU_CATEGORY_ORDER_FIELD]
+                : originalPositions.get(category);
+        };
+
+        return (
+            getPosition(firstCategory) -
+            getPosition(secondCategory)
+        );
+    });
+}
+
+function setMenuCategoryOrder(categories) {
+    categories.forEach((category, categoryIndex) => {
+        foods[category].forEach(item => {
+            if (item && typeof item === 'object') {
+                item[MENU_CATEGORY_ORDER_FIELD] = categoryIndex;
+            }
+        });
     });
 }
 
@@ -863,7 +903,7 @@ function renderCurrentMenu() {
     container.innerHTML = '';
 
     const categories =
-        Object.keys(foods);
+        getOrderedMenuCategories();
 
     if (!categories.length) {
         container.innerHTML = `
@@ -891,8 +931,28 @@ function renderCurrentMenu() {
             'admin-menu-category';
 
         categoryBlock.innerHTML = `
-            <div class="admin-menu-category-title">
-                ${escapeHtmlForAdmin(category)}
+            <div class="admin-menu-category-header">
+                <div class="admin-menu-category-title">
+                    ${escapeHtmlForAdmin(category)}
+                </div>
+                <div class="admin-menu-reorder-actions">
+                    <button
+                        type="button"
+                        class="admin-menu-reorder-button"
+                        data-category-direction="-1"
+                        aria-label="Move ${escapeAttributeForAdmin(category)} category up"
+                        title="Move category up"
+                        ${categories.indexOf(category) === 0 ? 'disabled' : ''}
+                    >&#8593;</button>
+                    <button
+                        type="button"
+                        class="admin-menu-reorder-button"
+                        data-category-direction="1"
+                        aria-label="Move ${escapeAttributeForAdmin(category)} category down"
+                        title="Move category down"
+                        ${categories.indexOf(category) === categories.length - 1 ? 'disabled' : ''}
+                    >&#8595;</button>
+                </div>
             </div>
 
             <div class="admin-menu-items">
@@ -958,6 +1018,27 @@ function renderCurrentMenu() {
                                 }
                             </div>
 
+                            <div class="admin-menu-reorder-actions admin-menu-item-reorder-actions">
+                                <button
+                                    type="button"
+                                    class="admin-menu-reorder-button"
+                                    data-item-direction="-1"
+                                    data-index="${index}"
+                                    aria-label="Move ${escapeAttributeForAdmin(item.name || 'item')} up in ${escapeAttributeForAdmin(category)}"
+                                    title="Move item up"
+                                    ${index === 0 ? 'disabled' : ''}
+                                >&#8593;</button>
+                                <button
+                                    type="button"
+                                    class="admin-menu-reorder-button"
+                                    data-item-direction="1"
+                                    data-index="${index}"
+                                    aria-label="Move ${escapeAttributeForAdmin(item.name || 'item')} down in ${escapeAttributeForAdmin(category)}"
+                                    title="Move item down"
+                                    ${index === items.length - 1 ? 'disabled' : ''}
+                                >&#8595;</button>
+                            </div>
+
                             ${
                                 item.isDaySpecial === true
                                     ? `
@@ -982,7 +1063,77 @@ function renderCurrentMenu() {
         `;
 
         container.appendChild(categoryBlock);
+
+        categoryBlock
+            .querySelectorAll('[data-category-direction]')
+            .forEach(button => {
+                button.addEventListener('click', () => {
+                    moveMenuCategory(
+                        category,
+                        Number(button.dataset.categoryDirection)
+                    );
+                });
+            });
+
+        categoryBlock
+            .querySelectorAll('[data-item-direction]')
+            .forEach(button => {
+                button.addEventListener('click', () => {
+                    moveMenuItem(
+                        category,
+                        Number(button.dataset.index),
+                        Number(button.dataset.itemDirection)
+                    );
+                });
+            });
     });
+}
+
+function moveMenuCategory(category, direction) {
+    const categories = getOrderedMenuCategories();
+    const currentIndex = categories.indexOf(category);
+    const targetIndex = currentIndex + direction;
+
+    if (
+        currentIndex < 0 ||
+        targetIndex < 0 ||
+        targetIndex >= categories.length
+    ) {
+        return;
+    }
+
+    [categories[currentIndex], categories[targetIndex]] = [
+        categories[targetIndex],
+        categories[currentIndex]
+    ];
+
+    setMenuCategoryOrder(categories);
+    updateAdminCategoryOptions();
+    updateCategoryManager();
+    updateExistingItemCategorySelect();
+    refreshExistingItemsSelect();
+    renderCurrentMenu();
+}
+
+function moveMenuItem(category, itemIndex, direction) {
+    const items = foods[category];
+    const targetIndex = itemIndex + direction;
+
+    if (
+        !Array.isArray(items) ||
+        itemIndex < 0 ||
+        targetIndex < 0 ||
+        targetIndex >= items.length
+    ) {
+        return;
+    }
+
+    [items[itemIndex], items[targetIndex]] = [
+        items[targetIndex],
+        items[itemIndex]
+    ];
+
+    renderCurrentMenu();
 }
 
 
@@ -1008,7 +1159,7 @@ function updateAdminCategoryOptions() {
         </option>
     `;
 
-    Object.keys(foods).forEach(category => {
+    getOrderedMenuCategories().forEach(category => {
         const option =
             document.createElement('option');
 
@@ -1046,7 +1197,7 @@ function updateExistingItemCategorySelect() {
         </option>
     `;
 
-    Object.keys(foods).forEach(category => {
+    getOrderedMenuCategories().forEach(category => {
         if (
             !Array.isArray(foods[category]) ||
             !foods[category].length
@@ -1101,7 +1252,7 @@ function refreshExistingItemsSelect() {
         </option>
     `;
 
-    Object.keys(foods).forEach(category => {
+    getOrderedMenuCategories().forEach(category => {
         const items =
             Array.isArray(foods[category])
                 ? foods[category]
@@ -1534,7 +1685,7 @@ function updateCategoryManager() {
         </option>
     `;
 
-    Object.keys(foods).forEach(category => {
+    getOrderedMenuCategories().forEach(category => {
         const option =
             document.createElement('option');
 
@@ -2218,6 +2369,7 @@ async function saveMenuToServer() {
     }
 
     removeEmptyCategories();
+    setMenuCategoryOrder(getOrderedMenuCategories());
 
     const button =
         document.getElementById(
@@ -3213,7 +3365,7 @@ async function saveRestaurantProfile() {
 function getDaySpecialItems() {
     const specials = [];
 
-    Object.keys(foods).forEach(category => {
+    getOrderedMenuCategories().forEach(category => {
         const items =
             Array.isArray(foods[category])
                 ? foods[category]
@@ -3434,7 +3586,7 @@ function openDaySpecialModal() {
         );
 
 
-    Object.keys(foods).forEach(category => {
+    getOrderedMenuCategories().forEach(category => {
         const items =
             Array.isArray(foods[category])
                 ? foods[category]
@@ -4411,6 +4563,7 @@ async function saveMenuDataSilently() {
     }
 
     removeEmptyCategories();
+    setMenuCategoryOrder(getOrderedMenuCategories());
 
     const response =
         await fetch(
@@ -4943,9 +5096,6 @@ async function refreshCustomerMenuSilently() {
         );
     }
 }
-
-
-
 
 
 

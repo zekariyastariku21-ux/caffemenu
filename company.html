@@ -4,11 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Caffe Menu Company Profile</title>
+    <title>ZEKYVII menu Company Profile</title>
     <link rel="stylesheet" href="stylesheets/company.css">
 </head>
 
-<body>
+<body id="top">
 
 <header class="main-header">
 
@@ -123,70 +123,194 @@ zekariyastariku21@gmail.com</strong>
     </div>
 
 
-    <!-- ADMIN -->
-    <button
-        class="admin-btn"
-        onclick="window.location.href='admin.html'"
-    >
-        Admin Login
-    </button>
+</div>
 
+<div class="header-menu">
+    <button
+        class="header-menu-toggle"
+        id="headerMenuToggle"
+        type="button"
+        aria-label="Open navigation menu"
+        aria-expanded="false"
+        aria-controls="headerMenu"
+    >
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+    <nav class="header-menu-panel" id="headerMenu" aria-label="Main menu" hidden>
+        <a class="header-menu-link" href="#top">
+            <span aria-hidden="true">&#8962;</span> Home
+        </a>
+        <a class="header-menu-link" href="#howItWorksTitle">
+            <span aria-hidden="true">&#8635;</span> How It Works
+        </a>
+        <a class="header-menu-link" href="#ourClients">
+            <span aria-hidden="true">&#9733;</span> Our Clients
+        </a>
+        <a class="header-menu-link" href="#features">
+            <span aria-hidden="true">&#10022;</span> Features
+        </a>
+        <a class="header-menu-link" href="mailto:zekariyastariku21@gmail.com" data-company-email-link>
+            <span aria-hidden="true">&#9993;</span> Contact Us
+        </a>
+        <button
+            class="admin-btn"
+            type="button"
+            onclick="window.location.href='admin.html'"
+        >
+            <span aria-hidden="true">&#128100;</span> Login as Admin
+        </button>
+    </nav>
 </div>
 
 </header>
 <!-- HERO SLIDER -->
 
+<div class="clients-intro">
+    <h2>Meet Our Clients</h2>
+    <p>Discover the cafés and restaurants that trust ZEKYVII menu to bring their menus to life.</p>
+</div>
+
 <section class="hero-slider" id="companyHeroSlider">
 
 </section>
 
-<!-- STATS -->
-
-<section class="stats-grid">
-
-
-<div class="stat-card">
-
-    <div class="stat-icon">
-        🏪
-    </div>
-
-    <div>
-        <h2>10+</h2>
-        <p>Restaurants</p>
-    </div>
-
-</div>
-
-
-<div class="stat-card">
-
-    <div class="stat-icon">
-        👥
-    </div>
-
-    <div>
-        <h2>10+</h2>
-        <p>Customers</p>
-    </div>
-
-</div>
-
-
-</section>
-
-<!-- CONTENT -->
-
+<!-- COMPANY CONTENT -->
 <section class="content-grid">
-
     <div
         class="company-content-list"
         data-company-content-list
     ></div>
+</section>
+
+<section class="client-directory" id="ourClients" aria-labelledby="clientDirectoryTitle" hidden>
+    <div class="client-directory-heading">
+        <p class="how-it-works-eyebrow">Our Clients</p>
+        <h2 id="clientDirectoryTitle">Cafés and Restaurants We Serve</h2>
+        <p>Explore our active ZEKYVII menu partners and find their contact details.</p>
+    </div>
+    <div class="client-directory-toolbar">
+        <label class="client-directory-search">
+            <span aria-hidden="true">&#9906;</span>
+            <input
+                id="clientDirectorySearch"
+                type="search"
+                placeholder="Search by name, mobile, or address"
+                aria-label="Search cafés and restaurants"
+                autocomplete="off"
+            >
+        </label>
+        <p class="client-directory-count" id="clientDirectoryCount" aria-live="polite"></p>
+    </div>
+    <div class="client-directory-grid" id="clientDirectoryGrid" aria-live="polite">
+        <p class="client-directory-status">Loading cafés and restaurants...</p>
+    </div>
+</section>
+
+<section class="stats-grid" aria-label="ZEKYVII menu restaurant community">
+    <div class="stat-card">
+        <div>
+            <p class="stat-eyebrow">Growing with local hospitality</p>
+            <div class="stat-icon" aria-hidden="true">🏪</div>
+            <h2 aria-live="polite">
+                <span id="activeRestaurantCount">—</span><span class="stat-plus" aria-hidden="true">+</span>
+            </h2>
+            <p>Active Cafés &amp; Restaurants</p>
+        </div>
+    </div>
+</section>
+
+<div class="how-it-works-layout">
+<section class="how-it-works" aria-labelledby="howItWorksTitle">
+    <div class="how-it-works-heading">
+        <p class="how-it-works-eyebrow">How ZEKYVII menu Works</p>
+        <h2 id="howItWorksTitle">Your Digital Menu in Three Simple Steps</h2>
+        <p>Everything you need to create, share, and keep your digital menu up to date.</p>
+    </div>
+
+    <ol class="how-it-works-steps">
+        <li class="how-it-works-step">
+            <div class="how-it-works-illustration" aria-hidden="true">
+                <svg viewBox="0 0 160 112" focusable="false">
+                    <rect x="29" y="12" width="78" height="88" rx="10" fill="#fff" stroke="#a66d3e" stroke-width="4"/>
+                    <path d="M46 33h44M46 47h44M46 61h25" fill="none" stroke="#d5b18e" stroke-linecap="round" stroke-width="5"/>
+                    <circle cx="88" cy="77" r="18" fill="#f5e9dc" stroke="#a66d3e" stroke-width="3"/>
+                    <path d="M88 68v18M79 77h18" stroke="#a66d3e" stroke-linecap="round" stroke-width="4"/>
+                    <path d="M116 34h15v15M128 37l13-13" fill="none" stroke="#c98b5b" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+                </svg>
+            </div>
+            <span class="how-it-works-number">01</span>
+            <h3>Create your digital menu</h3>
+            <p>Showcase your café or restaurant's menu in a clear, professional format.</p>
+        </li>
+        <li class="how-it-works-step">
+            <div class="how-it-works-illustration" aria-hidden="true">
+                <svg viewBox="0 0 160 112" focusable="false">
+                    <rect x="13" y="26" width="60" height="60" rx="7" fill="#fff" stroke="#a66d3e" stroke-width="4"/>
+                    <path d="M24 37h15v15H24zM47 37h15v15H47zM24 60h15v15H24zM49 61h5v5h-5zM58 61h5v14h-5zM45 70h7v5h-7z" fill="#a66d3e"/>
+                    <path d="M86 38h37a12 12 0 0 1 12 12v36H98a12 12 0 0 1-12-12z" fill="#f5e9dc" stroke="#c98b5b" stroke-width="4"/>
+                    <path d="M96 53h25M96 65h19M96 77h15" stroke="#a66d3e" stroke-linecap="round" stroke-width="4"/>
+                    <path d="M72 56h11M77 50l6 6-6 6" fill="none" stroke="#795137" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+                </svg>
+            </div>
+            <span class="how-it-works-number">02</span>
+            <h3>Share it with a QR code or link</h3>
+            <p>Let customers open your menu instantly from their phone.</p>
+        </li>
+        <li class="how-it-works-step">
+            <div class="how-it-works-illustration" aria-hidden="true">
+                <svg viewBox="0 0 160 112" focusable="false">
+                    <rect x="23" y="17" width="78" height="80" rx="10" fill="#fff" stroke="#a66d3e" stroke-width="4"/>
+                    <path d="M40 39h43M40 53h27M40 70h15M40 82h35" stroke="#d5b18e" stroke-linecap="round" stroke-width="5"/>
+                    <circle cx="112" cy="70" r="24" fill="#f5e9dc" stroke="#c98b5b" stroke-width="4"/>
+                    <path d="M112 56v15l10 6" fill="none" stroke="#a66d3e" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+                    <path d="M113 24v15M105.5 31.5h15" stroke="#c98b5b" stroke-linecap="round" stroke-width="4"/>
+                </svg>
+            </div>
+            <span class="how-it-works-number">03</span>
+            <h3>Update items and prices easily</h3>
+            <p>Make changes whenever you need, and keep your menu current.</p>
+        </li>
+    </ol>
 
 </section>
 
+<aside class="menu-before-after" id="features" aria-labelledby="beforeAfterTitle">
+    <p class="how-it-works-eyebrow">Before and After</p>
+    <h2 id="beforeAfterTitle">From Paper to Digital</h2>
+    <p class="menu-before-after-description">Give guests a clearer, more convenient way to explore your menu.</p>
 
+    <div class="menu-comparison-visual" role="img" aria-label="A traditional printed menu transformed into a digital menu on a phone">
+        <div class="menu-comparison-paper">
+            <span class="menu-comparison-label">PRINTED</span>
+            <svg viewBox="0 0 100 126" aria-hidden="true" focusable="false">
+                <path d="M24 12h42l15 16v82H24z" fill="#fffaf2" stroke="#cbb79f" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M66 12v17h15M36 43h34M36 54h27M36 70h34M36 81h25M36 97h34" fill="none" stroke="#b8a48d" stroke-linecap="round" stroke-width="3"/>
+                <circle cx="50" cy="36" r="4" fill="#c98b5b"/>
+            </svg>
+        </div>
+        <span class="menu-comparison-arrow" aria-hidden="true">&#8594;</span>
+        <div class="menu-comparison-phone">
+            <span class="menu-comparison-label">ZEKYVII menu</span>
+            <svg viewBox="0 0 100 126" aria-hidden="true" focusable="false">
+                <rect x="24" y="7" width="52" height="112" rx="10" fill="#fff" stroke="#a66d3e" stroke-width="4"/>
+                <rect x="31" y="21" width="38" height="78" rx="4" fill="#fffaf5"/>
+                <path d="M40 14h20M43 32h18M39 41h22M39 55h22M39 64h17M39 78h22M39 87h15" stroke="#c98b5b" stroke-linecap="round" stroke-width="3"/>
+                <circle cx="50" cy="108" r="3" fill="#a66d3e"/>
+                <rect x="35" y="46" width="11" height="5" rx="2" fill="#ead9c8"/>
+                <rect x="50" y="69" width="11" height="5" rx="2" fill="#ead9c8"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="menu-before-after-points">
+        <p><span aria-hidden="true">&#10003;</span> Easy to read on any phone</p>
+        <p><span aria-hidden="true">&#10003;</span> Change prices without reprinting</p>
+        <p><span aria-hidden="true">&#10003;</span> Share instantly with a QR code</p>
+    </div>
+</aside>
+</div>
 
 <!-- FOOTER -->
 
@@ -194,13 +318,29 @@ zekariyastariku21@gmail.com</strong>
 
     <div class="company-footer-inner">
 
-        <div class="company-footer-name" data-company-footer-name>
-            ZEKARIYAS DIGITAL MENU
+        <div class="company-footer-main">
+            <a class="company-footer-brand" href="/" aria-label="ZEKYVII menu home">
+                <img src="image/z-menu.jpg" alt="" class="company-footer-logo">
+                <span class="company-footer-name" data-company-footer-name>
+                    ZEKARIYAS DIGITAL MENU
+                </span>
+            </a>
+            <p class="company-footer-tagline">
+                Digital menus made simple for cafés and restaurants.
+            </p>
         </div>
 
+        <nav class="company-footer-nav" aria-label="Footer navigation">
+            <a href="#ourClients">Our clients</a>
+            <a href="#howItWorksTitle">How it works</a>
+            <a href="admin.html">Admin login</a>
+        </nav>
+
+        <div class="company-footer-divider"></div>
+
         <div class="company-footer-copy">
-            © <span data-company-footer-year></span>
-            All rights reserved. 2026
+            <span>© <span data-company-footer-year>2026</span> ZEKYVII menu. All rights reserved.</span>
+            <span class="company-footer-note">Made for better menu experiences.</span>
         </div>
 
     </div>

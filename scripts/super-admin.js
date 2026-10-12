@@ -62,7 +62,7 @@ function getAdminToken() {
 
 const DEFAULT_APPEARANCE = {
     header_background: '#f8e8d6',
-    restaurant_name: '#fff4e8',
+    restaurant_name: '#f8e8d6',
     restaurant_name_text: '#4a2f22',
     button_background: '#ffffff',
     button_text: '#563827',

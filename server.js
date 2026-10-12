@@ -2187,6 +2187,51 @@ app.get(
 );
 
 app.get(
+  '/api/company-client-directory',
+  async (req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT
+          r.name,
+          r.slug,
+          rp.phone_numbers,
+          rp.addresses
+        FROM restaurants r
+        LEFT JOIN restaurant_profiles rp
+          ON rp.restaurant_id = r.id
+        WHERE r.status = 'active'
+        ORDER BY r.name ASC, r.id ASC
+      `);
+
+      return res.json({
+        ok: true,
+        restaurants: result.rows.map(restaurant => ({
+          ...restaurant,
+          phone_numbers:
+            Array.isArray(restaurant.phone_numbers)
+              ? restaurant.phone_numbers
+              : [],
+          addresses:
+            Array.isArray(restaurant.addresses)
+              ? restaurant.addresses
+              : []
+        }))
+      });
+    } catch (error) {
+      console.error(
+        '[company:client-directory] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to load the client directory.'
+      });
+    }
+  }
+);
+
+app.get(
   '/api/owner/restaurants',
   requireOwner,
   async (req, res) => {
@@ -4834,6 +4879,3 @@ async function startServer() {
 }
 
 startServer();
-
-
-

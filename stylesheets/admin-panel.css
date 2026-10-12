@@ -3373,16 +3373,63 @@ body.admin-loading-active {
 }
 
 .admin-menu-category-title {
-    margin-bottom: 12px;
-
-    padding-bottom: 9px;
-
     color: #4b3022;
 
     font-size: 15px;
     font-weight: 900;
+}
 
+.admin-menu-category-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 9px;
     border-bottom: 1px solid #eee4dc;
+}
+
+.admin-menu-reorder-help {
+    margin: -6px 0 14px;
+    color: #806f63;
+    font-size: 13px;
+}
+
+.admin-menu-reorder-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 4px;
+}
+
+.admin-menu-reorder-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    color: #4b3022;
+    background: #fff;
+    border: 1px solid #d8c3aa;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.admin-menu-reorder-button:hover:not(:disabled) {
+    background: #f8f0e7;
+}
+
+.admin-menu-reorder-button:focus-visible {
+    outline: 2px solid #a66d3e;
+    outline-offset: 2px;
+}
+
+.admin-menu-reorder-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 .admin-menu-items {
@@ -3411,6 +3458,11 @@ body.admin-loading-active {
 
     border: 1px solid #eee5dd;
     border-radius: 9px;
+}
+
+.admin-menu-item-reorder-actions {
+    flex-direction: column;
+    margin-left: auto;
 }
 
 .admin-menu-item-image {
@@ -3625,5 +3677,4 @@ body.admin-loading-active {
     border-top-left-radius: 15px;
     border-top-right-radius: 15px;
 }
-
 
