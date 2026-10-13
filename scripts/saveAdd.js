@@ -6,7 +6,7 @@ let currentCategory = 'all';
 let searchTerm = '';
 
 let restaurantAppearance = null;
-let defaultCompanyImage = 'image/z-menu.jpg';
+let defaultCompanyImage = getRestaurantLoadingLogo();
 
 const CUSTOMER_LANGUAGE_KEY = 'customer-menu-language';
 let customerLanguage = 'en';
@@ -27,7 +27,7 @@ async function loadDefaultCompanyImage() {
         }
 
         defaultCompanyImage =
-            data.settings?.defaultImage || 'image/z-menu.jpg';
+            data.settings?.defaultImage || getRestaurantLoadingLogo();
 
         if (!restaurantProfile.logo) {
             const logoElement =
@@ -631,13 +631,14 @@ const CAFE_SLUG =
     (pathSlug && pathSlug !== 'save.html'
         ? pathSlug
         : null) ||
-    localStorage.getItem('selectedRestaurantSlug') ||
-    'etete-coffee';
+    localStorage.getItem('selectedRestaurantSlug')?.trim() ||
+    '';
 
 const STORAGE_KEY =
     `simple-cart:${encodeURIComponent(CAFE_SLUG)}`;
 
 let foods = {};
+let customerMenuExpirationTimer = null;
 
 
 /* ==========================================================================
@@ -866,7 +867,7 @@ function showRestaurantHeaderError() {
 
     if (restaurantName) {
         restaurantName.textContent =
-            'Cafe Menu';
+            'Menu unavailable';
 
         restaurantName.classList.remove(
             'restaurant-loading-name'
@@ -897,6 +898,154 @@ function showRestaurantHeaderError() {
     logoElement.style.display =
         'block';
 }
+}
+
+
+function getCustomerMenuErrorDetails(error) {
+    const status = Number(error?.httpStatus) || 0;
+    const responseData = error?.responseData || {};
+
+    if (error?.code === 'MISSING_RESTAURANT_SLUG') {
+        return {
+            title: 'Restaurant slug missing',
+            message:
+                'This menu link does not identify a restaurant. Open the menu using the restaurant’s registered menu link.'
+        };
+    }
+
+    if (status === 404) {
+        return {
+            title: 'Restaurant not found',
+            message: `The restaurant slug "${CAFE_SLUG}" is not registered. Check the menu link and try again.`
+        };
+    }
+
+    if (status === 403) {
+        return {
+            title: 'Restaurant menu unavailable',
+            message:
+                responseData.message ||
+                'This restaurant is disabled and its customer menu is unavailable.'
+        };
+    }
+
+    if (status === 410) {
+        return {
+            title: 'Menu access expired',
+            message:
+                responseData.message ||
+                'This restaurant menu has expired.'
+        };
+    }
+
+    if (
+        !status &&
+        ['TypeError', 'NetworkError'].includes(error?.name)
+    ) {
+        return {
+            title: 'Network connection problem',
+            message:
+                'The menu could not be reached. Check your internet connection and try again.'
+        };
+    }
+
+    if (error?.name === 'AbortError') {
+        return {
+            title: 'Menu request interrupted',
+            message: 'The menu request was interrupted. Please try again.'
+        };
+    }
+
+    if (status >= 500) {
+        return {
+            title: 'Server error',
+            message:
+                responseData.message ||
+                'The menu service is temporarily unavailable. Please try again shortly.'
+        };
+    }
+
+    return {
+        title: 'Could not load menu',
+        message:
+            responseData.message ||
+            error?.message ||
+            'The menu could not be loaded. Please try again.'
+    };
+}
+
+
+function showCustomerMenuLoadError(error, { blockMenu = true } = {}) {
+    hideCustomerMenuLoading();
+    const details = getCustomerMenuErrorDetails(error);
+    const panel =
+        document.getElementById('customerMenuLoadError');
+
+    if (!panel) {
+        console.error(
+            '[menu:load] Customer error panel is missing.',
+            error
+        );
+        return;
+    }
+
+    document.getElementById('customerMenuLoadErrorTitle')
+        .textContent = details.title;
+    document.getElementById('customerMenuLoadErrorMessage')
+        .textContent = details.message;
+    document.getElementById('customerMenuLoadErrorSlug')
+        .textContent = CAFE_SLUG;
+    document.getElementById('customerMenuLoadErrorStatus')
+        .textContent = error?.code === 'MISSING_RESTAURANT_SLUG'
+            ? 'Request not sent'
+            : error?.httpStatus
+                ? `HTTP ${error.httpStatus}`
+                : 'No HTTP response (network)';
+
+    document.getElementById('customerMenuRetryButton').onclick =
+        () => loadMenuFromServer();
+
+    panel.hidden = false;
+
+    const header = document.querySelector('.menu-profile-header');
+    if (header) {
+        header.hidden = blockMenu;
+    }
+
+    const main = document.querySelector('.main');
+    if (main) {
+        main.hidden = blockMenu;
+    }
+
+    document.title = `${details.title} - Cafe Menu`;
+}
+
+function showCustomerMenuLoading() {
+    const loading =
+        document.getElementById('customerMenuLoading');
+
+    if (loading) {
+        loading.hidden = false;
+    }
+}
+
+function hideCustomerMenuLoading() {
+    const loading =
+        document.getElementById('customerMenuLoading');
+
+    if (loading) {
+        loading.hidden = true;
+    }
+}
+
+
+function hideCustomerMenuLoadError() {
+    const panel =
+        document.getElementById('customerMenuLoadError');
+
+    if (panel) {
+        panel.hidden = true;
+    }
 }
 
 
@@ -1095,7 +1244,123 @@ async function loadRestaurantLogo() {
 
 
 
+function showCustomerMenuExpirationStatus(data) {
+    const existing =
+        document.getElementById('customerMenuExpirationStatus');
+
+    if (existing) {
+        existing.remove();
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'customerMenuExpirationStatus';
+    overlay.className = 'menu-expiration-overlay';
+    overlay.setAttribute('role', 'presentation');
+
+    const dialog = document.createElement('section');
+    dialog.className = 'menu-expiration-dialog';
+    dialog.setAttribute('role', 'alertdialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'customerMenuExpirationTitle');
+
+    const header = document.createElement('div');
+    header.className = 'menu-expiration-dialog-header';
+
+    const heading = document.createElement('h2');
+    heading.id = 'customerMenuExpirationTitle';
+    heading.textContent = 'Menu access expired';
+    header.appendChild(heading);
+
+    const content = document.createElement('div');
+    content.className = 'menu-expiration-warning-list';
+
+    const card = document.createElement('article');
+    card.className = 'menu-expiration-warning-card is-expired';
+
+    const status = document.createElement('strong');
+    status.className = 'menu-expiration-days';
+    status.textContent = 'Expired · 0 days remaining';
+
+    const message = document.createElement('p');
+    message.className = 'menu-expiration-explanation';
+    message.textContent =
+        'The restaurant menu has passed its expiration date. Please contact the restaurant for assistance.';
+
+    const details = document.createElement('dl');
+    details.className = 'menu-expiration-details';
+
+    [
+        ['Restaurant', data.restaurant?.name || 'Restaurant'],
+        ['Slug', data.restaurant?.slug || ''],
+        ['Expiration', formatMenuExpirationDate(data.expirationDate)]
+    ].forEach(([label, value]) => {
+        const row = document.createElement('div');
+        const term = document.createElement('dt');
+        const description = document.createElement('dd');
+        term.textContent = label;
+        description.textContent = value;
+        row.append(term, description);
+        details.appendChild(row);
+    });
+
+    card.append(status, message, details);
+    content.appendChild(card);
+
+    dialog.append(header, content);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+}
+
+
+function scheduleCustomerMenuExpiration(expirationDate, restaurant) {
+    if (customerMenuExpirationTimer) {
+        window.clearInterval(customerMenuExpirationTimer);
+        customerMenuExpirationTimer = null;
+    }
+
+    if (!expirationDate) {
+        return;
+    }
+
+    const enforceExpiration = () => {
+        if (getMenuExpirationDaysRemaining(expirationDate) > 0) {
+            return false;
+        }
+
+        window.clearInterval(customerMenuExpirationTimer);
+        customerMenuExpirationTimer = null;
+        foods = {};
+        renderItems();
+        renderCategoryButtons();
+        showCustomerMenuExpirationStatus({
+            expired: true,
+            restaurant,
+            expirationDate
+        });
+        return true;
+    };
+
+    if (enforceExpiration()) {
+        return;
+    }
+
+    customerMenuExpirationTimer = window.setInterval(
+        enforceExpiration,
+        60000
+    );
+}
+
+
 async function loadMenuFromServer() {
+    if (!CAFE_SLUG) {
+        const error = new Error(
+            'The menu link does not contain a restaurant slug.'
+        );
+        error.code = 'MISSING_RESTAURANT_SLUG';
+        showCustomerMenuLoadError(error);
+        return;
+    }
+
     console.log(
         '[menu:load] Restaurant slug:',
         CAFE_SLUG
@@ -1106,7 +1371,9 @@ async function loadMenuFromServer() {
         `${API_BASE}/api/menu/${encodeURIComponent(CAFE_SLUG)}`
     );
 
+    showCustomerMenuLoading();
     showRestaurantHeaderLoading();
+    hideCustomerMenuLoadError();
 
     try {
 
@@ -1118,7 +1385,7 @@ async function loadMenuFromServer() {
             `${API_BASE}/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
             {
                 method: 'GET',
-                cache: 'default',
+                cache: 'no-store',
                 headers: {
                     'Accept': 'application/json'
                 }
@@ -1131,7 +1398,17 @@ async function loadMenuFromServer() {
             response.statusText
         );
 
-        const data = await response.json();
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            const error = new Error(
+                'The server returned an unreadable menu response.'
+            );
+            error.httpStatus = response.status;
+            error.cause = parseError;
+            throw error;
+        }
 
         console.log(
             '[menu:load] API data received:',
@@ -1139,10 +1416,15 @@ async function loadMenuFromServer() {
         );
 
         if (!response.ok) {
-            throw new Error(
+            const error = new Error(
                 data?.message ||
                 `Server returned HTTP ${response.status}`
             );
+
+            error.httpStatus = response.status;
+            error.responseData = data;
+            error.menuExpiration = data;
+            throw error;
         }
 
         if (!data || data.ok !== true) {
@@ -1162,6 +1444,21 @@ async function loadMenuFromServer() {
             throw new Error(
                 'Restaurant menu is missing.'
             );
+        }
+
+        scheduleCustomerMenuExpiration(
+            data.restaurant.menuExpirationDate,
+            data.restaurant
+        );
+
+        const header = document.querySelector('.menu-profile-header');
+        if (header) {
+            header.hidden = false;
+        }
+
+        const main = document.querySelector('.main');
+        if (main) {
+            main.hidden = false;
         }
 
 
@@ -1331,8 +1628,14 @@ async function loadMenuFromServer() {
             addresses: []
         };
 
+        if (error?.menuExpiration?.expired) {
+            showCustomerMenuExpirationStatus(
+                error.menuExpiration
+            );
+        }
 
         showRestaurantHeaderError();
+        showCustomerMenuLoadError(error);
 
         renderRestaurantProfile();
 
@@ -1356,9 +1659,9 @@ async function loadMenuFromServer() {
                 error?.message || error
             );
         }
-
     } finally {
 
+        hideCustomerMenuLoading();
         hideRestaurantHeaderLoading();
 
     }
@@ -1413,11 +1716,48 @@ async function refreshCustomerMenuSilently() {
             );
 
         if (!response.ok) {
+            let responseData = {};
+            try {
+                responseData = await response.json();
+            } catch (parseError) {
+                console.warn(
+                    '[menu:refresh] Server returned an unreadable error response:',
+                    parseError
+                );
+            }
+
+            const error = new Error(
+                responseData.message ||
+                `Server returned HTTP ${response.status}`
+            );
+            error.httpStatus = response.status;
+            error.responseData = responseData;
+
+            if ([403, 404, 410].includes(response.status)) {
+                foods = {};
+                renderItems();
+                renderCategoryButtons();
+                showCustomerMenuLoadError(error);
+            } else {
+                showCustomerMenuLoadError(error, {
+                    blockMenu: false
+                });
+            }
             return;
         }
 
         const data =
             await response.json();
+
+        hideCustomerMenuLoadError();
+        const header = document.querySelector('.menu-profile-header');
+        if (header) {
+            header.hidden = false;
+        }
+        const main = document.querySelector('.main');
+        if (main) {
+            main.hidden = false;
+        }
 
         /*
          * Restaurant name
@@ -1532,6 +1872,9 @@ async function refreshCustomerMenuSilently() {
             'Silent customer menu refresh failed:',
             error
         );
+        showCustomerMenuLoadError(error, {
+            blockMenu: false
+        });
     }
 }
 

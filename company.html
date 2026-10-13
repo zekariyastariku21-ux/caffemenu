@@ -4,17 +4,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZEKYVII menu Company Profile</title>
-    <link rel="stylesheet" href="stylesheets/company.css">
+    <title>Loading company profile...</title>
+    <link rel="stylesheet" href="stylesheets/company.css?v=20261013b">
 </head>
 
-<body id="top">
+<body id="top" class="company-profile-loading">
+
+<section
+    id="companyProfileLoading"
+    class="company-profile-loading-state"
+    role="status"
+    aria-live="polite"
+>
+    <span class="company-profile-loading-spinner" aria-hidden="true"></span>
+    <h1 id="companyProfileLoadingTitle">Loading company profile...</h1>
+    <p id="companyProfileLoadingMessage"></p>
+    <button id="companyProfileRetry" type="button" hidden>
+        Try again
+    </button>
+</section>
 
 <header class="main-header">
 
 <div class="brand-area">
 
-    <img src="image/z-menu.jpg" class="company-logo" data-company-logo>
+    <img src="" alt="Loading company profile" class="company-logo" data-company-logo>
 
     <div class="brand-text">
         <h1 data-company-name>ZEKARIYAS DIGITAL MENU</h1>
@@ -320,7 +334,7 @@ zekariyastariku21@gmail.com</strong>
 
         <div class="company-footer-main">
             <a class="company-footer-brand" href="/" aria-label="ZEKYVII menu home">
-                <img src="image/z-menu.jpg" alt="" class="company-footer-logo">
+                <img src="" alt="Loading company profile" class="company-footer-logo" data-company-logo>
                 <span class="company-footer-name" data-company-footer-name>
                     ZEKARIYAS DIGITAL MENU
                 </span>
@@ -346,7 +360,7 @@ zekariyastariku21@gmail.com</strong>
     </div>
 
 </footer>
-<script src="scripts/company.js"></script>
+<script src="scripts/company.js?v=20261013c"></script>
 
 </body>
 </html>

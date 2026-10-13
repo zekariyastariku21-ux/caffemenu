@@ -627,6 +627,11 @@ if (dashboardAccess !== 'cafe_admin') {
                 ''
             ).trim();
 
+        const menuExpirationDate =
+            user.menuExpirationDate ??
+            user.menu_expires_at ??
+            null;
+
 
         /* --------------------------------------------------------
            SLUG REQUIRED
@@ -669,8 +674,13 @@ if (dashboardAccess !== 'cafe_admin') {
         currentRestaurant = {
             id: restaurantId,
             name: restaurantName,
-            slug: restaurantSlug
+            slug: restaurantSlug,
+            menu_expires_at: menuExpirationDate
         };
+
+        setMenuExpirationWarnings([
+            currentRestaurant
+        ]);
 
 
         /* --------------------------------------------------------
@@ -5096,7 +5106,6 @@ async function refreshCustomerMenuSilently() {
         );
     }
 }
-
 
 
 

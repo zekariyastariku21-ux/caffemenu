@@ -529,6 +529,17 @@ function getTokenFromRequest(req) {
   return null;
 }
 
+function isSuperAdminRole(role) {
+  const normalizedRole = String(role || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  return normalizedRole === 'super_admin' ||
+    normalizedRole === 'superadmin' ||
+    normalizedRole === 'owner';
+}
+
 
 function requireOwner(req, res, next) {
   console.log('[auth:owner] Checking owner authentication...');
@@ -560,10 +571,7 @@ function requireOwner(req, res, next) {
       restaurant_id: decoded.restaurant_id
     });
 
-    // Accepts both underscore, hyphen, and owner role formats
-    const allowedRoles = ['super_admin', 'super-admin', 'owner'];
-
-    if (!allowedRoles.includes(decoded.role)) {
+    if (!isSuperAdminRole(decoded.role)) {
       console.log('[auth:owner] Role rejected:', decoded.role);
       return res.status(403).json({
         ok: false,
@@ -582,6 +590,70 @@ function requireOwner(req, res, next) {
     return res.status(401).json({
       ok: false,
       message: 'Invalid or expired authentication token.'
+    });
+  }
+}
+
+async function requireSuperAdminPassword(req, res, next) {
+  if (!isSuperAdminRole(req.user.role)) {
+    return res.status(403).json({
+      ok: false,
+      message: 'Super admin access required.'
+    });
+  }
+
+  const password =
+    req.body?.superAdminPassword ??
+    req.headers['x-super-admin-password'];
+
+  if (typeof password !== 'string' || password.length === 0) {
+    return res.status(400).json({
+      ok: false,
+      message: 'Enter your super admin password to continue.'
+    });
+  }
+
+  try {
+    const result = await pool.query(`
+      SELECT password, role
+      FROM users
+      WHERE id = $1
+      LIMIT 1
+    `, [
+      req.user.id
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(403).json({
+        ok: false,
+        message: 'Super admin account not found.'
+      });
+    }
+
+    if (!isSuperAdminRole(result.rows[0].role)) {
+      return res.status(403).json({
+        ok: false,
+        message: 'Super admin access required.'
+      });
+    }
+
+    if (result.rows[0].password !== password) {
+      return res.status(401).json({
+        ok: false,
+        message: 'Super admin password is incorrect.'
+      });
+    }
+
+    return next();
+  } catch (error) {
+    console.error(
+      '[auth:super-admin-password] Verification failed:',
+      error
+    );
+
+    return res.status(500).json({
+      ok: false,
+      message: 'Unable to verify your super admin password.'
     });
   }
 }
@@ -608,7 +680,7 @@ async function requireRestaurantAdmin(
     );
 
     if (
-      decoded.role !== 'super_admin' &&
+      !isSuperAdminRole(decoded.role) &&
       decoded.role !== 'cafe_admin'
     ) {
       return res.status(403).json({
@@ -820,6 +892,9 @@ if (!email || !password) {
       }
 
       const user = result.rows[0];
+      const sessionRole = isSuperAdminRole(user.role)
+        ? 'super_admin'
+        : user.role;
 
       /*
        * Current project authentication uses the password
@@ -846,7 +921,7 @@ if (!email || !password) {
         {
           id: user.id,
           email: user.email,
-          role: user.role,
+          role: sessionRole,
           restaurant_id: user.restaurant_id
         },
         process.env.JWT_SECRET,
@@ -870,7 +945,7 @@ if (!email || !password) {
         ok: true,
         message: 'Login successful.',
         token,
-        role: user.role,
+        role: sessionRole,
         restaurantId: user.restaurant_id,
         restaurantSlug: user.restaurant_slug,
         restaurantName: user.restaurant_name
@@ -935,7 +1010,10 @@ app.get(
           u.restaurant_id,
           r.name AS restaurant_name,
           r.slug AS restaurant_slug,
-          r.status AS restaurant_status
+          r.status AS restaurant_status,
+          r.menu_expires_at,
+          r.menu_expires_at - (NOW() AT TIME ZONE 'UTC')::date
+            AS menu_days_remaining
         FROM users u
         LEFT JOIN restaurants r
           ON r.id = u.restaurant_id
@@ -953,6 +1031,9 @@ app.get(
       }
 
       const user = result.rows[0];
+      const sessionRole = isSuperAdminRole(user.role)
+        ? 'super_admin'
+        : user.role;
 
       if (
         user.role === 'cafe_admin' &&
@@ -969,11 +1050,13 @@ app.get(
         user: {
           id: user.id,
           email: user.email,
-          role: user.role,
+          role: sessionRole,
           restaurantId: user.restaurant_id,
           restaurantName: user.restaurant_name,
           restaurantSlug: user.restaurant_slug,
-          restaurantStatus: user.restaurant_status
+          restaurantStatus: user.restaurant_status,
+          menuExpirationDate: user.menu_expires_at,
+          menuDaysRemaining: user.menu_days_remaining
         }
       });
 
@@ -1001,7 +1084,7 @@ app.put(
   requireOwner,
   async (req, res) => {
     try {
-      if (req.user.role !== 'super_admin') {
+      if (!isSuperAdminRole(req.user.role)) {
         return res.status(403).json({
           ok: false,
           message: 'Super admin access required.'
@@ -1081,7 +1164,7 @@ app.put(
 
       if (
         userResult.rows.length === 0 ||
-        userResult.rows[0].role !== 'super_admin'
+        !isSuperAdminRole(userResult.rows[0].role)
       ) {
         return res.status(404).json({
           ok: false,
@@ -1182,7 +1265,9 @@ app.put(
         {
           id: updatedUser.id,
           email: updatedUser.email,
-          role: updatedUser.role,
+          role: isSuperAdminRole(updatedUser.role)
+            ? 'super_admin'
+            : updatedUser.role,
           restaurant_id: updatedUser.restaurant_id
         },
         process.env.JWT_SECRET,
@@ -1207,7 +1292,9 @@ app.put(
         user: {
           id: updatedUser.id,
           email: updatedUser.email,
-          role: updatedUser.role
+          role: isSuperAdminRole(updatedUser.role)
+            ? 'super_admin'
+            : updatedUser.role
         }
       });
 
@@ -1373,7 +1460,7 @@ app.put(
 
       if (
         restaurant.status !== 'active' &&
-        req.user.role !== 'super_admin'
+        !isSuperAdminRole(req.user.role)
       ) {
         return res.status(403).json({
           ok: false,
@@ -1474,11 +1561,86 @@ app.put(
 
 app.get('/api/menu/:slug', async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');
+
     const { slug } = req.params;
 
     console.log(
       `[menu:get] Request received for slug: ${slug}`
     );
+
+    const accessResult = await pool.query(`
+      SELECT
+        id,
+        name,
+        slug,
+        status,
+        menu_expires_at,
+        menu_expires_at - (NOW() AT TIME ZONE 'UTC')::date
+          AS menu_days_remaining
+      FROM restaurants
+      WHERE slug = $1
+      LIMIT 1
+    `, [
+      slug
+    ]);
+
+    if (accessResult.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        code: 'RESTAURANT_NOT_FOUND',
+        message: 'Restaurant not found.'
+      });
+    }
+
+    const accessRestaurant = accessResult.rows[0];
+    const accessToken = getTokenFromRequest(req);
+    let isAssignedCafeAdmin = false;
+
+    if (accessToken) {
+      try {
+        const decoded = jwt.verify(
+          accessToken,
+          process.env.JWT_SECRET
+        );
+
+        isAssignedCafeAdmin =
+          decoded.role === 'cafe_admin' &&
+          Number(decoded.restaurant_id) ===
+            Number(accessRestaurant.id);
+      } catch (error) {
+        isAssignedCafeAdmin = false;
+      }
+    }
+
+    if (accessRestaurant.status !== 'active') {
+      return res.status(403).json({
+        ok: false,
+        code: 'RESTAURANT_DISABLED',
+        message: 'This restaurant is disabled. Its customer menu is unavailable.'
+      });
+    }
+
+    if (
+      accessRestaurant.menu_expires_at &&
+      Number(accessRestaurant.menu_days_remaining) <= 0 &&
+      !isAssignedCafeAdmin
+    ) {
+      menuCache.delete(slug);
+
+      return res.status(410).json({
+        ok: false,
+        code: 'MENU_EXPIRED',
+        expired: true,
+        message: 'This restaurant menu has expired.',
+        restaurant: {
+          name: accessRestaurant.name,
+          slug: accessRestaurant.slug
+        },
+        expirationDate: accessRestaurant.menu_expires_at,
+        daysRemaining: 0
+      });
+    }
 
     /* ============================================================
        CACHE
@@ -1490,7 +1652,14 @@ app.get('/api/menu/:slug', async (req, res) => {
       );
 
       return res.json(
-        menuCache.get(slug)
+        {
+          ...menuCache.get(slug),
+          restaurant: {
+            ...menuCache.get(slug).restaurant,
+            menuExpirationDate:
+              accessRestaurant.menu_expires_at
+          }
+        }
       );
     }
 
@@ -1569,6 +1738,7 @@ app.get('/api/menu/:slug', async (req, res) => {
 
       return res.status(404).json({
         ok: false,
+        code: 'RESTAURANT_NOT_FOUND',
         message: 'Restaurant not found.'
       });
     }
@@ -1586,7 +1756,8 @@ app.get('/api/menu/:slug', async (req, res) => {
 
       return res.status(403).json({
         ok: false,
-        message: 'This restaurant is currently unavailable.'
+        code: 'RESTAURANT_DISABLED',
+        message: 'This restaurant is disabled. Its customer menu is unavailable.'
       });
     }
 
@@ -1598,7 +1769,9 @@ app.get('/api/menu/:slug', async (req, res) => {
       id: row.id,
       name: row.name,
       slug: row.slug,
-      status: row.status
+      status: row.status,
+      menuExpirationDate:
+        accessRestaurant.menu_expires_at
     };
 
     /* ============================================================
@@ -1736,6 +1909,7 @@ app.get('/api/menu/:slug', async (req, res) => {
 
     return res.status(500).json({
       ok: false,
+      code: 'MENU_LOAD_FAILED',
       message: 'Unable to load menu.'
     });
   }
@@ -1755,6 +1929,76 @@ app.get('/api/menu/:slug/logo', async (req, res) => {
     console.log(
       `[menu:logo] Request received for slug: ${slug}`
     );
+
+    const accessResult = await pool.query(`
+      SELECT
+        id,
+        name,
+        slug,
+        status,
+        menu_expires_at,
+        menu_expires_at - (NOW() AT TIME ZONE 'UTC')::date
+          AS menu_days_remaining
+      FROM restaurants
+      WHERE slug = $1
+      LIMIT 1
+    `, [
+      slug
+    ]);
+
+    if (accessResult.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Restaurant not found.'
+      });
+    }
+
+    const accessRestaurant = accessResult.rows[0];
+    const accessToken = getTokenFromRequest(req);
+    let isAssignedCafeAdmin = false;
+
+    if (accessToken) {
+      try {
+        const decoded = jwt.verify(
+          accessToken,
+          process.env.JWT_SECRET
+        );
+
+        isAssignedCafeAdmin =
+          decoded.role === 'cafe_admin' &&
+          Number(decoded.restaurant_id) ===
+            Number(accessRestaurant.id);
+      } catch (error) {
+        isAssignedCafeAdmin = false;
+      }
+    }
+
+    if (accessRestaurant.status !== 'active') {
+      return res.status(403).json({
+        ok: false,
+        message: 'This restaurant is currently unavailable.'
+      });
+    }
+
+    if (
+      accessRestaurant.menu_expires_at &&
+      Number(accessRestaurant.menu_days_remaining) <= 0 &&
+      !isAssignedCafeAdmin
+    ) {
+      menuCache.delete(slug);
+
+      return res.status(410).json({
+        ok: false,
+        expired: true,
+        message: 'This restaurant menu has expired.',
+        restaurant: {
+          name: accessRestaurant.name,
+          slug: accessRestaurant.slug
+        },
+        expirationDate: accessRestaurant.menu_expires_at,
+        daysRemaining: 0
+      });
+    }
 
     /* ============================================================
        LOAD RESTAURANT FROM CACHE FIRST
@@ -2113,9 +2357,14 @@ app.get(
           id,
           name,
           slug,
-          status
+          status,
+          menu_expires_at
         FROM restaurants
         WHERE status = 'active'
+          AND (
+            menu_expires_at IS NULL OR
+            menu_expires_at > (NOW() AT TIME ZONE 'UTC')::date
+          )
         ORDER BY id ASC
       `);
 
@@ -2158,9 +2407,14 @@ app.get(
           id,
           name,
           slug,
-          status
+          status,
+          menu_expires_at
         FROM restaurants
         WHERE status = 'active'
+          AND (
+            menu_expires_at IS NULL OR
+            menu_expires_at > (NOW() AT TIME ZONE 'UTC')::date
+          )
         ORDER BY id ASC
       `);
 
@@ -2194,12 +2448,17 @@ app.get(
         SELECT
           r.name,
           r.slug,
+          r.menu_expires_at,
           rp.phone_numbers,
           rp.addresses
         FROM restaurants r
         LEFT JOIN restaurant_profiles rp
           ON rp.restaurant_id = r.id
         WHERE r.status = 'active'
+          AND (
+            r.menu_expires_at IS NULL OR
+            r.menu_expires_at > (NOW() AT TIME ZONE 'UTC')::date
+          )
         ORDER BY r.name ASC, r.id ASC
       `);
 
@@ -2251,7 +2510,10 @@ app.get(
           id,
           name,
           slug,
-          status
+          status,
+          menu_expires_at,
+          menu_expires_at - (NOW() AT TIME ZONE 'UTC')::date
+            AS menu_days_remaining
         FROM restaurants
         ORDER BY id ASC
       `);
@@ -2282,6 +2544,104 @@ app.get(
       return res.status(500).json({
         ok: false,
         message: error.message
+      });
+    }
+  }
+);
+
+app.put(
+  '/api/owner/restaurants/:id/menu-expiration',
+  requireOwner,
+  async (req, res) => {
+    if (!isSuperAdminRole(req.user.role)) {
+      return res.status(403).json({
+        ok: false,
+        message: 'Super admin access required.'
+      });
+    }
+
+    const restaurantId = Number(req.params.id);
+    const dateInput = req.body?.expirationDate;
+    let expirationDate = null;
+
+    if (
+      !Number.isInteger(restaurantId) ||
+      restaurantId <= 0
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Invalid restaurant ID.'
+      });
+    }
+
+    if (dateInput !== null && dateInput !== '') {
+      if (
+        typeof dateInput !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(dateInput)
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Enter a valid expiration date.'
+        });
+      }
+
+      const parsedDate = new Date(`${dateInput}T00:00:00.000Z`);
+
+      if (
+        Number.isNaN(parsedDate.getTime()) ||
+        parsedDate.toISOString().slice(0, 10) !== dateInput
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Enter a valid expiration date.'
+        });
+      }
+
+      expirationDate = dateInput;
+    }
+
+    try {
+      const result = await pool.query(`
+        UPDATE restaurants
+        SET menu_expires_at = $1::date
+        WHERE id = $2
+        RETURNING
+          id,
+          name,
+          slug,
+          menu_expires_at,
+          menu_expires_at - (NOW() AT TIME ZONE 'UTC')::date
+            AS menu_days_remaining
+      `, [
+        expirationDate,
+        restaurantId
+      ]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Restaurant not found.'
+        });
+      }
+
+      menuCache.delete(result.rows[0].slug);
+
+      return res.json({
+        ok: true,
+        message: expirationDate
+          ? 'Menu expiration date saved.'
+          : 'Menu expiration date removed.',
+        restaurant: result.rows[0]
+      });
+    } catch (error) {
+      console.error(
+        '[owner:restaurant:menu-expiration:update] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to update menu expiration date.'
       });
     }
   }
@@ -3727,9 +4087,82 @@ app.put(
    CHANGE RESTAURANT STATUS
    ================================================================ */
 
+app.post(
+  '/api/owner/verify-action-password',
+  requireOwner,
+  async (req, res) => {
+    if (!isSuperAdminRole(req.user.role)) {
+      return res.status(403).json({
+        ok: false,
+        message: 'Super admin access required.'
+      });
+    }
+
+    const password =
+      typeof req.body?.password === 'string'
+        ? req.body.password
+        : '';
+
+    if (!password) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Enter your super admin password to continue.'
+      });
+    }
+
+    try {
+      const result = await pool.query(`
+        SELECT password, role
+        FROM users
+        WHERE id = $1
+        LIMIT 1
+      `, [
+        req.user.id
+      ]);
+
+      if (result.rows.length === 0) {
+        return res.status(403).json({
+          ok: false,
+          message: 'Super admin account not found.'
+        });
+      }
+
+      if (!isSuperAdminRole(result.rows[0].role)) {
+        return res.status(403).json({
+          ok: false,
+          message: 'Super admin access required.'
+        });
+      }
+
+      if (result.rows[0].password !== password) {
+        return res.status(401).json({
+          ok: false,
+          message: 'Super admin password is incorrect.'
+        });
+      }
+
+      return res.json({
+        ok: true,
+        message: 'Password verified.'
+      });
+    } catch (error) {
+      console.error(
+        '[owner:action-password:verify] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to verify your super admin password.'
+      });
+    }
+  }
+);
+
 app.put(
   '/api/owner/restaurants/:id/status',
   requireOwner,
+  requireSuperAdminPassword,
   async (req, res) => {
     try {
       const restaurantId =
@@ -4342,6 +4775,7 @@ app.post(
 app.delete(
   '/api/owner/restaurants/:id',
   requireOwner,
+  requireSuperAdminPassword,
   async (req, res) => {
     const client =
       await pool.connect();
@@ -4855,6 +5289,10 @@ const PORT = Number(process.env.PORT) || 10000;
 async function startServer() {
   try {
     await ensureDatabaseStructure();
+    await pool.query(`
+      ALTER TABLE restaurants
+      ADD COLUMN IF NOT EXISTS menu_expires_at DATE
+    `);
 
     /*
        Establish the PostgreSQL connection before accepting

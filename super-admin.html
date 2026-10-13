@@ -7,7 +7,8 @@
 
     <title>Super Admin Dashboard - Caffe Menu</title>
 
-    <link rel="stylesheet" href="/stylesheets/super-admin.css">
+    <link rel="stylesheet" href="/stylesheets/super-admin.css?v=20261013c">
+    <link rel="stylesheet" href="/stylesheets/menu-expiration.css?v=20261013a">
 </head>
 
 <body>
@@ -333,8 +334,12 @@
 
             <input type="text"
                    id="restaurantSearch"
+                   name="restaurantFilterQuery"
                    placeholder="Search restaurant..."
-                   autocomplete="off">
+                   autocomplete="off"
+                   autocapitalize="off"
+                   autocorrect="off"
+                   spellcheck="false">
 
             <button type="button"
                     class="search-clear"
@@ -479,7 +484,8 @@
     }
 </script>
 
-<script src="/scripts/super-admin.js?v=20261012a"></script>
+<script src="/scripts/menu-expiration.js?v=20261013a"></script>
+<script src="/scripts/super-admin.js?v=20261013c"></script>
 
 </body>
 </html>

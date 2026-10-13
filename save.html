@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZEKYVII menu</title>
-  <link rel="stylesheet" href="stylesheets/save.css">
+  <title>Cafe Menu</title>
+  <link rel="stylesheet" href="stylesheets/save.css?v=20261013d">
   <link rel="stylesheet" href="stylesheets/day-special.css">
+  <link rel="stylesheet" href="stylesheets/menu-expiration.css?v=20261013a">
 </head>
 
 <body>
@@ -183,7 +184,7 @@
 
 
   <!-- CUSTOMER RESTAURANT HEADER -->
-  <header class="menu-profile-header">
+  <header class="menu-profile-header" hidden>
 
     <div class="menu-brand-row">
 
@@ -274,11 +275,48 @@
 
   </header>
 
+  <section
+    id="customerMenuLoading"
+    class="customer-menu-loading"
+    role="status"
+    aria-live="polite"
+  >
+    <span class="customer-menu-loading-spinner" aria-hidden="true"></span>
+    <p>Loading menu...</p>
+  </section>
+
+  <section
+    id="customerMenuLoadError"
+    class="customer-menu-load-error"
+    role="alert"
+    aria-live="assertive"
+    hidden
+  >
+    <div class="customer-menu-load-error-icon" aria-hidden="true">!</div>
+    <div class="customer-menu-load-error-content">
+      <h2 id="customerMenuLoadErrorTitle"></h2>
+      <p id="customerMenuLoadErrorMessage"></p>
+      <dl class="customer-menu-load-error-details">
+        <div>
+          <dt>Restaurant slug</dt>
+          <dd id="customerMenuLoadErrorSlug"></dd>
+        </div>
+        <div>
+          <dt>Request status</dt>
+          <dd id="customerMenuLoadErrorStatus"></dd>
+        </div>
+      </dl>
+      <button id="customerMenuRetryButton" type="button">
+        Try again
+      </button>
+    </div>
+  </section>
+
   <div id="google_translate_element" class="customer-translation-widget" aria-hidden="true"></div>
 
 
   <!-- MAIN MENU -->
-  <div class="main">
+  <div class="main" hidden>
 
     <div class="filter-bar">
 
@@ -429,7 +467,8 @@
   </div>
 
 
-  <script src="scripts/saveAdd.js"></script>
+  <script src="scripts/menu-expiration.js?v=20261013a"></script>
+  <script src="scripts/saveAdd.js?v=20261013f"></script>
   <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 
 </body>

@@ -25,6 +25,7 @@ let priceManagementSelectedItems = new Set();
 let ownerPriceOperation = 'increase';
 
 let ownerPreviousFocus = null;
+let pendingOwnerSensitiveActionPassword = null;
 
 let duplicateSourceRestaurant = null;
 let ownerDefaultImage = 'image/z-menu.jpg';
@@ -2030,6 +2031,16 @@ function renderOwnerRestaurantRow(
 
                 <button
                     type="button"
+                    class="restaurant-action-btn menu-expiration-manage-btn"
+                    data-menu-expiration-id="${id}"
+                    data-expiration-date="${escapeHtml(restaurant.menu_expires_at || '')}"
+                    onclick="openOwnerMenuExpiration(${id})"
+                >
+                    ${renderOwnerMenuExpirationLabel(restaurant)}
+                </button>
+
+                <button
+                    type="button"
                     class="restaurant-action-btn"
                     onclick="toggleOwnerCafeStatus(${id})"
                 >
@@ -2049,6 +2060,167 @@ function renderOwnerRestaurantRow(
         </div>
     `;
 }
+
+function renderOwnerMenuExpirationLabel(restaurant) {
+    const expirationDate = restaurant.menu_expires_at;
+
+    if (!expirationDate) {
+        return 'Set Expiration';
+    }
+
+    const daysRemaining =
+        getMenuExpirationDaysRemaining(expirationDate);
+
+    if (daysRemaining === null) {
+        return 'Menu Expiration';
+    }
+
+    return daysRemaining <= 0
+        ? 'Menu Expired'
+        : `Expires in ${daysRemaining}d`;
+}
+
+
+function openOwnerMenuExpiration(restaurantId) {
+    const restaurant = getRestaurantById(restaurantId);
+
+    if (!restaurant) {
+        showOwnerNotification(
+            'Restaurant not found',
+            'The selected restaurant could not be found.',
+            'error'
+        );
+        return;
+    }
+
+    const expirationDate =
+        restaurant.menu_expires_at
+            ? String(restaurant.menu_expires_at).slice(0, 10)
+            : '';
+    const daysRemaining =
+        expirationDate
+            ? getMenuExpirationDaysRemaining(expirationDate)
+            : null;
+
+    openOwnerActionPanel(
+        'Menu Expiration',
+        `
+            <div class="menu-expiration-settings">
+                <p class="menu-expiration-settings-intro">
+                    Set when this restaurant’s customer menu should stop being available.
+                    Warnings will appear for both dashboard admins as the date approaches.
+                </p>
+                <div class="menu-expiration-settings-restaurant">
+                    <strong>${escapeHtml(getRestaurantName(restaurant))}</strong>
+                    <span>/${escapeHtml(getRestaurantSlug(restaurant))}</span>
+                </div>
+                <label for="ownerMenuExpirationDate">Expiration date</label>
+                <input id="ownerMenuExpirationDate"
+                       class="menu-expiration-date-input"
+                       type="date"
+                       value="${escapeHtml(expirationDate)}"
+                       required
+                       autocomplete="off">
+                <p class="menu-expiration-settings-hint">
+                    ${expirationDate
+                        ? daysRemaining <= 0
+                            ? `This menu is expired (${formatMenuExpirationDate(expirationDate)}).`
+                            : `${daysRemaining} days remaining · ${formatMenuExpirationDate(expirationDate)}.`
+                        : 'No expiration date is currently set.'}
+                </p>
+            </div>
+            <div class="owner-form-actions">
+                <button type="button" class="restaurant-action-btn"
+                        onclick="closeOwnerActionPanel()">
+                    Cancel
+                </button>
+                ${expirationDate
+                    ? `<button type="button" class="restaurant-action-btn menu-expiration-remove-btn"
+                               onclick="saveOwnerMenuExpiration(${Number(restaurantId)}, true)">
+                           Remove date
+                       </button>`
+                    : ''}
+                <button type="button" class="owner-action-btn menu-expiration-save-btn"
+                        onclick="saveOwnerMenuExpiration(${Number(restaurantId)}, false)">
+                    Save expiration
+                </button>
+            </div>
+        `
+    );
+}
+
+
+async function saveOwnerMenuExpiration(restaurantId, clearDate) {
+    const input =
+        document.getElementById('ownerMenuExpirationDate');
+    const expirationDate =
+        clearDate
+            ? null
+            : input instanceof HTMLInputElement
+                ? input.value
+                : '';
+
+    if (!clearDate && !expirationDate) {
+        if (input instanceof HTMLInputElement) {
+            input.reportValidity();
+            input.focus();
+        }
+        return;
+    }
+
+    const token = getAdminToken();
+
+    if (!token) {
+        clearAdminSession();
+        window.location.href = '/admin.html';
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            `/api/owner/restaurants/${Number(restaurantId)}/menu-expiration`,
+            {
+                method: 'PUT',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ expirationDate })
+            }
+        );
+        const data = await readOwnerApiResponse(response);
+        const restaurant = getRestaurantById(restaurantId);
+
+        if (restaurant) {
+            restaurant.menu_expires_at =
+                data.restaurant.menu_expires_at;
+            restaurant.menu_days_remaining =
+                data.restaurant.menu_days_remaining;
+        }
+
+        closeOwnerActionPanel();
+        renderOwnerRestaurantList();
+        setMenuExpirationWarnings(ownerRestaurantsData);
+        showOwnerNotification(
+            'Expiration updated',
+            data.message || 'Menu expiration date saved.',
+            'success'
+        );
+    } catch (error) {
+        console.error(
+            '[super-admin] Menu expiration update failed:',
+            error
+        );
+        showOwnerNotification(
+            'Unable to update expiration',
+            error.message || 'Please try again.',
+            'error'
+        );
+    }
+}
+
 
 function toggleOwnerRestaurantActions(
     restaurantId
@@ -2158,6 +2330,7 @@ async function loadOwnerCafes() {
         updateOwnerRestaurantStats();
 
         renderOwnerRestaurantList();
+        setMenuExpirationWarnings(ownerRestaurantsData);
 
         return true;
 
@@ -3535,64 +3708,200 @@ async function toggleOwnerCafeStatus(
             : 'active';
 
 
-    const restaurantName =
-        getRestaurantName(
-            restaurant
-        );
+    requestOwnerSensitiveActionPassword(
+        'status',
+        restaurantId,
+        nextStatus,
+        active
+    );
+}
+
+
+function requestOwnerSensitiveActionPassword(
+    action,
+    restaurantId,
+    nextStatus = '',
+    wasActive = false
+) {
+    pendingOwnerSensitiveActionPassword = null;
 
     openOwnerActionPanel(
-        active
-            ? 'Disable Restaurant'
-            : 'Enable Restaurant',
+        'Verify Super Admin Password',
+        `
+            <div class="super-admin-password-prompt">
+                <div class="super-admin-password-prompt-icon" aria-hidden="true">🔒</div>
+                <div class="super-admin-password-prompt-copy">
+                    <h3>Verify it’s you</h3>
+                    <p>Enter your super admin password before continuing.</p>
+                </div>
+            </div>
+
+            <form class="super-admin-password-form" autocomplete="off"
+                  onsubmit="verifyOwnerSensitiveActionPassword(event, '${action}', ${Number(restaurantId)}, '${nextStatus}', ${wasActive})">
+                <label for="superAdminActionPassword">Super admin password</label>
+                <input
+                    id="superAdminActionPassword"
+                    name="superAdminSensitiveActionCredential"
+                    class="super-admin-password-input"
+                    type="password"
+                    autocomplete="new-password"
+                    placeholder="Enter your password"
+                    required
+                    autofocus
+                >
+                <p class="super-admin-password-error" id="superAdminPasswordError"
+                   role="alert" aria-live="polite"></p>
+                <div class="owner-form-actions">
+                    <button type="button" class="restaurant-action-btn"
+                            onclick="cancelOwnerSensitiveAction()">
+                        Cancel
+                    </button>
+                    <button type="submit" class="owner-action-btn super-admin-password-submit">
+                        Verify Password
+                    </button>
+                </div>
+            </form>
+        `
+    );
+
+    const passwordInput =
+        document.getElementById('superAdminActionPassword');
+
+    if (passwordInput instanceof HTMLInputElement) {
+        passwordInput.value = '';
+        passwordInput.focus();
+    }
+}
+
+
+async function verifyOwnerSensitiveActionPassword(
+    event,
+    action,
+    restaurantId,
+    nextStatus,
+    wasActive
+) {
+    event.preventDefault();
+
+    const input =
+        document.getElementById('superAdminActionPassword');
+    const errorElement =
+        document.getElementById('superAdminPasswordError');
+
+    if (!(input instanceof HTMLInputElement) || !input.value) {
+        input?.focus();
+        return;
+    }
+
+    const password = input.value;
+    const submitButton =
+        event.currentTarget.querySelector('button[type="submit"]');
+
+    if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Verifying...';
+    }
+
+    try {
+        const token = getAdminToken();
+
+        if (!token) {
+            clearAdminSession();
+            window.location.href = '/admin.html';
+            return;
+        }
+
+        const response = await fetch('/api/owner/verify-action-password', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ password })
+        });
+
+        await readOwnerApiResponse(response);
+        pendingOwnerSensitiveActionPassword = password;
+
+        if (action === 'status') {
+            confirmOwnerCafeStatus(
+                restaurantId,
+                nextStatus,
+                wasActive
+            );
+        } else {
+            confirmDeleteOwnerCafe(restaurantId);
+        }
+    } catch (error) {
+        input.value = '';
+        input.focus();
+
+        if (errorElement) {
+            errorElement.textContent =
+                error.message || 'Password verification failed. Try again.';
+        }
+    } finally {
+        if (submitButton instanceof HTMLButtonElement) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Verify Password';
+        }
+    }
+}
+
+
+function cancelOwnerSensitiveAction() {
+    pendingOwnerSensitiveActionPassword = null;
+    closeOwnerActionPanel();
+}
+
+
+function confirmOwnerCafeStatus(
+    restaurantId,
+    nextStatus,
+    active
+) {
+    const restaurant = getRestaurantById(restaurantId);
+
+    if (!restaurant) {
+        pendingOwnerSensitiveActionPassword = null;
+        showOwnerNotification(
+            'Restaurant not found',
+            'The selected restaurant could not be found.',
+            'error'
+        );
+        return;
+    }
+
+    const restaurantName = getRestaurantName(restaurant);
+
+    openOwnerActionPanel(
+        active ? 'Disable Restaurant' : 'Enable Restaurant',
         `
             <div class="owner-status-confirm">
-
                 <div class="owner-status-confirm-icon ${active ? 'disable' : 'enable'}">
                     ${active ? '!' : '✓'}
                 </div>
-
-                <div class="owner-status-confirm-kicker">
-                    ${active ? 'RESTAURANT STATUS' : 'RESTAURANT STATUS'}
-                </div>
-
-                <h3>
-                    ${active
-                        ? 'Disable this restaurant?'
-                        : 'Enable this restaurant?'}
-                </h3>
-
-                <p class="owner-status-confirm-name">
-                    ${escapeHtml(restaurantName)}
-                </p>
-
+                <div class="owner-status-confirm-kicker">RESTAURANT STATUS</div>
+                <h3>${active ? 'Disable this restaurant?' : 'Enable this restaurant?'}</h3>
+                <p class="owner-status-confirm-name">${escapeHtml(restaurantName)}</p>
                 <p class="owner-status-confirm-message">
                     ${active
                         ? 'Customers will no longer be able to use this restaurant while it is disabled.'
                         : 'This restaurant will become active and available to customers again.'}
                 </p>
-
                 <div class="owner-status-confirm-actions">
-
-                    <button
-                        type="button"
-                        class="owner-status-cancel-btn"
-                        onclick="closeOwnerActionPanel()"
-                    >
+                    <button type="button" class="owner-status-cancel-btn"
+                            onclick="cancelOwnerSensitiveAction()">
                         Cancel
                     </button>
-
-                    <button
-                        type="button"
-                        class="owner-status-confirm-btn ${active ? 'disable' : 'enable'}"
-                        onclick="executeOwnerCafeStatus(${Number(restaurantId)}, '${nextStatus}', ${active})"
-                    >
-                        ${active
-                            ? 'Disable Restaurant'
-                            : 'Enable Restaurant'}
+                    <button type="button"
+                            class="owner-status-confirm-btn ${active ? 'disable' : 'enable'}"
+                            onclick="executeOwnerCafeStatus(${Number(restaurantId)}, '${nextStatus}', ${active})">
+                        ${active ? 'Confirm & Disable' : 'Confirm & Enable'}
                     </button>
-
                 </div>
-
             </div>
         `
     );
@@ -3604,6 +3913,20 @@ async function executeOwnerCafeStatus(
     nextStatus,
     wasActive
 ) {
+
+    const superAdminPassword =
+        pendingOwnerSensitiveActionPassword;
+
+    if (!superAdminPassword) {
+        showOwnerNotification(
+            'Password verification required',
+            'Verify your password before confirming this action.',
+            'error'
+        );
+        return;
+    }
+
+    pendingOwnerSensitiveActionPassword = null;
 
     showOwnerLoading(
         wasActive
@@ -3651,7 +3974,8 @@ async function executeOwnerCafeStatus(
                     body:
                         JSON.stringify({
                             status:
-                                nextStatus
+                                nextStatus,
+                            superAdminPassword
                         })
                 }
             );
@@ -3730,7 +4054,8 @@ function deleteOwnerCafe(
     }
 
 
-    confirmDeleteOwnerCafe(
+    requestOwnerSensitiveActionPassword(
+        'delete',
         restaurantId
     );
 }
@@ -3745,7 +4070,10 @@ function confirmDeleteOwnerCafe(
             restaurantId
         );
 
-    if (!restaurant) return;
+    if (!restaurant) {
+        pendingOwnerSensitiveActionPassword = null;
+        return;
+    }
 
 
     const name =
@@ -3757,51 +4085,13 @@ function confirmDeleteOwnerCafe(
     openOwnerActionPanel(
         'Delete Restaurant',
         `
-            <div
-                style="
-                    padding:18px;
-                    border:1px solid rgba(174,73,65,.16);
-                    border-radius:14px;
-                    background:#fff6f5;
-                "
-            >
-
-                <div
-                    style="
-                        color:#ae4941;
-                        font-size:9px;
-                        font-weight:900;
-                        letter-spacing:.16em;
-                        text-transform:uppercase;
-                    "
-                >
-                    PERMANENT ACTION
-                </div>
-
-                <div
-                    style="
-                        margin-top:7px;
-                        color:#21120c;
-                        font-family:Georgia,'Times New Roman',serif;
-                        font-size:18px;
-                        font-weight:700;
-                    "
-                >
-                    Delete ${escapeHtml(name)}?
-                </div>
-
-                <div
-                    style="
-                        margin-top:8px;
-                        color:#766960;
-                        font-size:11px;
-                        line-height:1.55;
-                    "
-                >
-                    This action will permanently remove the restaurant.
-                    Make sure you really want to continue.
-                </div>
-
+            <div class="super-admin-delete-warning">
+                <div class="super-admin-delete-kicker">Permanent action</div>
+                <h3>Delete ${escapeHtml(name)}?</h3>
+                <p>
+                    This permanently removes the restaurant and its related data.
+                    This action cannot be undone.
+                </p>
             </div>
 
             <div class="owner-form-actions">
@@ -3809,21 +4099,17 @@ function confirmDeleteOwnerCafe(
                 <button
                     type="button"
                     class="restaurant-action-btn"
-                    onclick="closeOwnerActionPanel()"
+                    onclick="cancelOwnerSensitiveAction()"
                 >
                     Cancel
                 </button>
 
                 <button
                     type="button"
-                    class="owner-action-btn"
+                    class="owner-action-btn super-admin-delete-confirm"
                     onclick="executeDeleteOwnerCafe(${Number(restaurantId)})"
-                    style="
-                        background:#ae4941;
-                        border-color:#ae4941;
-                    "
                 >
-                    Delete Restaurant
+                    Confirm & Delete
                 </button>
 
             </div>
@@ -3835,6 +4121,20 @@ function confirmDeleteOwnerCafe(
 async function executeDeleteOwnerCafe(
     restaurantId
 ) {
+
+    const superAdminPassword =
+        pendingOwnerSensitiveActionPassword;
+
+    if (!superAdminPassword) {
+        showOwnerNotification(
+            'Password verification required',
+            'Verify your password before confirming this action.',
+            'error'
+        );
+        return;
+    }
+
+    pendingOwnerSensitiveActionPassword = null;
 
     const token =
         getAdminToken();
@@ -3864,6 +4164,9 @@ async function executeDeleteOwnerCafe(
                     method:'DELETE',
 
                     headers:{
+                        'X-Super-Admin-Password':
+                            superAdminPassword,
+
                         Authorization:
                             `Bearer ${token}`,
 
@@ -3885,6 +4188,8 @@ async function executeDeleteOwnerCafe(
 
 
         await loadOwnerCafes();
+
+        closeOwnerActionPanel();
 
 
         showOwnerNotification(
@@ -9649,7 +9954,8 @@ function openOwnerActionPanel(
 
 function closeOwnerActionPanel() {
 
-        duplicateSourceRestaurant = null;
+    pendingOwnerSensitiveActionPassword = null;
+    duplicateSourceRestaurant = null;
 
     const panel =
         document.getElementById(
@@ -10123,11 +10429,23 @@ function setupRestaurantSearch() {
             'restaurantSearch'
         );
 
+    if (
+        input instanceof HTMLInputElement &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim())
+    ) {
+        input.value = '';
+    }
+
 
     const clearButton =
         document.getElementById(
             'restaurantSearchClear'
         );
+
+    if (clearButton && input instanceof HTMLInputElement) {
+        clearButton.style.display =
+            input.value ? 'flex' : '';
+    }
 
 
     if (

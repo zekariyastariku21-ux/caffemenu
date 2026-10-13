@@ -1,7 +1,68 @@
 
-let companyDefaultImage = 'image/z-menu.jpg';
+function getCompanyLoadingImage() {
+    const svg = `
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="180"
+            height="180"
+            viewBox="0 0 180 180"
+        >
+            <rect width="180" height="180" rx="24" fill="#f5efe6"/>
+            <circle
+                cx="90"
+                cy="72"
+                r="25"
+                fill="none"
+                stroke="#9a6b3f"
+                stroke-width="6"
+                stroke-linecap="round"
+                stroke-dasharray="90 70"
+            >
+                <animateTransform
+                    attributeName="transform"
+                    type="rotate"
+                    from="0 90 72"
+                    to="360 90 72"
+                    dur="1s"
+                    repeatCount="indefinite"
+                />
+            </circle>
+            <text
+                x="90"
+                y="125"
+                text-anchor="middle"
+                font-family="Arial, sans-serif"
+                font-size="15"
+                font-weight="700"
+                fill="#6b4a2f"
+            >Loading...</text>
+        </svg>
+    `;
+
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+let companyDefaultImage = getCompanyLoadingImage();
 
 async function loadCompanySettings() {
+    const loadingTitle =
+        document.getElementById('companyProfileLoadingTitle');
+    const loadingMessage =
+        document.getElementById('companyProfileLoadingMessage');
+    const retryButton =
+        document.getElementById('companyProfileRetry');
+
+    document.body.classList.add('company-profile-loading');
+    document.body.classList.remove('company-profile-error');
+    loadingTitle.textContent = 'Loading company profile...';
+    loadingMessage.textContent = '';
+    retryButton.hidden = true;
+
+    document.querySelectorAll(
+        '[data-company-logo]'
+    ).forEach(element => {
+        element.src = companyDefaultImage;
+    });
 
     try {
 
@@ -14,17 +75,34 @@ async function loadCompanySettings() {
             await response.json();
 
         if (!response.ok || !data.ok) {
-            return;
+            throw new Error(
+                data?.message ||
+                `Company profile request failed (HTTP ${response.status}).`
+            );
         }
 
-        const settings =
-            data.settings || {};
+        const settings = data.settings;
+
+        if (
+            !settings ||
+            typeof settings !== 'object' ||
+            Array.isArray(settings) ||
+            typeof settings.companyName !== 'string' ||
+            !settings.companyName.trim()
+        ) {
+            throw new Error(
+                'Company profile settings are missing or have no company name.'
+            );
+        }
 
         companyDefaultImage =
-            settings.defaultImage || 'image/z-menu.jpg';
+            settings.defaultImage || getCompanyLoadingImage();
 
         const companyName =
             settings.companyName || '';
+        document.title = companyName
+            ? `${companyName} - Company Profile`
+            : 'Company Profile';
 
         const slogan =
             settings.slogan || '';
@@ -48,6 +126,12 @@ async function loadCompanySettings() {
 
         document.querySelectorAll(
             '[data-company-name]'
+        ).forEach(element => {
+            element.textContent = companyName;
+        });
+
+        document.querySelectorAll(
+            '[data-company-footer-name]'
         ).forEach(element => {
             element.textContent = companyName;
         });
@@ -155,12 +239,26 @@ const item =
 
         renderCompanyContent(companyContent);
 
+        document.body.classList.remove(
+            'company-profile-loading',
+            'company-profile-error'
+        );
+
     } catch (error) {
 
         console.error(
             '[company-settings] Error:',
             error
         );
+
+        loadingTitle.textContent = 'Company profile unavailable';
+        loadingMessage.textContent =
+            error?.message ||
+            'The company profile could not be loaded.';
+        document.title = 'Company profile unavailable';
+        retryButton.hidden = false;
+        document.body.classList.remove('company-profile-loading');
+        document.body.classList.add('company-profile-error');
 
     }
 }
@@ -170,6 +268,9 @@ document.addEventListener(
     'DOMContentLoaded',
     loadCompanySettings
 );
+
+document.getElementById('companyProfileRetry')
+    .addEventListener('click', loadCompanySettings);
 
 
 function renderCompanyContent(companyContent) {
