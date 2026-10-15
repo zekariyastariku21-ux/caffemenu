@@ -3,7 +3,7 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cafe Menu</title>
-  <link rel="stylesheet" href="stylesheets/save.css?v=20261013d">
+  <link rel="stylesheet" href="stylesheets/save.css?v=20261015o">
   <link rel="stylesheet" href="stylesheets/day-special.css">
   <link rel="stylesheet" href="stylesheets/menu-expiration.css?v=20261013a">
 </head>
@@ -376,29 +376,32 @@
 
       <div class="cart">
 
-        <div class="cart-header">
-          <div>
-            <h2>Your cart</h2>
-            <p>Review your order</p>
+        <div class="cart-topbar">
+          <div class="cart-header">
+            <div>
+              <h2>Cart</h2>
+            </div>
+
+            <div class="cart-header-actions">
+              <button
+                class="cart-close"
+                type="button"
+                aria-label="Close cart"
+              >
+                ×
+              </button>
+            </div>
           </div>
 
-          <div class="cart-header-actions">
-            <button
-              id="clearCartButton"
-              class="cart-clear-button"
-              type="button"
-              disabled
-            >
-              Clear all
-            </button>
-
-            <button
-              class="cart-close"
-              type="button"
-              aria-label="Close cart"
-            >
-              ×
-            </button>
+          <div class="cart-summary" aria-live="polite">
+            <div class="cart-summary-item">
+              <span class="cart-summary-label">Items</span>
+              <strong id="cart-item-count">0 items</strong>
+            </div>
+            <div class="cart-summary-total">
+              <span class="cart-summary-label">Total</span>
+              <strong id="total-price">0</strong>
+            </div>
           </div>
         </div>
 
@@ -407,36 +410,24 @@
           <thead>
             <tr>
               <th>Item</th>
-              <th>Price</th>
               <th>Qty</th>
+              <th>Price</th>
             </tr>
           </thead>
 
           <tbody id="cart-body"></tbody>
-
-          <tfoot>
-
-            <tr>
-
-              <td>
-                <strong>
-                  Total price
-                </strong>
-              </td>
-
-              <td
-                colspan="2"
-                id="total-price"
-              >
-                0
-              </td>
-
-            </tr>
-
-          </tfoot>
-
         </table>
 
+        <div class="cart-footer">
+          <button
+            id="clearCartButton"
+            class="cart-clear-button"
+            type="button"
+            disabled
+          >
+            Clear all
+          </button>
+        </div>
 
        <!-- <button
           class="payment"
@@ -459,7 +450,15 @@
         aria-expanded="false"
         aria-controls="cartSheet"
       >
-        Cart
+        <span class="cartbutton-icon-wrap">
+          <svg class="cartbutton-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 4h2l2.1 10.1a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 1.9-1.4L21 8H6"></path>
+            <circle cx="10" cy="20" r="1"></circle>
+            <circle cx="18" cy="20" r="1"></circle>
+          </svg>
+          <span id="cart-button-count" class="cartbutton-count">0</span>
+        </span>
+        <span class="cartbutton-label">View Cart</span>
       </button>
 
     </div>
@@ -468,7 +467,7 @@
 
 
   <script src="scripts/menu-expiration.js?v=20261013a"></script>
-  <script src="scripts/saveAdd.js?v=20261013f"></script>
+  <script src="scripts/saveAdd.js?v=20261015g"></script>
   <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 
 </body>

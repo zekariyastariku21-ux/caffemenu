@@ -1,5 +1,6 @@
 let cart = [];
 let editingCartNoteName = null;
+let recentlyAddedCartItemName = null;
 
 let currentCategory = 'all';
 
@@ -3289,11 +3290,27 @@ function addToCart(
         });
     }
 
+    recentlyAddedCartItemName =
+        food.name;
 
     saveCart();
 
     renderCart();
 
+    const cartSheet =
+        document.getElementById('cartSheet');
+
+    const cartButton =
+        document.querySelector('.cartbutton');
+
+    if (cartSheet && cartButton) {
+        cartSheet.classList.add('open');
+        cartSheet.classList.remove('expanded');
+        cartButton.setAttribute('aria-expanded', 'true');
+        cartSheet
+            .querySelector('.cart-sheet-handle')
+            ?.setAttribute('aria-label', 'Expand cart');
+    }
 
     if (
         button &&
@@ -3354,6 +3371,47 @@ function renderCart() {
         clearCartButton.disabled = cart.length === 0;
     }
 
+    const totalItemCount =
+        cart.reduce(
+            (total, item) =>
+                total + Math.max(0, Number(item.quantity) || 0),
+            0
+        );
+
+    const cartItemCount =
+        document.getElementById('cart-item-count');
+
+    if (cartItemCount) {
+        cartItemCount.textContent =
+            `${formatCustomerNumber(totalItemCount)} ${totalItemCount === 1 ? 'item' : 'items'}`;
+    }
+
+    const cartButtonCount =
+        document.getElementById('cart-button-count');
+
+    if (cartButtonCount) {
+        cartButtonCount.textContent =
+            formatCustomerNumber(totalItemCount);
+    }
+
+    const cartButton =
+        document.querySelector('.cartbutton');
+
+    if (cartButton) {
+        cartButton.setAttribute(
+            'aria-label',
+            `Cart, ${totalItemCount} ${totalItemCount === 1 ? 'item' : 'items'}`
+        );
+    }
+
+    const cartSheetElement =
+        document.getElementById('cartSheet');
+
+    cartSheetElement?.classList.toggle(
+        'has-recently-added',
+        cart.some(item => item.name === recentlyAddedCartItemName)
+    );
+
 
     if (!cart.length) {
 
@@ -3366,6 +3424,11 @@ function renderCart() {
         `;
 
     } else {
+
+        const menuItems =
+            Object.values(foods)
+                .filter(Array.isArray)
+                .flat();
 
         cartBody.innerHTML =
             cart
@@ -3386,52 +3449,68 @@ function renderCart() {
                     const isEditingNote =
                         editingCartNoteName === itemName;
 
+                    const menuItem =
+                        menuItems.find(
+                            food =>
+                                food &&
+                                ((item.id && food.id === item.id) ||
+                                    food.name === itemName)
+                        );
+
+                    const itemImage =
+                        menuItem?.image || 'image/food.jpeg';
+
                     return `
-                        <tr>
+                        <tr
+                            class="cart-item-row${itemName === recentlyAddedCartItemName ? ' is-recently-added' : ''}"
+                            data-cart-item-name="${escapeAttribute(itemName)}"
+                        >
 
                             <td>
-                                <div class="cart-item-details">
-                                    <div class="cart-item-heading">
-                                        <span class="cart-item-name">${escapeHtml(itemName)}</span>
-                                        <button
-                                            type="button"
-                                            class="cart-note-toggle"
-                                            data-action="edit-note"
-                                            data-name="${escapeAttribute(itemName)}"
-                                            aria-label="Add or edit note for ${escapeAttribute(itemName)}"
-                                            title="Add or edit item note"
-                                        >✎</button>
-                                    </div>
-                                    ${note ? `<span class="cart-item-note">(${escapeHtml(note)})</span>` : ''}
-                                    ${isEditingNote ? `
-                                        <div class="cart-note-editor">
-                                            <input
-                                                type="text"
-                                                class="cart-note-input"
-                                                value="${escapeAttribute(note)}"
-                                                maxlength="200"
-                                                aria-label="Note for ${escapeAttribute(itemName)}"
-                                                placeholder="e.g. No sugar, extra spicy"
-                                            >
-                                            <div class="cart-note-actions">
-                                                <button type="button" data-action="save-note" data-name="${escapeAttribute(itemName)}">Done</button>
-                                                <button type="button" data-action="cancel-note" data-name="${escapeAttribute(itemName)}">Cancel</button>
-                                            </div>
+                                <div class="cart-item-layout">
+                                    <img
+                                        class="cart-item-image"
+                                        src="${escapeAttribute(itemImage)}"
+                                        alt="${escapeAttribute(itemName)}"
+                                        loading="lazy"
+                                        onerror="this.onerror=null;this.src='image/food.jpeg';"
+                                    >
+                                    <div class="cart-item-details">
+                                        <div class="cart-item-heading">
+                                            <span class="cart-item-name">${escapeHtml(itemName)}</span>
+                                            <button
+                                                type="button"
+                                                class="cart-note-toggle"
+                                                data-action="edit-note"
+                                                data-name="${escapeAttribute(itemName)}"
+                                                aria-label="Add or edit note for ${escapeAttribute(itemName)}"
+                                                title="Add or edit item note"
+                                            >✎</button>
                                         </div>
-                                    ` : ''}
+                                        <span class="cart-item-unit-price">${formatCustomerCurrency(itemPrice)}</span>
+                                        ${note ? `<span class="cart-item-note">(${escapeHtml(note)})</span>` : ''}
+                                        ${isEditingNote ? `
+                                            <div class="cart-note-editor">
+                                                <input
+                                                    type="text"
+                                                    class="cart-note-input"
+                                                    value="${escapeAttribute(note)}"
+                                                    maxlength="200"
+                                                    aria-label="Note for ${escapeAttribute(itemName)}"
+                                                    placeholder="e.g. No sugar, extra spicy"
+                                                >
+                                                <div class="cart-note-actions">
+                                                    <button type="button" data-action="save-note" data-name="${escapeAttribute(itemName)}">Done</button>
+                                                    <button type="button" data-action="cancel-note" data-name="${escapeAttribute(itemName)}">Cancel</button>
+                                                </div>
+                                            </div>
+                                        ` : ''}
+                                    </div>
                                 </div>
                             </td>
 
 
                             <td>
-                                ${formatCustomerCurrency(
-                                    itemPrice * quantity
-                                )}
-                            </td>
-
-
-                            <td>
-
                                 <div class="qty-controls">
 
                                     <button
@@ -3458,6 +3537,12 @@ function renderCart() {
 
                                 </div>
 
+                            </td>
+
+                            <td class="cart-item-total">
+                                ${formatCustomerCurrency(
+                                    itemPrice * quantity
+                                )}
                             </td>
 
                         </tr>
@@ -3540,6 +3625,44 @@ function renderCart() {
 
         totalElement.innerHTML =
             formatCustomerCurrency(total);
+    }
+
+    const cartSheet =
+        document.getElementById('cartSheet');
+
+    const cartPanel =
+        cartSheet?.querySelector('.cart');
+
+    const cartHandle =
+        cartSheet?.querySelector('.cart-sheet-handle');
+
+    if (cartSheet && cartPanel && cartHandle) {
+        const cartTopbar =
+            cartPanel.querySelector('.cart-topbar');
+
+        const focusedRow =
+            Array.from(
+                cartBody.querySelectorAll('tr[data-cart-item-name]')
+            ).find(
+                row =>
+                    row.dataset.cartItemName === recentlyAddedCartItemName
+            ) || cartBody.querySelector('tr[data-cart-item-name]');
+
+        const cartStyles =
+            getComputedStyle(cartPanel);
+
+        const contentHeight =
+            (cartTopbar?.offsetHeight || 0) +
+            (focusedRow?.offsetHeight || 0) +
+            (focusedRow ? 20 : 0) +
+            cartHandle.offsetHeight +
+            (Number.parseFloat(cartStyles.paddingTop) || 0) +
+            (Number.parseFloat(cartStyles.paddingBottom) || 0);
+
+        cartSheet.style.setProperty(
+            '--cart-sheet-peek',
+            `${Math.min(contentHeight, window.innerHeight * 0.8)}px`
+        );
     }
 
     queueCustomerTranslation();
@@ -3638,6 +3761,7 @@ function clearCart() {
 
     cart = [];
     editingCartNoteName = null;
+    recentlyAddedCartItemName = null;
     saveCart();
     renderCart();
 }
@@ -3748,7 +3872,7 @@ function setupCartButton() {
 
         return Math.min(
             configuredPeekHeight,
-            sheetHeight * 0.35
+            sheetHeight * 0.8
         );
     }
 
