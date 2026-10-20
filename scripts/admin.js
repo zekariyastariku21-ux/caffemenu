@@ -1151,38 +1151,37 @@ function moveMenuItem(category, itemIndex, direction) {
    CATEGORY SELECT
    ================================================================ */
 
+
 function updateAdminCategoryOptions() {
-    const select =
-        document.getElementById(
-            'newItemCategory'
-        );
+    const categories = getOrderedMenuCategories();
 
-    if (!select) {
-        return;
-    }
+    const selects = [
+        document.getElementById('newItemCategory'),
+        document.getElementById('editItemCategory')
+    ];
 
-    const oldValue = select.value;
+    selects.forEach(select => {
+        if (!select) return;
 
-    select.innerHTML = `
-        <option value="">
-            Select category
-        </option>
-    `;
+        const oldValue = select.value;
 
-    getOrderedMenuCategories().forEach(category => {
-        const option =
-            document.createElement('option');
+        select.innerHTML = `
+            <option value="">Select category</option>
+        `;
 
-        option.value = category;
-        option.textContent = category;
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            select.appendChild(option);
+        });
 
-        select.appendChild(option);
+        if (oldValue && categories.includes(oldValue)) {
+            select.value = oldValue;
+        }
     });
-
-    if (oldValue && foods[oldValue]) {
-        select.value = oldValue;
-    }
 }
+
 
 
 /* ================================================================
