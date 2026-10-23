@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -638,6 +638,86 @@
             </div>
 
 
+            <!-- TELEBIRR SETTINGS -->
+
+            <div class="profile-section" id="telebirrSettingsSection">
+
+                <div class="profile-section-header">
+                    <div>
+                        <div class="profile-section-title">
+                            Telebirr Payment Settings
+                        </div>
+                        <div class="profile-section-description">
+                            Configure the merchant details for this café.
+                            Saving these settings does not activate live checkout.
+                        </div>
+                    </div>
+                </div>
+
+                <form id="telebirrSettingsForm">
+                    <label for="orderNowEnabled">
+                        <input
+                            type="checkbox"
+                            id="orderNowEnabled"
+                            name="order_now_enabled"
+                            checked
+                        >
+                        Enable Order Now for this café
+                    </label>
+
+
+
+                    <div class="profile-field">
+                        <label for="telebirrMerchantName">
+                            Merchant Name
+                        </label>
+                        <input
+                            type="text"
+                            id="telebirrMerchantName"
+                            name="merchant_name"
+                            maxlength="200"
+                            autocomplete="organization"
+                        >
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrMerchantCode">
+                            Merchant Code
+                        </label>
+                        <input
+                            type="text"
+                            id="telebirrMerchantCode"
+                            name="merchant_code"
+                            maxlength="200"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrMerchantAppId">
+                            Merchant App ID
+                        </label>
+                        <input
+                            type="text"
+                            id="telebirrMerchantAppId"
+                            name="merchant_app_id"
+                            maxlength="200"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <button type="submit" class="profile-save-btn">
+                        Save Telebirr Settings
+                    </button>
+
+                    <p
+                        id="telebirrSettingsMessage"
+                        role="status"
+                        aria-live="polite"
+                    ></p>
+                </form>
+
+            </div>
             <!-- LOCATIONS -->
 
             <div class="profile-section">

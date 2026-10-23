@@ -2773,6 +2773,111 @@ function removeProfileLogo() {
    OPEN PROFILE MODAL
    ================================================================ */
 
+async function loadTelebirrSettings() {
+    const form = document.getElementById('telebirrSettingsForm');
+    const message = document.getElementById('telebirrSettingsMessage');
+
+    if (!form || !currentRestaurant || !currentRestaurant.slug) {
+        return;
+    }
+
+    const fields = {
+        orderNow: document.getElementById('orderNowEnabled'),
+        enabled: document.getElementById('telebirrEnabled'),
+        name: document.getElementById('telebirrMerchantName'),
+        code: document.getElementById('telebirrMerchantCode'),
+        appId: document.getElementById('telebirrMerchantAppId')
+    };
+
+    if (message) message.textContent = 'Loading settings...';
+
+    try {
+        const response = await fetch(
+            '/api/admin/payment-settings/' +
+                encodeURIComponent(currentRestaurant.slug),
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.message || 'Unable to load Telebirr settings.');
+        }
+
+        const settings = data.settings || {};
+
+        // Telebirr checkbox removed; keep Order Now independent.
+        fields.orderNow.checked = settings.order_now_enabled !== false;
+        fields.name.value = settings.merchant_name || '';
+        fields.code.value = settings.merchant_code || '';
+        fields.appId.value = settings.merchant_app_id || '';
+
+        if (message) message.textContent = '';
+    } catch (error) {
+        console.error('[telebirr] Load failed:', error);
+        if (message) {
+            message.textContent = error.message || 'Unable to load settings.';
+        }
+    }
+}
+
+async function saveTelebirrSettings(event) {
+    event.preventDefault();
+
+    const message = document.getElementById('telebirrSettingsMessage');
+    const form = document.getElementById('telebirrSettingsForm');
+    const submitButton = form?.querySelector('[type="submit"]');
+
+    if (!currentRestaurant || !currentRestaurant.slug || !form) {
+        if (message) message.textContent = 'Restaurant information is unavailable.';
+        return;
+    }
+
+    const payload = {
+        order_now_enabled: document.getElementById('orderNowEnabled').checked,
+        telebirr_enabled: false,
+        merchant_name: document.getElementById('telebirrMerchantName').value.trim(),
+        merchant_code: document.getElementById('telebirrMerchantCode').value.trim(),
+        merchant_app_id: document.getElementById('telebirrMerchantAppId').value.trim()
+    };
+
+    if (submitButton) submitButton.disabled = true;
+    if (message) message.textContent = 'Saving settings...';
+
+    try {
+        const response = await fetch(
+            '/api/admin/payment-settings/' +
+                encodeURIComponent(currentRestaurant.slug),
+            {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.message || 'Unable to save Telebirr settings.');
+        }
+
+        if (message) message.textContent = 'Telebirr settings saved.';
+    } catch (error) {
+        console.error('[telebirr] Save failed:', error);
+        if (message) {
+            message.textContent = error.message || 'Unable to save settings.';
+        }
+    } finally {
+        if (submitButton) submitButton.disabled = false;
+    }
+}
 async function openProfileModal() {
     const modal =
         document.getElementById(
@@ -2793,6 +2898,7 @@ async function openProfileModal() {
 
     try {
         await loadRestaurantProfile();
+        await loadTelebirrSettings();
 
         const restaurantName =
             document.getElementById(
@@ -4823,6 +4929,15 @@ document.addEventListener(
            PROFILE
            -------------------------------------------------------- */
 
+        const telebirrSettingsForm =
+            document.getElementById('telebirrSettingsForm');
+
+        if (telebirrSettingsForm) {
+            telebirrSettingsForm.addEventListener(
+                'submit',
+                saveTelebirrSettings
+            );
+        }
         if (profileBtn) {
             profileBtn.addEventListener(
                 'click',

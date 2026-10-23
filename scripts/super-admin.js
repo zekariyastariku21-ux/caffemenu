@@ -2031,7 +2031,7 @@ function renderOwnerRestaurantRow(
 
                 <button
                     type="button"
-                    class="restaurant-action-btn menu-expiration-manage-btn"
+                    class="restaurant-action-btn menu-expiration-manage-btn ${restaurant.menu_expires_at && getMenuExpirationDaysRemaining(restaurant.menu_expires_at) !== null && getMenuExpirationDaysRemaining(restaurant.menu_expires_at) <= 0 ? "disable-action" : ""}"
                     data-menu-expiration-id="${id}"
                     data-expiration-date="${escapeHtml(restaurant.menu_expires_at || '')}"
                     onclick="openOwnerMenuExpiration(${id})"
@@ -2041,7 +2041,17 @@ function renderOwnerRestaurantRow(
 
                 <button
                     type="button"
-                    class="restaurant-action-btn"
+                    class="restaurant-action-btn ${restaurant.super_admin_order_now_enabled === false ? "disable-action" : ""}"
+                    onclick="toggleOwnerSelfOrdering(${id})"
+                >
+                    ${restaurant.super_admin_order_now_enabled === false
+                        ? 'Enable Self-Ordering'
+                        : 'Disable Self-Ordering'}
+                </button>
+
+                <button
+                    type="button"
+                    class="restaurant-action-btn ${active ? "" : "disable-action"}"
                     onclick="toggleOwnerCafeStatus(${id})"
                 >
                     ${active ? 'Disable' : 'Enable'}
@@ -2221,6 +2231,57 @@ async function saveOwnerMenuExpiration(restaurantId, clearDate) {
     }
 }
 
+
+async function toggleOwnerSelfOrdering(restaurantId) {
+    const restaurant = getRestaurantById(restaurantId);
+
+    if (!restaurant) {
+        showOwnerNotification('Restaurant not found', 'Refresh the restaurant list and try again.', 'error');
+        return;
+    }
+
+    const enabled = restaurant.super_admin_order_now_enabled === false;
+    const token = getAdminToken();
+
+    if (!token) {
+        showOwnerNotification('Authentication required', 'Please sign in again.', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            `/api/owner/restaurants/${Number(restaurantId)}/self-ordering`,
+            {
+                method: 'PUT',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                credentials: 'same-origin',
+                cache: 'no-store',
+                body: JSON.stringify({ enabled })
+            }
+        );
+
+        await readOwnerApiResponse(response);
+
+        showOwnerNotification(
+            'Self-Ordering Updated',
+            `${restaurant.name || restaurant.slug || 'Restaurant'}: self-ordering ${enabled ? 'enabled' : 'disabled'}.`,
+            'success'
+        );
+
+        await loadOwnerCafes();
+    } catch (error) {
+        console.error('[super-admin] Self-ordering update failed:', error);
+        showOwnerNotification(
+            'Unable to Update Self-Ordering',
+            error.message || 'Please try again.',
+            'error'
+        );
+    }
+}
 
 function toggleOwnerRestaurantActions(
     restaurantId

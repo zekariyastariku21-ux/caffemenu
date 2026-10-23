@@ -6272,3 +6272,39 @@ label:has(#ownerShowAdminPassword) {
         width: 100%;
     }
 }
+
+/* Super Admin disable-action highlight */
+.restaurant-action-btn.disable-action {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: #ffffff;
+}
+
+.restaurant-action-btn.disable-action:hover,
+.restaurant-action-btn.disable-action:focus-visible {
+    background: #b02a37;
+    border-color: #b02a37;
+    color: #ffffff;
+    box-shadow: 0 5px 12px rgba(176, 42, 55, 0.25);
+}
+
+/* Force disabled-state actions to red over the brown action-button rule */
+.restaurant-row > div:last-child > .restaurant-action-btn.disable-action,
+.owner-restaurant-row > div:last-child > .restaurant-action-btn.disable-action,
+.owner-cafe-row > div:last-child > .restaurant-action-btn.disable-action,
+.cafe-row > div:last-child > .restaurant-action-btn.disable-action {
+    background: #dc3545 !important;
+    background-image: none !important;
+    border-color: #dc3545 !important;
+    color: #ffffff !important;
+}
+
+.restaurant-row > div:last-child > .restaurant-action-btn.disable-action:hover,
+.owner-restaurant-row > div:last-child > .restaurant-action-btn.disable-action:hover,
+.owner-cafe-row > div:last-child > .restaurant-action-btn.disable-action:hover,
+.cafe-row > div:last-child > .restaurant-action-btn.disable-action:hover {
+    background: #b02a37 !important;
+    background-image: none !important;
+    border-color: #b02a37 !important;
+    color: #ffffff !important;
+}

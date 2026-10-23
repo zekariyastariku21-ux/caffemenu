@@ -74,7 +74,7 @@ function localizeCustomerDigits(value) {
         return String(value);
     }
 
-    const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+    const arabicDigits = 'Ù Ù¡Ù¢Ù£Ù¤Ù¥Ù¦Ù§Ù¨Ù©';
 
     return String(value).replace(
         /[0-9]/g,
@@ -112,13 +112,13 @@ function protectCustomerNumbers(root = document.body) {
             document.createDocumentFragment();
 
         node.nodeValue
-            .split(/(\d+(?:[,.٬٫]\d+)*)/g)
+            .split(/(\d+(?:[,.Ù¬Ù«]\d+)*)/g)
             .forEach(part => {
                 if (!part) {
                     return;
                 }
 
-                if (/^\d+(?:[,.٬٫]\d+)*$/.test(part)) {
+                if (/^\d+(?:[,.Ù¬Ù«]\d+)*$/.test(part)) {
                     const number =
                         document.createElement('span');
 
@@ -2669,12 +2669,12 @@ function openCustomerDaySpecial() {
                     id="customerDaySpecialClose"
                     aria-label="Close"
                 >
-                    ×
+                    Ã—
                 </button>
 
 
                 <div class="customer-day-special-empty-icon">
-                    ✨
+                    âœ¨
                 </div>
 
 
@@ -2864,7 +2864,7 @@ function openCustomerDaySpecial() {
                     id="customerDaySpecialTitle"
                     class="customer-day-special-heading"
                 >
-                    ✨ TODAY'S SPECIALS ✨
+                    âœ¨ TODAY'S SPECIALS âœ¨
                 </h2>
 
 
@@ -2874,7 +2874,7 @@ function openCustomerDaySpecial() {
                     id="customerDaySpecialClose"
                     aria-label="Close"
                 >
-                    ×
+                    Ã—
                 </button>
 
             </div>
@@ -2973,7 +2973,7 @@ function openCustomerDaySpecial() {
 
 
                     addButton.textContent =
-                        '✓ Added to Cart';
+                        'âœ“ Added to Cart';
 
                     addButton.disabled =
                         true;
@@ -3322,7 +3322,7 @@ function addToCart(
 
 
         button.textContent =
-            '✓ Added';
+            'âœ“ Added';
 
 
         button.disabled =
@@ -3365,11 +3365,18 @@ function renderCart() {
     }
 
     const clearCartButton =
-        document.getElementById('clearCartButton');
+    document.getElementById('clearCartButton');
 
-    if (clearCartButton) {
-        clearCartButton.disabled = cart.length === 0;
-    }
+const orderNowButton =
+    document.getElementById('orderNowButton');
+
+if (clearCartButton) {
+    clearCartButton.disabled = cart.length === 0;
+}
+
+if (orderNowButton) {
+    orderNowButton.disabled = cart.length === 0;
+}
 
     const totalItemCount =
         cart.reduce(
@@ -3485,7 +3492,7 @@ function renderCart() {
                                                 data-name="${escapeAttribute(itemName)}"
                                                 aria-label="Add or edit note for ${escapeAttribute(itemName)}"
                                                 title="Add or edit item note"
-                                            >✎</button>
+                                            >âœŽ</button>
                                         </div>
                                         <span class="cart-item-unit-price">${formatCustomerCurrency(itemPrice)}</span>
                                         ${note ? `<span class="cart-item-note">(${escapeHtml(note)})</span>` : ''}
@@ -3819,6 +3826,10 @@ function setupCartButton() {
         'click',
         clearCart
     );
+    document.getElementById('orderNowButton')?.addEventListener('click', () => {
+        if (cart.length === 0) return;
+        openOrderFormModal();
+    });
 
     function setCartOpen(open) {
         container2.classList.toggle(
@@ -4237,6 +4248,145 @@ function setupCustomerLanguageSelector() {
    PAYMENT MODAL
    ========================================================================== */
 
+function renderOrderFormSummary() {
+    const itemsContainer = document.getElementById('orderFormItems');
+    const totalElement = document.getElementById('orderFormTotal');
+
+    if (!itemsContainer || !totalElement) return;
+
+    if (!cart.length) {
+        itemsContainer.innerHTML = '<p>Your cart is empty.</p>';
+        totalElement.textContent = '0 ETB';
+        return;
+    }
+
+    itemsContainer.innerHTML = `
+        <div class="order-form-item-list">
+            ${cart.map(item => {
+                const name = String(item.name ?? '');
+                const note = String(item.note || '').trim();
+                const quantity = Math.max(0, Number(item.quantity) || 0);
+                const price = Math.max(0, Number(item.price) || 0);
+                const lineTotal = quantity * price;
+
+                return `
+                    <article class="order-form-item">
+                        <div class="order-form-item-heading">
+                            <strong>${escapeHtml(name)}</strong>
+                            <span>${formatCustomerCurrency(lineTotal)}</span>
+                        </div>
+                        <div class="order-form-item-details">
+                            Qty: ${formatCustomerNumber(quantity)}
+                            · ${formatCustomerCurrency(price)} each
+                        </div>
+                        ${note ? `<p class="order-form-item-note">Note: ${escapeHtml(note)}</p>` : ''}
+                    </article>
+                `;
+            }).join('')}
+        </div>
+    `;
+
+    const total = cart.reduce(
+        (sum, item) =>
+            sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
+        0
+    );
+
+    totalElement.innerHTML = formatCustomerCurrency(total);
+}
+
+function updateOrderFormFields() {
+    const type = document.getElementById('orderType')?.value || 'dine-in';
+    const tableField = document.getElementById('orderTableField');
+    const addressField = document.getElementById('orderAddressField');
+    const tableInput = document.getElementById('orderTableNumber');
+    const addressInput = document.getElementById('orderCustomerAddress');
+
+    const isDineIn = type === 'dine-in';
+    const needsAddress = type === 'delivery';
+
+    if (tableField) tableField.hidden = !isDineIn;
+    if (tableInput) tableInput.required = isDineIn;
+
+    if (addressField) addressField.hidden = !needsAddress;
+    if (addressInput) addressInput.required = needsAddress;
+}
+
+function setupOrderFormEvents() {
+    const form = document.getElementById('customerOrderForm');
+
+    if (!form || form.dataset.orderFormReady === 'true') return;
+    form.dataset.orderFormReady = 'true';
+
+    document.getElementById('orderType')?.addEventListener(
+        'change',
+        () => {
+            updateOrderFormFields();
+            const message = document.getElementById('orderFormMessage');
+            if (message) message.textContent = '';
+        }
+    );
+
+    form.addEventListener('input', () => {
+        const message = document.getElementById('orderFormMessage');
+        if (message) message.textContent = '';
+    });
+
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+
+        const message = document.getElementById('orderFormMessage');
+
+        if (!cart.length) {
+            if (message) message.textContent = 'Your cart is empty. Add items before continuing.';
+            return;
+        }
+
+        updateOrderFormFields();
+
+        if (!form.reportValidity()) return;
+
+        const phone = document.getElementById('orderCustomerPhone')?.value.trim() || '';
+
+        if (!/^[+\d][\d\s()+.-]{5,29}$/.test(phone)) {
+            const phoneInput = document.getElementById('orderCustomerPhone');
+            phoneInput?.setCustomValidity('Enter a valid phone number.');
+            phoneInput?.reportValidity();
+            phoneInput?.addEventListener('input', () => phoneInput.setCustomValidity(''), { once: true });
+            return;
+        }
+
+        closeOrderFormModal();
+        openPaymentModal();
+    });
+}
+
+function openOrderFormModal() {
+    if (!cart.length) return;
+
+    setupOrderFormEvents();
+    renderOrderFormSummary();
+    updateOrderFormFields();
+
+    const modal = document.getElementById('orderFormModal');
+    const message = document.getElementById('orderFormMessage');
+
+    if (message) message.textContent = '';
+
+    if (modal) {
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+}
+
+function closeOrderFormModal() {
+    const modal = document.getElementById('orderFormModal');
+
+    if (modal) {
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+}
 function openPaymentModal() {
 
     const paymentModal =
@@ -4321,6 +4471,50 @@ function closePaymentModal() {
 /* ==========================================================================
    PAYMENT SETUP
    ========================================================================== */
+
+async function loadCustomerTelebirrSetting() {
+    const orderNowButton = document.getElementById('orderNowButton');
+    const paymentButton = document.querySelector('.payment');
+    const telebirrOption = document.querySelector(
+        '.payment-option[data-method="Telebirr"]'
+    );
+
+    if (orderNowButton) orderNowButton.hidden = false;
+    if (paymentButton) paymentButton.hidden = true;
+    if (telebirrOption) telebirrOption.hidden = true;
+
+    if (!CAFE_SLUG) return;
+
+    try {
+        const response = await fetch(
+            `${API_BASE}/api/public/payment-settings/${encodeURIComponent(CAFE_SLUG)}`,
+            { method: 'GET', cache: 'no-store' }
+        );
+
+        if (!response.ok) {
+            if (orderNowButton) orderNowButton.hidden = false;
+            return;
+        }
+
+        const data = await response.json();
+
+        if (orderNowButton) {
+            orderNowButton.hidden = data?.ok === false || data?.order_now_enabled === false;
+        }
+
+        const enabled =
+            data?.ok === true &&
+            data?.telebirr_enabled === true;
+
+        if (paymentButton) paymentButton.hidden = !enabled;
+        if (telebirrOption) telebirrOption.hidden = !enabled;
+    } catch (error) {
+        console.error(
+            '[payment-settings] Unable to load café setting:',
+            error
+        );
+    }
+}
 
 function setupPayment() {
 
@@ -4740,6 +4934,7 @@ window.addEventListener(
         setupCustomerLanguageSelector();
 
         setupPayment();
+        loadCustomerTelebirrSetting();
 
         setupCartButton();
 
@@ -4760,11 +4955,11 @@ window.addEventListener(
  * Every 15 seconds:
  *
  * Admin changes menu
- *        →
+ *        â†’
  * Server saves it
- *        →
+ *        â†’
  * Customer automatically requests latest data
- *        →
+ *        â†’
  * Menu/profile/day-special updates
  *
  * The cart is NOT touched.

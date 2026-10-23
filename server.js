@@ -329,6 +329,26 @@ async function ensureDatabaseStructure() {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS restaurant_payment_settings (
+        id SERIAL PRIMARY KEY,
+        restaurant_id INTEGER NOT NULL UNIQUE
+          REFERENCES restaurants(id) ON DELETE CASCADE,
+        telebirr_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        order_now_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        merchant_name TEXT NOT NULL DEFAULT '',
+        merchant_code TEXT NOT NULL DEFAULT '',
+        merchant_app_id TEXT NOT NULL DEFAULT '',
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      ALTER TABLE restaurant_payment_settings
+      ADD COLUMN IF NOT EXISTS order_now_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      ADD COLUMN IF NOT EXISTS super_admin_order_now_enabled BOOLEAN NOT NULL DEFAULT TRUE
+    `);
+
+    await pool.query(`
       ALTER TABLE restaurant_profiles
       ADD COLUMN IF NOT EXISTS logo TEXT NOT NULL DEFAULT ''
     `);
@@ -1542,6 +1562,179 @@ app.put(
 );
 
 
+
+/* ================================================================
+   RESTAURANT TELEBIRR SETTINGS
+   ================================================================ */
+
+app.get(
+  '/api/admin/payment-settings/:slug',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const { slug } = req.params;
+
+      const restaurantResult = await pool.query(`
+        SELECT id, name, slug, status
+        FROM restaurants
+        WHERE slug = $1
+        LIMIT 1
+      `, [slug]);
+
+      if (restaurantResult.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Restaurant not found.'
+        });
+      }
+
+      const restaurant = restaurantResult.rows[0];
+
+      if (
+        req.user.role === 'cafe_admin' &&
+        Number(req.user.restaurant_id) !== Number(restaurant.id)
+      ) {
+        return res.status(403).json({
+          ok: false,
+          message: 'You can only manage your own restaurant payment settings.'
+        });
+      }
+
+      const settingsResult = await pool.query(`
+        SELECT telebirr_enabled, order_now_enabled, merchant_name, merchant_code,
+               merchant_app_id, updated_at
+        FROM restaurant_payment_settings
+        WHERE restaurant_id = $1
+        LIMIT 1
+      `, [restaurant.id]);
+
+      return res.json({
+        ok: true,
+        restaurant: {
+          id: restaurant.id,
+          name: restaurant.name,
+          slug: restaurant.slug
+        },
+        settings: settingsResult.rows[0] || {
+          telebirr_enabled: false,
+          order_now_enabled: true,
+          merchant_name: '',
+          merchant_code: '',
+          merchant_app_id: ''
+        }
+      });
+    } catch (error) {
+      console.error('[payment-settings:get] Error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to load payment settings.'
+      });
+    }
+  }
+);
+
+app.put(
+  '/api/admin/payment-settings/:slug',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const {
+        telebirr_enabled = false,
+        order_now_enabled = true,
+        merchant_name = '',
+        merchant_code = '',
+        merchant_app_id = ''
+      } = req.body || {};
+
+      const restaurantResult = await pool.query(`
+        SELECT id, name, slug, status
+        FROM restaurants
+        WHERE slug = $1
+        LIMIT 1
+      `, [slug]);
+
+      if (restaurantResult.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Restaurant not found.'
+        });
+      }
+
+      const restaurant = restaurantResult.rows[0];
+
+      if (
+        req.user.role === 'cafe_admin' &&
+        Number(req.user.restaurant_id) !== Number(restaurant.id)
+      ) {
+        return res.status(403).json({
+          ok: false,
+          message: 'You can only manage your own restaurant payment settings.'
+        });
+      }
+
+      if (
+        restaurant.status !== 'active' &&
+        !isSuperAdminRole(req.user.role)
+      ) {
+        return res.status(403).json({
+          ok: false,
+          message: 'This restaurant is disabled.'
+        });
+      }
+
+      if (
+        typeof telebirr_enabled !== 'boolean' ||
+        typeof order_now_enabled !== 'boolean' ||
+        typeof merchant_name !== 'string' ||
+        typeof merchant_code !== 'string' ||
+        typeof merchant_app_id !== 'string' ||
+        merchant_name.length > 200 ||
+        merchant_code.length > 200 ||
+        merchant_app_id.length > 200
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid payment settings.'
+        });
+      }
+
+      await pool.query(`
+        INSERT INTO restaurant_payment_settings (
+          restaurant_id, telebirr_enabled, order_now_enabled, merchant_name,
+          merchant_code, merchant_app_id, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT (restaurant_id)
+        DO UPDATE SET
+          telebirr_enabled = EXCLUDED.telebirr_enabled,
+          order_now_enabled = EXCLUDED.order_now_enabled,
+          merchant_name = EXCLUDED.merchant_name,
+          merchant_code = EXCLUDED.merchant_code,
+          merchant_app_id = EXCLUDED.merchant_app_id,
+          updated_at = NOW()
+      `, [
+        restaurant.id,
+        telebirr_enabled,
+        order_now_enabled,
+        merchant_name.trim(),
+        merchant_code.trim(),
+        merchant_app_id.trim()
+      ]);
+
+      return res.json({
+        ok: true,
+        message: 'Payment settings saved.'
+      });
+    } catch (error) {
+      console.error('[payment-settings:update] Error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to save payment settings.'
+      });
+    }
+  }
+);
 /* ================================================================
    PUBLIC MENU
    ================================================================ */
@@ -1558,6 +1751,51 @@ app.put(
    - Loads restaurant + menu + contact information
    - Logo is served separately
    ================================================================ */
+
+app.get('/api/public/payment-settings/:slug', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+
+  try {
+    const restaurantResult = await pool.query(`
+      SELECT id
+      FROM restaurants
+      WHERE slug = $1
+      LIMIT 1
+    `, [req.params.slug]);
+
+    if (restaurantResult.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        telebirr_enabled: false,
+        order_now_enabled: false
+      });
+    }
+
+    const settingsResult = await pool.query(`
+      SELECT telebirr_enabled, order_now_enabled, super_admin_order_now_enabled
+      FROM restaurant_payment_settings
+      WHERE restaurant_id = $1
+      LIMIT 1
+    `, [restaurantResult.rows[0].id]);
+
+    return res.json({
+      ok: true,
+      telebirr_enabled:
+        settingsResult.rows[0]?.telebirr_enabled === true,
+      order_now_enabled:
+        settingsResult.rows.length === 0 ||
+        (settingsResult.rows[0]?.order_now_enabled !== false &&
+        settingsResult.rows[0]?.super_admin_order_now_enabled !== false)
+    });
+  } catch (error) {
+    console.error('[public-payment-settings] Error:', error);
+    return res.status(500).json({
+      ok: false,
+      telebirr_enabled: false,
+      order_now_enabled: false
+    });
+  }
+});
 
 app.get('/api/menu/:slug', async (req, res) => {
   try {
@@ -2185,28 +2423,10 @@ app.post(
         });
       }
 
-      const merchantAccount =
-        process.env.TELEBIRR_MERCHANT_ACCOUNT;
-
-      if (!merchantAccount) {
-        return res.status(503).json({
-          ok: false,
-          message: 'Telebirr payment is not configured yet.'
-        });
-      }
-
-      const paymentId =
-        `TB-${Date.now()}-${Math.random()
-          .toString(36)
-          .slice(2, 10)
-          .toUpperCase()}`;
-
-      return res.json({
-        ok: true,
-        paymentId,
-        amount: numericAmount,
-        merchantAccount,
-        message: 'Payment request created.'
+      return res.status(503).json({
+        ok: false,
+        code: 'TELEBIRR_CHECKOUT_NOT_CONFIGURED',
+        message: 'Online Telebirr checkout is not connected yet. Merchant API access and server integration are required.'
       });
 
     } catch (error) {
@@ -2540,7 +2760,13 @@ app.get(
           status,
           menu_expires_at,
           menu_expires_at - (NOW() AT TIME ZONE 'UTC')::date
-            AS menu_days_remaining
+            AS menu_days_remaining,
+          COALESCE((
+            SELECT rps.super_admin_order_now_enabled
+            FROM restaurant_payment_settings rps
+            WHERE rps.restaurant_id = restaurants.id
+            LIMIT 1
+          ), TRUE) AS super_admin_order_now_enabled
         FROM restaurants
         ORDER BY id ASC
       `);
@@ -2571,6 +2797,74 @@ app.get(
       return res.status(500).json({
         ok: false,
         message: error.message
+      });
+    }
+  }
+);
+
+app.put(
+  '/api/owner/restaurants/:id/self-ordering',
+  requireOwner,
+  async (req, res) => {
+    if (!isSuperAdminRole(req.user.role)) {
+      return res.status(403).json({
+        ok: false,
+        message: 'Super admin access required.'
+      });
+    }
+
+    const restaurantId = Number(req.params.id);
+    const enabled = req.body?.enabled;
+
+    if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Invalid restaurant ID.'
+      });
+    }
+
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({
+        ok: false,
+        message: 'enabled must be a boolean.'
+      });
+    }
+
+    try {
+      const restaurantResult = await pool.query(
+        'SELECT id FROM restaurants WHERE id = $1 LIMIT 1',
+        [restaurantId]
+      );
+
+      if (restaurantResult.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Restaurant not found.'
+        });
+      }
+
+      await pool.query(`
+        INSERT INTO restaurant_payment_settings (
+          restaurant_id,
+          super_admin_order_now_enabled
+        )
+        VALUES ($1, $2)
+        ON CONFLICT (restaurant_id)
+        DO UPDATE SET
+          super_admin_order_now_enabled = EXCLUDED.super_admin_order_now_enabled,
+          updated_at = NOW()
+      `, [restaurantId, enabled]);
+
+      return res.json({
+        ok: true,
+        restaurant_id: restaurantId,
+        super_admin_order_now_enabled: enabled
+      });
+    } catch (error) {
+      console.error('[owner:self-ordering] Error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Could not update self-ordering setting.'
       });
     }
   }
