@@ -2288,6 +2288,33 @@ app.post(
         });
       }
 
+
+      // Prevent an accidental empty save from erasing an existing menu.
+      if (Object.keys(menu).length === 0) {
+        const existingMenuResult = await pool.query(`
+          SELECT menu
+          FROM menu_data
+          WHERE restaurant_id = $1
+          LIMIT 1
+        `, [restaurant.id]);
+
+        const existingMenu =
+          existingMenuResult.rows[0]?.menu;
+
+        if (
+          existingMenu &&
+          typeof existingMenu === 'object' &&
+          !Array.isArray(existingMenu) &&
+          Object.keys(existingMenu).length > 0
+        ) {
+          return res.status(409).json({
+            ok: false,
+            message:
+              'Empty menu save blocked because this restaurant already has menu data. Reload the menu and try again.'
+          });
+        }
+      }
+
       await pool.query(`
         INSERT INTO menu_data (
           id,
