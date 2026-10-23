@@ -6029,3 +6029,246 @@ label:has(#ownerShowAdminPassword) {
         padding: 15px;
     }
 }
+
+/* Professional Appearance History modal */
+#restaurantAppearanceHistory > div {
+    border: 1px solid rgba(138, 100, 41, 0.18);
+}
+
+#restaurantAppearanceHistory h3 {
+    color: var(--espresso-950, #392719);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 23px;
+    letter-spacing: -0.02em;
+}
+
+.appearance-history-list {
+    padding: 18px 20px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 100px;
+    max-height: calc(85vh - 155px);
+    background: #fbfaf8;
+    overscroll-behavior: contain;
+}
+
+.appearance-history-list > div {
+    padding: 16px !important;
+    margin: 0 0 12px !important;
+    border: 1px solid #e8e0d5 !important;
+    border-radius: 12px !important;
+    background: #fff !important;
+    box-shadow: 0 3px 12px rgba(57, 39, 25, 0.045);
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.appearance-history-list > div:hover {
+    border-color: #cbb28b !important;
+    box-shadow: 0 6px 18px rgba(57, 39, 25, 0.08);
+}
+
+.appearance-history-list button {
+    min-height: 38px;
+    padding: 9px 14px !important;
+    border-radius: 8px !important;
+    font-size: 12px;
+    font-weight: 700;
+    transition: background 160ms ease, transform 160ms ease, opacity 160ms ease;
+}
+
+.appearance-history-list button:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.appearance-history-list button:focus-visible,
+.appearance-history-footer button:focus-visible {
+    outline: 3px solid rgba(169, 99, 39, 0.32);
+    outline-offset: 2px;
+}
+
+.appearance-history-list button:disabled,
+.appearance-history-footer button:disabled {
+    cursor: wait !important;
+    opacity: 0.65;
+    transform: none;
+}
+
+.appearance-history-list button.is-loading,
+.appearance-history-footer button.is-loading {
+    cursor: progress !important;
+    filter: saturate(0.75);
+}
+
+.appearance-history-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 20px;
+    border-top: 1px solid #e9e1d6;
+    background: #fff;
+}
+
+.appearance-history-footer-note {
+    color: #786d60;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.appearance-history-clear-btn {
+    min-height: 40px;
+    padding: 10px 16px;
+    border: 1px solid #a6342d;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #b94238, #922c26);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(166, 52, 45, 0.16);
+    transition: filter 160ms ease, transform 160ms ease;
+}
+
+.appearance-history-clear-btn:hover:not(:disabled) {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+}
+
+@media (max-width: 520px) {
+    #restaurantAppearanceHistory {
+        padding: 10px !important;
+    }
+
+    #restaurantAppearanceHistory > div {
+        max-height: 92vh !important;
+    }
+
+    .appearance-history-list {
+        padding: 12px;
+        max-height: calc(92vh - 175px);
+    }
+
+    .appearance-history-footer {
+        align-items: stretch;
+        padding: 12px;
+    }
+
+    .appearance-history-footer-note {
+        flex-basis: 100%;
+    }
+
+    .appearance-history-clear-btn {
+        width: 100%;
+    }
+}
+
+/* Appearance History confirmation dialog */
+.appearance-history-confirm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+    background: rgba(22, 12, 8, .74);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.appearance-history-confirm-dialog {
+    width: 100%;
+    max-width: 440px;
+    padding: 28px;
+    box-sizing: border-box;
+    border: 1px solid var(--gold-500, #c49642);
+    border-radius: 18px;
+    background: var(--cream-50, #fffdf9);
+    color: var(--espresso-950, #160c08);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
+}
+
+.appearance-history-confirm-icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    margin-bottom: 18px;
+    border: 1px solid var(--gold-500, #c49642);
+    border-radius: 50%;
+    background: var(--cream-150, #f8f2ea);
+    color: var(--espresso-800, #351d12);
+    font-size: 23px;
+    font-weight: 800;
+}
+
+.appearance-history-confirm-dialog h2 {
+    margin: 0 0 12px;
+    color: var(--espresso-950, #160c08);
+    font-size: 22px;
+    line-height: 1.35;
+}
+
+.appearance-history-confirm-dialog p {
+    margin: 0;
+    color: var(--espresso-700, #492918);
+    font-size: 14px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.appearance-history-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 26px;
+}
+
+.appearance-history-confirm-actions button {
+    min-height: 43px;
+    padding: 11px 16px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.appearance-history-confirm-cancel {
+    border-color: var(--cream-300, #e5d9ca) !important;
+    background: #fff !important;
+    color: var(--espresso-800, #351d12) !important;
+}
+
+.appearance-history-confirm-submit {
+    background: var(--gold-400, #d9b66b);
+    color: var(--espresso-950, #160c08);
+}
+
+.appearance-history-confirm-submit.is-danger {
+    background: #a92e28;
+    color: #fff;
+}
+
+.appearance-history-confirm-actions button:focus-visible {
+    outline: 3px solid var(--gold-600, #a8792e);
+    outline-offset: 3px;
+}
+
+@media (max-width: 520px) {
+    .appearance-history-confirm-dialog {
+        padding: 22px;
+    }
+
+    .appearance-history-confirm-actions {
+        flex-direction: column-reverse;
+    }
+
+    .appearance-history-confirm-actions button {
+        width: 100%;
+    }
+}

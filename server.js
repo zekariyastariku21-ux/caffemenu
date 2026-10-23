@@ -3724,6 +3724,152 @@ app.put(
   }
 );
 
+app.get(
+  '/api/owner/restaurants/:id/appearance/history',
+  requireOwner,
+  async (req, res) => {
+    try {
+      const restaurantId = Number(req.params.id);
+
+      if (
+        !Number.isInteger(restaurantId) ||
+        restaurantId <= 0
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid restaurant ID.'
+        });
+      }
+
+      const restaurant = await pool.query(
+        `SELECT id FROM restaurants WHERE id = $1 LIMIT 1`,
+        [restaurantId]
+      );
+
+      if (restaurant.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Restaurant not found.'
+        });
+      }
+
+      const result = await pool.query(`
+        SELECT
+          id,
+          appearance,
+          created_at
+        FROM restaurant_appearance_history
+        WHERE restaurant_id = $1
+        ORDER BY created_at DESC, id DESC
+        LIMIT 100
+      `, [restaurantId]);
+
+      return res.json({
+        ok: true,
+        history: result.rows
+      });
+    } catch (error) {
+      console.error(
+        '[owner:restaurant:appearance:history] Error:',
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to load appearance history.'
+      });
+    }
+  }
+);
+
+
+app.delete(
+  '/api/owner/restaurants/:id/appearance/history/:historyId',
+  requireOwner,
+  async (req, res) => {
+    try {
+      const restaurantId = Number(req.params.id);
+      const historyId = Number(req.params.historyId);
+
+      if (
+        !Number.isInteger(restaurantId) || restaurantId <= 0 ||
+        !Number.isInteger(historyId) || historyId <= 0
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid restaurant or history ID.'
+        });
+      }
+
+      const result = await pool.query(`
+        DELETE FROM restaurant_appearance_history
+        WHERE restaurant_id = $1 AND id = $2
+        RETURNING id
+      `, [restaurantId, historyId]);
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'History snapshot not found for this restaurant.'
+        });
+      }
+
+      return res.json({ ok: true, deletedId: result.rows[0].id });
+    } catch (error) {
+      console.error('[owner:appearance:history:delete] Error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to delete appearance history snapshot.'
+      });
+    }
+  }
+);
+
+app.delete(
+  '/api/owner/restaurants/:id/appearance/history',
+  requireOwner,
+  async (req, res) => {
+    try {
+      const restaurantId = Number(req.params.id);
+
+      if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid restaurant ID.'
+        });
+      }
+
+      const restaurant = await pool.query(
+        'SELECT id FROM restaurants WHERE id = $1 LIMIT 1',
+        [restaurantId]
+      );
+
+      if (restaurant.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Restaurant not found.'
+        });
+      }
+
+      const result = await pool.query(`
+        DELETE FROM restaurant_appearance_history
+        WHERE restaurant_id = $1
+      `, [restaurantId]);
+
+      return res.json({
+        ok: true,
+        deletedCount: result.rowCount
+      });
+    } catch (error) {
+      console.error('[owner:appearance:history:clear] Error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to clear appearance history.'
+      });
+    }
+  }
+);
+
 app.delete(
   '/api/owner/restaurants/:id/appearance',
   requireOwner,

@@ -9009,6 +9009,100 @@ function confirmDeleteCompanyContent(itemLabel) {
     });
 }
 
+function confirmAppearanceHistoryAction({
+    title,
+    message,
+    confirmLabel,
+    danger = false
+}) {
+    const previousFocus = document.activeElement;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'appearance-history-confirm-backdrop';
+
+    backdrop.innerHTML = `
+        <section class="appearance-history-confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="appearanceHistoryConfirmTitle"
+            aria-describedby="appearanceHistoryConfirmMessage"
+            tabindex="-1">
+            <div class="appearance-history-confirm-icon" aria-hidden="true">!</div>
+            <h2 id="appearanceHistoryConfirmTitle"></h2>
+            <p id="appearanceHistoryConfirmMessage"></p>
+            <div class="appearance-history-confirm-actions">
+                <button type="button" class="appearance-history-confirm-cancel">Cancel</button>
+                <button type="button" class="appearance-history-confirm-submit"></button>
+            </div>
+        </section>`;
+
+    const dialog = backdrop.querySelector('.appearance-history-confirm-dialog');
+    const titleElement = backdrop.querySelector('#appearanceHistoryConfirmTitle');
+    const messageElement = backdrop.querySelector('#appearanceHistoryConfirmMessage');
+    const cancelButton = backdrop.querySelector('.appearance-history-confirm-cancel');
+    const confirmButton = backdrop.querySelector('.appearance-history-confirm-submit');
+
+    if (!dialog || !titleElement || !messageElement || !cancelButton || !confirmButton) {
+        throw new Error('Unable to create the appearance history confirmation dialog.');
+    }
+
+    titleElement.textContent = title;
+    messageElement.textContent = message;
+    confirmButton.textContent = confirmLabel;
+    confirmButton.classList.toggle('is-danger', danger);
+
+    document.body.appendChild(backdrop);
+
+    return new Promise(resolve => {
+        let finished = false;
+
+        const finish = confirmed => {
+            if (finished) return;
+            finished = true;
+            document.removeEventListener('keydown', handleDialogKeydown);
+            backdrop.remove();
+
+            if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+                previousFocus.focus();
+            }
+
+            resolve(confirmed);
+        };
+
+        const handleDialogKeydown = event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                finish(false);
+                return;
+            }
+
+            if (event.key !== 'Tab') return;
+
+            const focusable = [cancelButton, confirmButton];
+            const index = focusable.indexOf(document.activeElement);
+
+            if (index === -1) {
+                event.preventDefault();
+                cancelButton.focus();
+            } else if (event.shiftKey && index === 0) {
+                event.preventDefault();
+                confirmButton.focus();
+            } else if (!event.shiftKey && index === 1) {
+                event.preventDefault();
+                cancelButton.focus();
+            }
+        };
+
+        cancelButton.addEventListener('click', () => finish(false), { once: true });
+        confirmButton.addEventListener('click', () => finish(true), { once: true });
+
+        backdrop.addEventListener('click', event => {
+            if (event.target === backdrop) finish(false);
+        });
+
+        document.addEventListener('keydown', handleDialogKeydown);
+        cancelButton.focus();
+    });
+}
 async function loadCompanySettings() {
 
     try {
@@ -11471,6 +11565,13 @@ async function openRestaurantAppearance(
                         '">Save Appearance</button>' +
 
                     '<button type="button" ' +
+                        'id="showRestaurantAppearanceHistoryBtn" ' +
+                        'class="restaurant-action-btn" ' +
+                        'data-restaurant-id="' +
+                        restaurantId +
+                        '">History</button>' +
+
+                    '<button type="button" ' +
                         'id="clearRestaurantAppearanceBtn" ' +
                         'class="restaurant-action-btn" ' +
                         'data-restaurant-id="' +
@@ -11478,6 +11579,25 @@ async function openRestaurantAppearance(
                         '">Clear All</button>' +
 
                 '</div>' +
+
+            '<div id="restaurantAppearanceHistory" ' +
+                'data-restaurant-id="' + restaurantId + '" ' +
+                'style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.62); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">' +
+                '<div style="background:#fff; color:#222; width:100%; max-width:760px; max-height:85vh; overflow:hidden; border-radius:14px; box-shadow:0 15px 50px rgba(0,0,0,.3); display:flex; flex-direction:column;">' +
+                    '<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 20px; border-bottom:1px solid #eee;">' +
+                        '<h3 style="margin:0;">Appearance History</h3>' +
+
+                        '<button type="button" id="closeRestaurantAppearanceHistoryBtn" aria-label="Close history" style="border:0; background:#f1f1f1; border-radius:8px; width:38px; height:38px; font-size:25px; cursor:pointer; flex-shrink:0;">&times;</button>' +
+                    '</div>' +
+                    '<div id="restaurantAppearanceHistoryList" class="appearance-history-list">' +
+                        'Open History to load saved appearances.' +
+                    '</div>' +
+                    '<div class="appearance-history-footer">' +
+                        '<span class="appearance-history-footer-note">Deleting history cannot be undone.</span>' +
+                        '<button type="button" id="clearAllRestaurantAppearanceHistoryBtn" class="appearance-history-clear-btn">Clear All History</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
 
             '</div>'
         );
@@ -11817,6 +11937,492 @@ function setupOwnerActionPanelEvents() {
                 return;
             }
 
+
+            const closeAppearanceHistoryButton =
+                event.target.closest('#closeRestaurantAppearanceHistoryBtn');
+
+            if (closeAppearanceHistoryButton) {
+                const historyPanel = document.getElementById(
+                    'restaurantAppearanceHistory'
+                );
+                if (historyPanel) {
+                    historyPanel.style.display = 'none';
+                }
+                return;
+            }
+
+            const showAppearanceHistoryButton =
+                event.target.closest(
+                    '#showRestaurantAppearanceHistoryBtn'
+                );
+
+            if (showAppearanceHistoryButton) {
+                const restaurantId =
+                    showAppearanceHistoryButton.dataset.restaurantId;
+
+                const historyPanel =
+                    document.getElementById(
+                        'restaurantAppearanceHistory'
+                    );
+
+                const historyList =
+                    document.getElementById(
+                        'restaurantAppearanceHistoryList'
+                    );
+
+                if (!restaurantId || !historyPanel || !historyList) {
+                    return;
+                }
+
+                if (historyPanel.style.display !== 'none') {
+                    historyPanel.style.display = 'none';
+                    return;
+                }
+
+                historyPanel.style.display = 'flex';
+                historyList.textContent = 'Loading saved appearances...';
+                showAppearanceHistoryButton.disabled = true;
+
+                try {
+                    const token = getAdminToken();
+
+                    const response = await fetch(
+                        `/api/owner/restaurants/${restaurantId}/appearance/history`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                                Accept: 'application/json'
+                            },
+                            credentials: 'same-origin'
+                        }
+                    );
+
+                    const data = await readOwnerApiResponse(response);
+                    historyList.replaceChildren();
+
+                    if (!Array.isArray(data.history) || data.history.length === 0) {
+                        historyList.textContent =
+                            'No saved appearance history is available yet.';
+                    } else {
+                        data.history.forEach((snapshot) => {
+                            const entry = document.createElement('div');
+                            entry.style.cssText =
+                                'display:flex;align-items:center;' +
+                                'justify-content:space-between;gap:12px;' +
+                                'padding:12px;margin:8px 0;' +
+                                'border:1px solid #ddd;border-radius:8px;';
+
+                                                        entry.style.cssText =
+                                'padding:14px;margin:12px 0;' +
+                                'border:1px solid #ddd;border-radius:10px;' +
+                                'background:#fff;';
+
+                            const details = document.createElement('div');
+                            details.style.cssText =
+                                'display:flex;flex-direction:column;gap:10px;width:100%;';
+
+                            const heading = document.createElement('div');
+                            heading.style.cssText =
+                                'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;';
+
+                            const headingGroup = document.createElement('div');
+                            const date = document.createElement('strong');
+                            date.textContent = new Date(snapshot.created_at).toLocaleString();
+
+                            const description = document.createElement('div');
+                            description.textContent = `Saved appearance #${snapshot.id}`;
+                            description.style.cssText = 'font-size:13px;color:#666;margin-top:4px;';
+
+                            headingGroup.append(date, description);
+                            const previewButton = document.createElement('button');
+                            previewButton.type = 'button';
+                            previewButton.textContent = 'Preview';
+                            previewButton.style.cssText =
+                                'border:1px solid #ccc;background:#fff;color:#333;' +
+                                'border-radius:7px;padding:9px 12px;cursor:pointer;';
+
+                            heading.append(headingGroup, previewButton);
+                            details.appendChild(heading);
+
+
+                            const previewTitle = document.createElement('strong');
+                            previewTitle.textContent = 'Saved appearance settings';
+                            previewTitle.hidden = true;
+                            previewTitle.style.cssText = 'font-size:13px;';
+                            details.appendChild(previewTitle);
+
+                            const previewGrid = document.createElement('div');
+                            previewGrid.style.cssText =
+                                'display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;';
+                            previewGrid.hidden = true;
+                            previewGrid.style.display = 'none';
+
+                            const appearance =
+                                snapshot.appearance &&
+                                typeof snapshot.appearance === 'object'
+                                    ? snapshot.appearance
+                                    : {};
+
+                            Object.entries(appearance).forEach(([key, rawValue]) => {
+                                const value = rawValue == null ? '' : String(rawValue);
+
+                                const field = document.createElement('div');
+                                field.style.cssText =
+                                    'display:flex;align-items:center;gap:9px;' +
+                                    'padding:8px;border:1px solid #eee;' +
+                                    'border-radius:7px;min-width:0;';
+
+                                const swatch = document.createElement('span');
+                                swatch.style.cssText =
+                                    'display:inline-block;width:34px;height:34px;' +
+                                    'flex-shrink:0;border:1px solid #ccc;' +
+                                    'border-radius:6px;background:#f5f5f5;';
+
+                                if (/^(linear|radial|conic)-gradient\(/i.test(value)) {
+                                    swatch.style.background = value;
+                                } else if (
+                                    value &&
+                                    typeof CSS !== 'undefined' &&
+                                    CSS.supports('color', value)
+                                ) {
+                                    swatch.style.backgroundColor = value;
+                                } else {
+                                    swatch.textContent = '—';
+                                    swatch.style.display = 'flex';
+                                    swatch.style.alignItems = 'center';
+                                    swatch.style.justifyContent = 'center';
+                                    swatch.style.fontSize = '11px';
+                                }
+
+                                const textGroup = document.createElement('div');
+                                textGroup.style.cssText =
+                                    'display:flex;flex-direction:column;gap:3px;min-width:0;';
+
+                                const label = document.createElement('span');
+                                label.textContent = key.replace(/_/g, ' ');
+                                label.style.cssText =
+                                    'font-size:12px;font-weight:600;text-transform:capitalize;';
+
+                                const valueText = document.createElement('span');
+                                valueText.textContent = value || '(empty)';
+                                valueText.style.cssText =
+                                    'font-size:12px;color:#555;overflow-wrap:anywhere;';
+
+                                textGroup.append(label, valueText);
+                                field.append(swatch, textGroup);
+                                previewGrid.appendChild(field);
+                            });
+
+                            if (previewGrid.childElementCount === 0) {
+                                previewGrid.textContent =
+                                    'This snapshot contains no appearance fields.';
+                            }
+
+                            details.appendChild(previewGrid);
+
+                            const actions = document.createElement('div');
+                            actions.hidden = true;
+                            actions.style.cssText =
+                                'display:flex;justify-content:flex-end;gap:8px;' +
+                                'flex-wrap:wrap;margin-top:8px;';
+                            actions.style.display = 'none';
+
+                            const restoreButton = document.createElement('button');
+                            restoreButton.type = 'button';
+                            restoreButton.className = 'restaurant-action-btn';
+                            restoreButton.textContent = 'Restore';
+                            restoreButton.dataset.appearanceHistoryRestore = String(snapshot.id);
+                            restoreButton.dataset.restaurantId = String(restaurantId);
+
+                            const deleteButton = document.createElement('button');
+                            deleteButton.type = 'button';
+                            deleteButton.textContent = 'Delete';
+                            deleteButton.dataset.appearanceHistoryDelete = String(snapshot.id);
+                            deleteButton.dataset.restaurantId = String(restaurantId);
+                            deleteButton.style.cssText =
+                                'border:0;background:#b42318;color:#fff;' +
+                                'border-radius:7px;padding:9px 12px;cursor:pointer;';
+
+                            previewButton.addEventListener('click', () => {
+                                const expanded = previewGrid.style.display === 'none';
+
+                                previewTitle.hidden = !expanded;
+                                previewGrid.style.display = expanded ? 'grid' : 'none';
+                                actions.style.display = expanded ? 'flex' : 'none';
+                                previewButton.textContent =
+                                    expanded ? 'Hide Preview' : 'Preview';
+                            });
+                            actions.append(restoreButton, deleteButton);
+                            details.appendChild(actions);
+                            entry.appendChild(details);
+                            historyList.appendChild(entry);
+                        });
+                    }
+                } catch (error) {
+                    console.error('[appearance:history]', error);
+                    historyList.textContent =
+                        error.message || 'Unable to load appearance history.';
+                } finally {
+                    showAppearanceHistoryButton.disabled = false;
+                }
+
+                return;
+            }
+
+                        const deleteAppearanceHistoryButton =
+                event.target.closest('[data-appearance-history-delete]');
+
+            if (deleteAppearanceHistoryButton) {
+                const restaurantId = deleteAppearanceHistoryButton.dataset.restaurantId;
+                const historyId = Number(
+                    deleteAppearanceHistoryButton.dataset.appearanceHistoryDelete
+                );
+
+                if (!restaurantId || !Number.isInteger(historyId) || historyId <= 0) {
+                    return;
+                }
+
+                const confirmed = await confirmAppearanceHistoryAction({
+                    title: 'Delete saved appearance?',
+                    message: `Snapshot #${historyId} will be permanently deleted. This action cannot be undone.`,
+                    confirmLabel: 'Delete snapshot',
+                    danger: true
+                });
+
+                if (!confirmed) return;
+
+                const originalDeleteText = deleteAppearanceHistoryButton.textContent;
+                deleteAppearanceHistoryButton.disabled = true;
+                deleteAppearanceHistoryButton.textContent = 'Deleting…';
+                deleteAppearanceHistoryButton.classList.add('is-loading');
+
+                try {
+                    const response = await fetch(
+                        `/api/owner/restaurants/${restaurantId}/appearance/history/${historyId}`,
+                        {
+                            method: 'DELETE',
+                            headers: {
+                                Authorization: `Bearer ${getAdminToken()}`,
+                                Accept: 'application/json'
+                            },
+                            credentials: 'same-origin'
+                        }
+                    );
+
+                    await readOwnerApiResponse(response);
+
+                    const historyPanel = document.getElementById(
+                        'restaurantAppearanceHistory'
+                    );
+                    const historyButton = document.getElementById(
+                        'showRestaurantAppearanceHistoryBtn'
+                    );
+
+                    if (historyPanel) historyPanel.style.display = 'none';
+                    if (historyButton) historyButton.click();
+                } catch (error) {
+                    console.error('[appearance:history:delete]', error);
+                    showOwnerNotification(
+                        'History snapshot could not be deleted',
+                        error.message || 'Unable to delete this snapshot.',
+                        'error'
+                    );
+                    deleteAppearanceHistoryButton.disabled = false;
+                    deleteAppearanceHistoryButton.textContent = originalDeleteText;
+                    deleteAppearanceHistoryButton.classList.remove('is-loading');
+                }
+
+                return;
+            }
+
+            const clearAllAppearanceHistoryButton =
+                event.target.closest('#clearAllRestaurantAppearanceHistoryBtn');
+
+            if (clearAllAppearanceHistoryButton) {
+                const historyPanel = document.getElementById(
+                    'restaurantAppearanceHistory'
+                );
+                const restaurantId = historyPanel?.dataset.restaurantId;
+
+                if (!restaurantId) return;
+
+                const confirmed = await confirmAppearanceHistoryAction({
+                    title: 'Clear all appearance history?',
+                    message: 'All saved appearance snapshots for this restaurant will be permanently deleted. The current appearance will not change.',
+                    confirmLabel: 'Clear all history',
+                    danger: true
+                });
+
+                if (!confirmed) return;
+
+                const originalClearText = clearAllAppearanceHistoryButton.textContent;
+                clearAllAppearanceHistoryButton.disabled = true;
+                clearAllAppearanceHistoryButton.textContent = 'Clearing…';
+                clearAllAppearanceHistoryButton.classList.add('is-loading');
+
+                try {
+                    const response = await fetch(
+                        `/api/owner/restaurants/${restaurantId}/appearance/history`,
+                        {
+                            method: 'DELETE',
+                            headers: {
+                                Authorization: `Bearer ${getAdminToken()}`,
+                                Accept: 'application/json'
+                            },
+                            credentials: 'same-origin'
+                        }
+                    );
+
+                    const result = await readOwnerApiResponse(response);
+
+                    showOwnerNotification(
+                        'Appearance history cleared',
+                        `Deleted ${result.deletedCount || 0} saved snapshot(s).`,
+                        'success'
+                    );
+
+                    const historyButton = document.getElementById(
+                        'showRestaurantAppearanceHistoryBtn'
+                    );
+
+                    if (historyPanel) historyPanel.style.display = 'none';
+                    if (historyButton) historyButton.click();
+                } catch (error) {
+                    console.error('[appearance:history:clear]', error);
+                    showOwnerNotification(
+                        'History could not be cleared',
+                        error.message || 'Unable to clear appearance history.',
+                        'error'
+                    );
+                } finally {
+                    clearAllAppearanceHistoryButton.disabled = false;
+                    clearAllAppearanceHistoryButton.textContent = originalClearText;
+                    clearAllAppearanceHistoryButton.classList.remove('is-loading');
+                }
+
+                return;
+            }
+
+            const restoreAppearanceHistoryButton =
+                event.target.closest('[data-appearance-history-restore]');
+
+            if (restoreAppearanceHistoryButton) {
+                const restaurantId =
+                    restoreAppearanceHistoryButton.dataset.restaurantId;
+
+                const historyId = Number(
+                    restoreAppearanceHistoryButton.dataset
+                        .appearanceHistoryRestore
+                );
+
+                if (
+                    !restaurantId ||
+                    !Number.isInteger(historyId) ||
+                    historyId <= 0
+                ) {
+                    return;
+                }
+
+                const confirmed = await confirmAppearanceHistoryAction({
+                    title: 'Restore this appearance?',
+                    message: 'This snapshot will replace the restaurant’s current appearance settings. The current appearance is retained in history.',
+                    confirmLabel: 'Restore appearance'
+                });
+
+                if (!confirmed) return;
+
+                const originalRestoreText = restoreAppearanceHistoryButton.textContent;
+                restoreAppearanceHistoryButton.disabled = true;
+                restoreAppearanceHistoryButton.textContent = 'Restoring…';
+                restoreAppearanceHistoryButton.classList.add('is-loading');
+
+                try {
+                    const token = getAdminToken();
+
+                    const historyResponse = await fetch(
+                        `/api/owner/restaurants/${restaurantId}/appearance/history`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                                Accept: 'application/json'
+                            },
+                            credentials: 'same-origin'
+                        }
+                    );
+
+                    const historyData =
+                        await readOwnerApiResponse(historyResponse);
+
+                    const snapshot = historyData.history?.find(
+                        item => Number(item.id) === historyId
+                    );
+
+                    if (!snapshot || !snapshot.appearance) {
+                        throw new Error(
+                            'The selected appearance snapshot was not found.'
+                        );
+                    }
+
+                    const saveResponse = await fetch(
+                        `/api/owner/restaurants/${restaurantId}/appearance`,
+                        {
+                            method: 'PUT',
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                                Accept: 'application/json'
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify(snapshot.appearance)
+                        }
+                    );
+
+                    const savedData =
+                        await readOwnerApiResponse(saveResponse);
+
+                    setRestaurantAppearanceFormValues({
+                        ...DEFAULT_APPEARANCE,
+                        ...(savedData.appearance || snapshot.appearance)
+                    });
+
+                    showOwnerNotification(
+                        'Appearance restored',
+                        'The saved appearance has been restored successfully.',
+                        'success'
+                    );
+
+                    // Reload the list so the newly created snapshot is visible.
+                    const historyButton = document.getElementById(
+                        'showRestaurantAppearanceHistoryBtn'
+                    );
+
+                    const historyPanel = document.getElementById(
+                        'restaurantAppearanceHistory'
+                    );
+
+                    if (historyButton && historyPanel) {
+                        historyPanel.style.display = 'none';
+                        historyButton.click();
+                    }
+                } catch (error) {
+                    console.error('[appearance:restore]', error);
+
+                    showOwnerNotification(
+                        'Appearance could not be restored',
+                        error.message ||
+                            'Unable to restore the selected appearance.',
+                        'error'
+                    );
+                } finally {
+                    restoreAppearanceHistoryButton.disabled = false;
+                    restoreAppearanceHistoryButton.textContent = originalRestoreText;
+                    restoreAppearanceHistoryButton.classList.remove('is-loading');
+                }
+
+                return;
+            }
 
             const clearAppearanceButton =
                 event.target.closest(
