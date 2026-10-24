@@ -5462,3 +5462,70 @@ html body {
         font-size: 16px;
     }
 }
+
+/* Premium mobile dropdown design - Order Now */
+#customerOrderForm #orderBranch,
+#customerOrderForm #orderType {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 54px;
+    box-sizing: border-box;
+    padding: 14px 46px 14px 16px;
+    border: 1px solid #ddc6af;
+    border-radius: 12px;
+    background-color: #fffaf4;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23a96327' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 19px;
+    color: #4a2f22;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.45;
+    box-shadow: 0 2px 5px rgba(74, 47, 34, 0.06);
+    cursor: pointer;
+    transition: border-color 160ms ease,
+                box-shadow 160ms ease,
+                background-color 160ms ease;
+}
+
+#customerOrderForm #orderBranch:focus,
+#customerOrderForm #orderType:focus {
+    outline: none;
+    border-color: #a96327;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(169, 99, 39, 0.15);
+}
+
+#customerOrderForm #orderBranch:invalid,
+#customerOrderForm #orderType:invalid {
+    color: #806b5b;
+}
+
+#customerOrderForm #orderBranch option,
+#customerOrderForm #orderType option {
+    background-color: #fffaf4;
+    color: #4a2f22;
+    font-size: 16px;
+}
+
+@media (max-width: 600px) {
+    #customerOrderForm #orderBranch,
+    #customerOrderForm #orderType {
+        min-height: 54px;
+        padding-left: 14px;
+        font-size: 16px;
+        border-radius: 12px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #customerOrderForm #orderBranch,
+    #customerOrderForm #orderType {
+        transition: none;
+    }
+}
