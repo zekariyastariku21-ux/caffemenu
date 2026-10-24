@@ -4452,19 +4452,13 @@ function openPaymentModal() {
 
 
 function closePaymentModal() {
-
-    const modal =
-        document.getElementById(
-            'paymentModal'
-        );
-
+    const modal = document.getElementById('paymentModal');
 
     if (modal) {
-
-        modal.classList.remove(
-            'show'
-        );
+        modal.classList.remove('show');
     }
+
+    openOrderFormModal();
 }
 
 
