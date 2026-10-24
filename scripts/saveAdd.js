@@ -2669,7 +2669,7 @@ function openCustomerDaySpecial() {
                     id="customerDaySpecialClose"
                     aria-label="Close"
                 >
-                    Ã—
+                    ×
                 </button>
 
 
@@ -2874,7 +2874,7 @@ function openCustomerDaySpecial() {
                     id="customerDaySpecialClose"
                     aria-label="Close"
                 >
-                    Ã—
+                    ×
                 </button>
 
             </div>
