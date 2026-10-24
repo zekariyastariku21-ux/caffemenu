@@ -2864,7 +2864,7 @@ function openCustomerDaySpecial() {
                     id="customerDaySpecialTitle"
                     class="customer-day-special-heading"
                 >
-                    âœ¨ TODAY'S SPECIALS âœ¨
+                    ✨ TODAY'S SPECIALS ✨
                 </h2>
 
 
@@ -2973,7 +2973,7 @@ function openCustomerDaySpecial() {
 
 
                     addButton.textContent =
-                        'âœ“ Added to Cart';
+                        '✓ Added to Cart';
 
                     addButton.disabled =
                         true;
@@ -3322,7 +3322,7 @@ function addToCart(
 
 
         button.textContent =
-            'âœ“ Added';
+            '✓ Added';
 
 
         button.disabled =
@@ -3492,7 +3492,7 @@ if (orderNowButton) {
                                                 data-name="${escapeAttribute(itemName)}"
                                                 aria-label="Add or edit note for ${escapeAttribute(itemName)}"
                                                 title="Add or edit item note"
-                                            >âœŽ</button>
+                                            >✎</button>
                                         </div>
                                         <span class="cart-item-unit-price">${formatCustomerCurrency(itemPrice)}</span>
                                         ${note ? `<span class="cart-item-note">(${escapeHtml(note)})</span>` : ''}
@@ -3526,7 +3526,7 @@ if (orderNowButton) {
                                         data-action="decrease"
                                         data-name="${escapeAttribute(itemName)}"
                                     >
-                                        -
+                                        −
                                     </button>
 
 
