@@ -2674,7 +2674,7 @@ function openCustomerDaySpecial() {
 
 
                 <div class="customer-day-special-empty-icon">
-                    âœ¨
+                    ✨
                 </div>
 
 
@@ -4312,6 +4312,46 @@ function updateOrderFormFields() {
     if (addressInput) addressInput.required = needsAddress;
 }
 
+async function loadCustomerOrderBranches() {
+    const select = document.getElementById('orderBranch');
+    if (!select || !CAFE_SLUG) return;
+
+    select.replaceChildren(new Option('Loading branches...', ''));
+
+    try {
+        const response = await fetch(
+            `${API_BASE}/api/public/payment-branches/${encodeURIComponent(CAFE_SLUG)}`,
+            { method: 'GET', cache: 'no-store' }
+        );
+
+        const data = await response.json();
+        if (!response.ok || data?.ok !== true) {
+            throw new Error(data?.message || 'Unable to load branches.');
+        }
+
+        select.replaceChildren(new Option('Choose a branch', ''));
+
+        const branches = Array.isArray(data.branches) ? data.branches : [];
+        if (branches.length === 0) {
+            select.replaceChildren(new Option('No branches available', ''));
+            return;
+        }
+
+        branches.forEach(branch => {
+            if (!branch || branch.id == null || !branch.name) return;
+            select.add(new Option(branch.name, String(branch.id)));
+        });
+
+        if (select.options.length === 1) {
+            select.replaceChildren(new Option('No branches available', ''));
+        }
+    } catch (error) {
+        console.error('[order-branches] Unable to load branches:', error);
+        select.replaceChildren(
+            new Option('Unable to load branches — reopen form to retry', '')
+        );
+    }
+}
 function setupOrderFormEvents() {
     const form = document.getElementById('customerOrderForm');
 
@@ -4365,6 +4405,7 @@ function openOrderFormModal() {
     if (!cart.length) return;
 
     setupOrderFormEvents();
+    loadCustomerOrderBranches();
     renderOrderFormSummary();
     updateOrderFormFields();
 
@@ -4949,11 +4990,11 @@ window.addEventListener(
  * Every 15 seconds:
  *
  * Admin changes menu
- *        â†’
+ *        →
  * Server saves it
- *        â†’
+ *        →
  * Customer automatically requests latest data
- *        â†’
+ *        →
  * Menu/profile/day-special updates
  *
  * The cart is NOT touched.

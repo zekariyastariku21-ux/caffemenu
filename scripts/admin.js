@@ -1,4 +1,4 @@
-/* ================================================================
+﻿/* ================================================================
    CAFFE MENU - CAFE ADMIN PANEL
    ================================================================ */
 
@@ -2832,35 +2832,38 @@ async function saveTelebirrSettings(event) {
     const form = document.getElementById('telebirrSettingsForm');
     const submitButton = form?.querySelector('[type="submit"]');
 
-    if (!currentRestaurant || !currentRestaurant.slug || !form) {
+    if (!currentRestaurant?.slug || !form) {
         if (message) message.textContent = 'Restaurant information is unavailable.';
         return;
     }
 
+    const branchId = form.dataset.branchId;
     const payload = {
         order_now_enabled: document.getElementById('orderNowEnabled').checked,
-        telebirr_enabled: false,
         merchant_name: document.getElementById('telebirrMerchantName').value.trim(),
         merchant_code: document.getElementById('telebirrMerchantCode').value.trim(),
         merchant_app_id: document.getElementById('telebirrMerchantAppId').value.trim()
     };
 
+    const url = branchId
+        ? '/api/admin/payment-branches/' +
+            encodeURIComponent(currentRestaurant.slug) + '/' +
+            encodeURIComponent(branchId)
+        : '/api/admin/payment-settings/' +
+            encodeURIComponent(currentRestaurant.slug);
+
+    if (!branchId) payload.telebirr_enabled = false;
+
     if (submitButton) submitButton.disabled = true;
     if (message) message.textContent = 'Saving settings...';
 
     try {
-        const response = await fetch(
-            '/api/admin/payment-settings/' +
-                encodeURIComponent(currentRestaurant.slug),
-            {
-                method: 'PUT',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            }
-        );
+        const response = await fetch(url, {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
 
         const data = await response.json();
 
@@ -2868,12 +2871,14 @@ async function saveTelebirrSettings(event) {
             throw new Error(data.message || 'Unable to save Telebirr settings.');
         }
 
-        if (message) message.textContent = 'Telebirr settings saved.';
+        if (message) {
+            message.textContent = branchId
+                ? 'Branch settings saved.'
+                : 'Telebirr settings saved.';
+        }
     } catch (error) {
         console.error('[telebirr] Save failed:', error);
-        if (message) {
-            message.textContent = error.message || 'Unable to save settings.';
-        }
+        if (message) message.textContent = error.message || 'Unable to save settings.';
     } finally {
         if (submitButton) submitButton.disabled = false;
     }
@@ -4842,6 +4847,507 @@ document.addEventListener(
                 'adminRefreshBtn'
             );
 
+        const telebirrSettingBtn =
+            document.getElementById('telebirrSettingBtn');
+
+        const atlasBranchSection =
+
+            document.getElementById('atlasBranchSection');
+
+
+        const telebirrSettingsSection =
+
+            document.getElementById('telebirrSettingsSection');
+
+        const telebirrOriginalParent = telebirrSettingsSection?.parentNode;
+
+        const telebirrOriginalNextSibling = telebirrSettingsSection?.nextSibling;
+        if (atlasBranchSection) {
+            const atlasOriginalParent = atlasBranchSection.parentNode;
+            const atlasOriginalNextSibling = atlasBranchSection.nextSibling;
+            atlasBranchSection.style.display = 'none';
+
+            const closeAtlasPopup = (overlay) => {
+                if (atlasOriginalNextSibling &&
+                    atlasOriginalNextSibling.parentNode === atlasOriginalParent) {
+                    atlasOriginalParent.insertBefore(
+                        atlasBranchSection,
+                        atlasOriginalNextSibling
+                    );
+                } else {
+                    atlasOriginalParent.appendChild(atlasBranchSection);
+                }
+
+                if (telebirrSettingsSection && telebirrOriginalParent) {
+                    if (
+                        telebirrOriginalNextSibling &&
+                        telebirrOriginalNextSibling.parentNode === telebirrOriginalParent
+                    ) {
+                        telebirrOriginalParent.insertBefore(
+                            telebirrSettingsSection,
+                            telebirrOriginalNextSibling
+                        );
+                    } else {
+                        telebirrOriginalParent.appendChild(telebirrSettingsSection);
+                    }
+                }
+                atlasBranchSection.style.display = 'none';
+                overlay.remove();
+            };
+
+            if (telebirrSettingBtn) {
+                telebirrSettingBtn.addEventListener('click', () => {
+                    if (document.getElementById('atlasBranchPopupOverlay')) {
+                        return;
+                    }
+
+                    const overlay = document.createElement('div');
+                    overlay.id = 'atlasBranchPopupOverlay';
+                    Object.assign(overlay.style, {
+                        position: 'fixed',
+                        inset: '0',
+                        background: 'rgba(0, 0, 0, 0.6)',
+                        zIndex: '99999',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px',
+                        boxSizing: 'border-box'
+                    });
+
+                    const popup = document.createElement('div');
+                    popup.classList.add('telebirr-branch-popup');
+                    Object.assign(popup.style, {
+                        position: 'relative',
+                        border: 'none',
+                        background: '#ffffff',
+                        color: '#222222',
+                        width: '100%',
+                        maxWidth: '600px',
+                        maxHeight: '85vh',
+                        overflowY: 'auto',
+                        padding: '24px',
+                        borderRadius: '12px',
+                        boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
+                        boxSizing: 'border-box'
+                    });
+
+                    const header = document.createElement('div');
+                    header.style.marginBottom = '22px';
+                    header.style.paddingRight = '42px';
+
+                    const heading = document.createElement('h2');
+                    heading.textContent = 'Telebirr Branch Settings';
+                    Object.assign(heading.style, {
+                        margin: '0 0 6px',
+                        fontSize: '22px',
+                        fontWeight: '700',
+                        color: '#1f2937'
+                    });
+
+                    const subtitle = document.createElement('p');
+                    subtitle.textContent = 'Manage your Telebirr payment branches and settings.';
+                    Object.assign(subtitle.style, {
+                        margin: '0',
+                        fontSize: '14px',
+                        lineHeight: '1.5',
+                        color: '#64748b'
+                    });
+
+                    header.appendChild(heading);
+                    header.appendChild(subtitle);
+                    popup.appendChild(header);
+
+                    const closeBtn = document.createElement('button');
+                    closeBtn.type = 'button';
+                    closeBtn.textContent = '×';
+                    closeBtn.setAttribute('aria-label', 'Close Atlas popup');
+                    closeBtn.className = 'telebirr-popup-close';
+                    closeBtn.setAttribute('aria-label', 'Close Telebirr Settings');
+                    Object.assign(closeBtn.style, {
+                        position: 'absolute',
+                        top: '14px',
+                        right: '14px',
+                        width: '38px',
+                        height: '38px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0',
+                        fontSize: '27px',
+                        fontWeight: '400',
+                        lineHeight: '1',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '50%',
+                        background: '#f8fafc',
+                        cursor: 'pointer',
+                        color: '#475569',
+                        boxShadow: '0 2px 6px rgba(15,23,42,0.08)',
+                        transition: 'all 160ms ease'
+                    });
+
+                    closeBtn.addEventListener('mouseenter', () => {
+                        Object.assign(closeBtn.style, {
+                            background: '#fee2e2',
+                            color: '#b91c1c',
+                            borderColor: '#fecaca',
+                            transform: 'rotate(90deg)',
+                            boxShadow: '0 3px 10px rgba(185,28,28,0.15)'
+                        });
+                    });
+
+                    closeBtn.addEventListener('mouseleave', () => {
+                        Object.assign(closeBtn.style, {
+                            background: '#f8fafc',
+                            color: '#475569',
+                            borderColor: '#e2e8f0',
+                            transform: 'rotate(0deg)',
+                            boxShadow: '0 2px 6px rgba(15,23,42,0.08)'
+                        });
+                    });
+
+                    closeBtn.addEventListener('click', () => {
+                        closeAtlasPopup(overlay);
+                    });
+
+                    overlay.addEventListener('click', (event) => {
+                        if (event.target === overlay) {
+                            closeAtlasPopup(overlay);
+                        }
+                    });
+
+                    popup.appendChild(closeBtn);
+                    if (telebirrSettingsSection) {
+                telebirrSettingsSection.dataset.atlasExpanded = 'false';
+                telebirrSettingsSection.style.display = 'none';
+            }
+            const oldHeader = atlasBranchSection.querySelector('.profile-section-header');
+            if (oldHeader) oldHeader.remove();
+
+            atlasBranchSection.style.border = 'none';
+            atlasBranchSection.style.borderRadius = '0';
+            atlasBranchSection.style.boxShadow = 'none';
+
+            const detailsButton =
+                atlasBranchSection.querySelector('#atlasDetailsBtn');
+            if (detailsButton) {
+                detailsButton.textContent = 'Details';
+            }
+            atlasBranchSection.style.display = 'block';
+                    popup.appendChild(atlasBranchSection);
+
+                            const branchList = popup.querySelector('#atlasBranchList');
+const addBranchButton = popup.querySelector('#addAtlasBranchBtn');
+const settingsForm = document.getElementById('telebirrSettingsForm');
+let activeDetailsButton = null;
+
+const hideTelebirrDetails = () => {
+    if (activeDetailsButton) {
+        activeDetailsButton.textContent = 'Details';
+        activeDetailsButton.closest('.profile-entry')
+            ?.classList.remove('telebirr-branch-expanded');
+        activeDetailsButton = null;
+    }
+
+    if (telebirrSettingsSection) {
+        telebirrSettingsSection.style.display = 'none';
+        telebirrSettingsSection.dataset.atlasExpanded = 'false';
+        telebirrSettingsSection.classList.remove(
+            'telebirr-branch-details-expanded'
+        );
+    }
+
+    if (settingsForm) delete settingsForm.dataset.branchId;
+};
+
+const showBranchDetails = (branch, button) => {
+    if (!telebirrSettingsSection || !settingsForm) return;
+
+    hideTelebirrDetails();
+
+    settingsForm.dataset.branchId = String(branch.id);
+    document.getElementById('orderNowEnabled').checked =
+        branch.order_now_enabled !== false;
+    document.getElementById('telebirrMerchantName').value =
+        branch.merchant_name || '';
+    document.getElementById('telebirrMerchantCode').value =
+        branch.merchant_code || '';
+    document.getElementById('telebirrMerchantAppId').value =
+        branch.merchant_app_id || '';
+
+    const branchRow = button.closest('.profile-entry');
+    if (!branchRow) {
+        console.error('[telebirr] Selected branch row not found.');
+        return;
+    }
+
+    branchRow.classList.add('telebirr-branch-expanded');
+    telebirrSettingsSection.classList.add(
+        'telebirr-branch-details-expanded'
+    );
+    branchRow.insertAdjacentElement('afterend', telebirrSettingsSection);
+
+    telebirrSettingsSection.style.display = 'block';
+    telebirrSettingsSection.dataset.atlasExpanded = 'true';
+    button.textContent = 'Hide Details';
+    activeDetailsButton = button;
+
+    telebirrSettingsSection.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+    });
+};
+
+const confirmTelebirrBranchDelete = (branchName) => {
+    return new Promise((resolve) => {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'telebirr-confirm-backdrop';
+        backdrop.innerHTML = `
+            <div class="telebirr-confirm-dialog" role="dialog"
+                 aria-modal="true" aria-labelledby="telebirrConfirmTitle">
+                <div class="telebirr-confirm-icon" aria-hidden="true">!</div>
+                <h3 id="telebirrConfirmTitle">Delete branch?</h3>
+                <p>Are you sure you want to delete
+                    <strong class="telebirr-confirm-branch"></strong>?
+                    This action cannot be undone.</p>
+                <div class="telebirr-confirm-actions">
+                    <button type="button" class="telebirr-confirm-cancel">Cancel</button>
+                    <button type="button" class="telebirr-confirm-delete">Delete branch</button>
+                </div>
+            </div>`;
+        backdrop.querySelector('.telebirr-confirm-branch').textContent = branchName;
+
+        const finish = (confirmed) => {
+            backdrop.remove();
+            resolve(confirmed);
+        };
+
+        backdrop.addEventListener('click', (event) => {
+            if (event.target === backdrop) finish(false);
+        });
+        backdrop.querySelector('.telebirr-confirm-cancel')
+            .addEventListener('click', () => finish(false));
+        backdrop.querySelector('.telebirr-confirm-delete')
+            .addEventListener('click', () => finish(true));
+
+        document.body.appendChild(backdrop);
+        backdrop.querySelector('.telebirr-confirm-cancel').focus();
+    });
+};
+const loadBranches = async () => {
+    if (!branchList || !currentRestaurant?.slug) return;
+
+    try {
+        const response = await fetch(
+            '/api/admin/payment-branches/' +
+                encodeURIComponent(currentRestaurant.slug),
+            { credentials: 'same-origin' }
+        );
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.message || 'Unable to load branches.');
+        }
+
+        branchList.replaceChildren();
+
+        (data.branches || []).forEach((branch) => {
+            const row = document.createElement('div');
+            row.className = 'profile-entry';
+            row.dataset.branchId = String(branch.id);
+
+            const name = document.createElement('span');
+            name.textContent = branch.name;
+
+            const actions = document.createElement('div');
+            actions.style.display = 'flex';
+            actions.style.gap = '8px';
+
+            const detailsButton = document.createElement('button');
+            detailsButton.type = 'button';
+            detailsButton.className = 'profile-add-btn';
+            detailsButton.textContent = 'Details';
+
+            detailsButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (activeDetailsButton === detailsButton) {
+                    hideTelebirrDetails();
+                    return;
+                }
+
+                showBranchDetails(branch, detailsButton);
+            });
+
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'profile-delete-btn';
+            deleteButton.textContent = 'Delete';
+
+            deleteButton.addEventListener('click', async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (!(await confirmTelebirrBranchDelete(branch.name))) {
+                    return;
+                }
+
+                deleteButton.disabled = true;
+
+                try {
+                    const deleteResponse = await fetch(
+                        '/api/admin/payment-branches/' +
+                            encodeURIComponent(currentRestaurant.slug) + '/' +
+                            encodeURIComponent(branch.id),
+                        {
+                            method: 'DELETE',
+                            credentials: 'same-origin'
+                        }
+                    );
+                    const result = await deleteResponse.json();
+
+                    if (!deleteResponse.ok || !result.ok) {
+                        throw new Error(result.message || 'Unable to delete branch.');
+                    }
+
+                    if (activeDetailsButton === detailsButton) {
+                        hideTelebirrDetails();
+                    }
+
+                    await loadBranches();
+                } catch (error) {
+                    console.error('[telebirr] Branch delete failed:', error);
+                    window.alert(error.message || 'Unable to delete branch.');
+                    deleteButton.disabled = false;
+                }
+            });
+
+            actions.appendChild(detailsButton);
+            actions.appendChild(deleteButton);
+            row.appendChild(name);
+            row.appendChild(actions);
+            branchList.appendChild(row);
+        });
+    } catch (error) {
+        console.error('[telebirr] Branch load failed:', error);
+        const message = document.getElementById('telebirrSettingsMessage');
+        if (message) message.textContent = error.message || 'Unable to load branches.';
+    }
+};
+
+if (telebirrSettingsSection) {
+    telebirrSettingsSection.dataset.atlasExpanded = 'false';
+    telebirrSettingsSection.style.display = 'none';
+}
+
+if (settingsForm && !settingsForm.querySelector('[data-telebirr-cancel="true"]')) {
+    const cancelButton = document.createElement('button');
+    cancelButton.type = 'button';
+    cancelButton.textContent = 'Cancel';
+    cancelButton.dataset.telebirrCancel = 'true';
+
+    cancelButton.addEventListener('click', () => {
+        hideTelebirrDetails();
+        const message = document.getElementById('telebirrSettingsMessage');
+        if (message) message.textContent = '';
+    });
+
+    settingsForm.appendChild(cancelButton);
+}
+
+if (addBranchButton && branchList) {
+    const branchForm = document.createElement('form');
+    branchForm.className = 'telebirr-add-branch-form';
+    branchForm.hidden = true;
+    branchForm.innerHTML = `
+        <label for="telebirrNewBranchName">Branch name</label>
+        <input id="telebirrNewBranchName" name="branchName"
+               type="text" maxlength="100" required
+               placeholder="Enter branch name" autocomplete="off">
+        <div class="telebirr-add-branch-actions">
+            <button type="submit" class="telebirr-form-submit">Add branch</button>
+            <button type="button" class="telebirr-form-cancel">Cancel</button>
+        </div>
+        <p class="telebirr-form-error" aria-live="polite"></p>`;
+
+    addBranchButton.parentElement.insertAdjacentElement('afterend', branchForm);
+
+    const branchNameInput = branchForm.querySelector('#telebirrNewBranchName');
+    const formError = branchForm.querySelector('.telebirr-form-error');
+    const submitButton = branchForm.querySelector('.telebirr-form-submit');
+
+    addBranchButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        branchForm.hidden = !branchForm.hidden;
+        formError.textContent = '';
+
+        if (!branchForm.hidden) {
+            branchNameInput.focus();
+        } else {
+            branchForm.reset();
+        }
+    });
+
+    branchForm.querySelector('.telebirr-form-cancel').addEventListener('click', () => {
+        branchForm.hidden = true;
+        branchForm.reset();
+        formError.textContent = '';
+    });
+
+    branchForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const branchName = branchNameInput.value.trim();
+        if (!branchName) {
+            formError.textContent = 'Enter a branch name.';
+            branchNameInput.focus();
+            return;
+        }
+
+        submitButton.disabled = true;
+        formError.textContent = '';
+
+        try {
+            const response = await fetch(
+                '/api/admin/payment-branches/' +
+                    encodeURIComponent(currentRestaurant.slug),
+                {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: branchName })
+                }
+            );
+            const data = await response.json();
+
+            if (!response.ok || !data.ok) {
+                throw new Error(data.message || 'Unable to add branch.');
+            }
+
+            branchForm.hidden = true;
+            branchForm.reset();
+            await loadBranches();
+
+            const message = document.getElementById('telebirrSettingsMessage');
+            if (message) message.textContent = 'Branch added successfully.';
+        } catch (error) {
+            console.error('[telebirr] Branch creation failed:', error);
+            formError.textContent = error.message || 'Unable to add branch.';
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+}
+
+loadBranches();
+overlay.appendChild(popup);
+                    document.body.appendChild(overlay);
+                });
+            }
+        }
         const profileBtn =
             document.getElementById(
                 'profileBtn'
@@ -5220,6 +5726,9 @@ async function refreshCustomerMenuSilently() {
         );
     }
 }
+
+
+
 
 
 

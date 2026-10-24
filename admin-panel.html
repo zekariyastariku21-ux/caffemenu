@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -561,7 +561,7 @@
                         >
 
                             <span class="profile-logo-placeholder-icon">
-                                🏬
+                                🖼️
                             </span>
 
                             <span class="profile-logo-placeholder-text">
@@ -646,21 +646,8 @@
             </div>
 
 
-            <!-- TELEBIRR SETTINGS -->
 
-            <div class="profile-section" id="telebirrSettingsSection">
-
-                <div class="profile-section-header">
-                    <div>
-                        <div class="profile-section-title">
-                            Telebirr Payment Settings
-                        </div>
-                        <div class="profile-section-description">
-                            Configure the merchant details for this café.
-                            Saving these settings does not activate live checkout.
-                        </div>
-                    </div>
-                </div>
+<div class="profile-section" id="telebirrSettingsSection" style="display:none;">
 
                 <form id="telebirrSettingsForm">
                     <label for="orderNowEnabled">
@@ -714,6 +701,38 @@
                         >
                     </div>
 
+                    <div class="profile-field">
+                        <label for="telebirrFabricAppId">Fabric App ID</label>
+                        <input type="text" id="telebirrFabricAppId" name="fabric_app_id" maxlength="500" autocomplete="off">
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrAppSecret">App Secret / Secret Key</label>
+                        <input type="password" id="telebirrAppSecret" name="app_secret" maxlength="5000" autocomplete="new-password">
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrPrivateKey">Private Key (PEM)</label>
+                        <textarea id="telebirrPrivateKey" name="private_key" rows="5" maxlength="20000" autocomplete="off" spellcheck="false"></textarea>
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrEnvironment">Environment</label>
+                        <select id="telebirrEnvironment" name="environment">
+                            <option value="sandbox">Sandbox / Testing</option>
+                            <option value="production">Production / Live</option>
+                        </select>
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrNotifyUrl">Notification URL</label>
+                        <input type="url" id="telebirrNotifyUrl" name="notify_url" maxlength="2000" autocomplete="url">
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrReturnUrl">Return URL</label>
+                        <input type="url" id="telebirrReturnUrl" name="return_url" maxlength="2000" autocomplete="url">
+                    </div>
                     <button type="submit" class="profile-save-btn">
                         Save Telebirr Settings
                     </button>
@@ -726,7 +745,8 @@
                 </form>
 
             </div>
-            <!-- LOCATIONS -->
+
+<!-- LOCATIONS -->
 
             <div class="profile-section">
 
@@ -788,6 +808,22 @@
 
 </div>
 
+<!-- ATLAS BRANCH SECTION -->
+<div id="atlasBranchSection" class="profile-section">
+    <div class="profile-section-header">
+        <div>
+            <div class="profile-section-title">Telebirr Branch Settings</div>
+            <div class="profile-section-description">Manage your Telebirr payment branches and settings.</div>
+        </div>
+    </div>
+    <div id="atlasBranchList" class="profile-list">
+    </div>
+    <div style="display:flex; justify-content:center; margin-top:16px;">
+        <button type="button" id="addAtlasBranchBtn" class="profile-add-btn">
+            + Add Branch
+        </button>
+    </div>
+</div>
 <!-- ============================================================
      CENTER SCREEN ADMIN STATUS POPUP
      ============================================================ -->
@@ -832,3 +868,4 @@
 </body>
 
 </html>
+

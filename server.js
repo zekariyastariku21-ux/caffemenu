@@ -343,6 +343,22 @@ async function ensureDatabaseStructure() {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS restaurant_payment_branches (
+        id SERIAL PRIMARY KEY,
+        restaurant_id INTEGER NOT NULL
+          REFERENCES restaurants(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        order_now_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        merchant_name TEXT NOT NULL DEFAULT '',
+        merchant_code TEXT NOT NULL DEFAULT '',
+        merchant_app_id TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE (restaurant_id, name)
+      )
+    `);
+
+    await pool.query(`
       ALTER TABLE restaurant_payment_settings
       ADD COLUMN IF NOT EXISTS order_now_enabled BOOLEAN NOT NULL DEFAULT TRUE,
       ADD COLUMN IF NOT EXISTS super_admin_order_now_enabled BOOLEAN NOT NULL DEFAULT TRUE
@@ -1752,6 +1768,283 @@ app.put(
    - Logo is served separately
    ================================================================ */
 
+/* ================================================================
+   PUBLIC ORDER BRANCHES
+   Returns enabled branch IDs and names only.
+   ================================================================ */
+app.get('/api/public/payment-branches/:slug', async (req, res) => {
+  try {
+    const restaurantResult = await pool.query(`
+      SELECT id
+      FROM restaurants
+      WHERE slug = $1 AND status = 'active'
+      LIMIT 1
+    `, [req.params.slug]);
+
+    if (restaurantResult.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Restaurant not found.'
+      });
+    }
+
+    const branchResult = await pool.query(`
+      SELECT id, name
+      FROM restaurant_payment_branches
+      WHERE restaurant_id = $1 AND order_now_enabled = TRUE
+      ORDER BY id ASC
+    `, [restaurantResult.rows[0].id]);
+
+    return res.json({
+      ok: true,
+      branches: branchResult.rows
+    });
+  } catch (error) {
+    console.error('[public-order-branches] Error:', error);
+    return res.status(500).json({
+      ok: false,
+      message: 'Unable to load branches.'
+    });
+  }
+});
+/* ================================================================
+   PAYMENT BRANCH MANAGEMENT API
+   ================================================================ */
+
+async function getPaymentBranchRestaurant(req, res, requireActive = false) {
+  const result = await pool.query(`
+    SELECT id, name, slug, status
+    FROM restaurants
+    WHERE slug = $1
+    LIMIT 1
+  `, [req.params.slug]);
+
+  if (result.rows.length === 0) {
+    res.status(404).json({ ok: false, message: 'Restaurant not found.' });
+    return null;
+  }
+
+  const restaurant = result.rows[0];
+
+  if (
+    req.user.role === 'cafe_admin' &&
+    Number(req.user.restaurant_id) !== Number(restaurant.id)
+  ) {
+    res.status(403).json({
+      ok: false,
+      message: 'You can only manage your own restaurant payment settings.'
+    });
+    return null;
+  }
+
+  if (
+    requireActive &&
+    restaurant.status !== 'active' &&
+    !isSuperAdminRole(req.user.role)
+  ) {
+    res.status(403).json({
+      ok: false,
+      message: 'This restaurant is disabled.'
+    });
+    return null;
+  }
+
+  return restaurant;
+}
+
+app.get(
+  '/api/admin/payment-branches/:slug',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const restaurant = await getPaymentBranchRestaurant(req, res);
+      if (!restaurant) return;
+
+      const result = await pool.query(`
+        SELECT id, name, order_now_enabled, merchant_name,
+               merchant_code, merchant_app_id, created_at, updated_at
+        FROM restaurant_payment_branches
+        WHERE restaurant_id = $1
+        ORDER BY id ASC
+      `, [restaurant.id]);
+
+      return res.json({ ok: true, branches: result.rows });
+    } catch (error) {
+      console.error('[payment-branches:list] Error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to load payment branches.'
+      });
+    }
+  }
+);
+
+app.post(
+  '/api/admin/payment-branches/:slug',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const restaurant = await getPaymentBranchRestaurant(req, res, true);
+      if (!restaurant) return;
+
+      const name = typeof req.body?.name === 'string'
+        ? req.body.name.trim()
+        : '';
+
+      if (!name || name.length > 100) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Branch name must be between 1 and 100 characters.'
+        });
+      }
+
+      const result = await pool.query(`
+        INSERT INTO restaurant_payment_branches (restaurant_id, name)
+        VALUES ($1, $2)
+        RETURNING id, name, order_now_enabled, merchant_name,
+                  merchant_code, merchant_app_id, created_at, updated_at
+      `, [restaurant.id, name]);
+
+      return res.status(201).json({
+        ok: true,
+        message: 'Branch added.',
+        branch: result.rows[0]
+      });
+    } catch (error) {
+      if (error.code === '23505') {
+        return res.status(409).json({
+          ok: false,
+          message: 'A branch with that name already exists.'
+        });
+      }
+
+      console.error('[payment-branches:create] Error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to add payment branch.'
+      });
+    }
+  }
+);
+
+app.put(
+  '/api/admin/payment-branches/:slug/:branchId',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const restaurant = await getPaymentBranchRestaurant(req, res, true);
+      if (!restaurant) return;
+
+      const branchId = Number(req.params.branchId);
+      if (!Number.isInteger(branchId) || branchId < 1) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid branch ID.'
+        });
+      }
+
+      const {
+        order_now_enabled = true,
+        merchant_name = '',
+        merchant_code = '',
+        merchant_app_id = ''
+      } = req.body || {};
+
+      if (
+        typeof order_now_enabled !== 'boolean' ||
+        typeof merchant_name !== 'string' ||
+        typeof merchant_code !== 'string' ||
+        typeof merchant_app_id !== 'string' ||
+        merchant_name.length > 200 ||
+        merchant_code.length > 200 ||
+        merchant_app_id.length > 200
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid branch settings.'
+        });
+      }
+
+      const result = await pool.query(`
+        UPDATE restaurant_payment_branches
+        SET order_now_enabled = $1,
+            merchant_name = $2,
+            merchant_code = $3,
+            merchant_app_id = $4,
+            updated_at = NOW()
+        WHERE id = $5 AND restaurant_id = $6
+        RETURNING id, name, order_now_enabled, merchant_name,
+                  merchant_code, merchant_app_id, created_at, updated_at
+      `, [
+        order_now_enabled,
+        merchant_name.trim(),
+        merchant_code.trim(),
+        merchant_app_id.trim(),
+        branchId,
+        restaurant.id
+      ]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Payment branch not found.'
+        });
+      }
+
+      return res.json({
+        ok: true,
+        message: 'Branch settings saved.',
+        branch: result.rows[0]
+      });
+    } catch (error) {
+      console.error('[payment-branches:update] Error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to save branch settings.'
+      });
+    }
+  }
+);
+
+app.delete(
+  '/api/admin/payment-branches/:slug/:branchId',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const restaurant = await getPaymentBranchRestaurant(req, res, true);
+      if (!restaurant) return;
+
+      const branchId = Number(req.params.branchId);
+      if (!Number.isInteger(branchId) || branchId < 1) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid branch ID.'
+        });
+      }
+
+      const result = await pool.query(`
+        DELETE FROM restaurant_payment_branches
+        WHERE id = $1 AND restaurant_id = $2
+        RETURNING id
+      `, [branchId, restaurant.id]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Payment branch not found.'
+        });
+      }
+
+      return res.json({ ok: true, message: 'Branch deleted.' });
+    } catch (error) {
+      console.error('[payment-branches:delete] Error:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to delete payment branch.'
+      });
+    }
+  }
+);
 app.get('/api/public/payment-settings/:slug', async (req, res) => {
   res.set('Cache-Control', 'no-store');
 

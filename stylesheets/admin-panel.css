@@ -1,4 +1,4 @@
-﻿/* ================================================================
+/* ================================================================
    ADMIN PANEL
    PROFESSIONAL RESTAURANT ADMIN DASHBOARD
    ================================================================ */
@@ -3678,3 +3678,341 @@ body.admin-loading-active {
     border-top-right-radius: 15px;
 }
 
+
+/* ================================================================
+   TELEBIRR CONNECTED BRANCH CARD
+   ================================================================ */
+
+.profile-entry.telebirr-branch-expanded {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 0;
+    border-bottom: 0;
+    border-radius: 12px 12px 0 0;
+}
+
+.profile-section.telebirr-branch-details-expanded {
+    position: relative;
+    z-index: 1;
+    margin-top: -10px;
+    margin-bottom: 10px;
+    border-top: 0;
+    border-radius: 0 0 12px 12px;
+}
+/* Space between Telebirr branch action buttons */
+#atlasBranchList .profile-entry {
+    column-gap: 12px;
+}
+
+/* TELEBIRR PROFESSIONAL BRANCH UI */
+.telebirr-add-branch-form {
+    width: min(100%, 440px);
+    margin: 16px auto 4px;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #e7dcd2;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(74, 47, 34, 0.08);
+}
+
+.telebirr-add-branch-form[hidden] {
+    display: none !important;
+}
+
+.telebirr-add-branch-form label {
+    display: block;
+    margin-bottom: 8px;
+    color: #4a2f22;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.telebirr-add-branch-form input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    color: #30241e;
+    background: #fffdfb;
+    border: 1px solid #d9c9bc;
+    border-radius: 9px;
+    font: inherit;
+}
+
+.telebirr-add-branch-form input:focus {
+    outline: 3px solid rgba(169, 99, 39, 0.16);
+    border-color: #a96327;
+}
+
+.telebirr-add-branch-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.telebirr-add-branch-actions button {
+    min-height: 40px;
+    padding: 9px 16px;
+    border-radius: 9px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.telebirr-form-submit {
+    color: #fff;
+    background: #8b542d;
+    border: 1px solid #8b542d;
+}
+
+.telebirr-form-submit:hover {
+    background: #704122;
+}
+
+.telebirr-form-cancel {
+    color: #5b4638;
+    background: #fff;
+    border: 1px solid #d9c9bc;
+}
+
+.telebirr-form-error {
+    margin: 10px 0 0;
+    color: #b42318;
+    font-size: 13px;
+}
+
+.telebirr-confirm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(35, 24, 18, 0.56);
+    backdrop-filter: blur(3px);
+}
+
+.telebirr-confirm-dialog {
+    box-sizing: border-box;
+    width: min(100%, 420px);
+    padding: 26px;
+    background: #fff;
+    border: 1px solid #eadfd6;
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+}
+
+.telebirr-confirm-icon {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    margin-bottom: 16px;
+    color: #b42318;
+    background: #fff0ee;
+    border-radius: 50%;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.telebirr-confirm-dialog h3 {
+    margin: 0 0 10px;
+    color: #38271d;
+    font-size: 21px;
+}
+
+.telebirr-confirm-dialog p {
+    margin: 0;
+    color: #6b5b50;
+    font-size: 14px;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}
+
+.telebirr-confirm-branch {
+    color: #38271d;
+}
+
+.telebirr-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.telebirr-confirm-actions button {
+    min-height: 42px;
+    padding: 10px 15px;
+    border-radius: 9px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.telebirr-confirm-cancel {
+    color: #5b4638;
+    background: #fff;
+    border: 1px solid #d9c9bc;
+}
+
+.telebirr-confirm-delete {
+    color: #fff;
+    background: #b42318;
+    border: 1px solid #b42318;
+}
+
+.telebirr-confirm-delete:hover {
+    background: #8f1c13;
+}
+
+.telebirr-confirm-actions button:focus-visible,
+.telebirr-add-branch-actions button:focus-visible {
+    outline: 3px solid rgba(169, 99, 39, 0.3);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    .telebirr-confirm-dialog {
+        padding: 20px;
+    }
+
+    .telebirr-confirm-actions {
+        flex-direction: column-reverse;
+    }
+
+    .telebirr-confirm-actions button {
+        width: 100%;
+    }
+}
+
+/* TELEBIRR BRANCH POPUP - RESPONSIVE LAYOUT */
+.telebirr-branch-popup,
+.telebirr-branch-popup * {
+    box-sizing: border-box;
+}
+
+.telebirr-branch-popup {
+    width: min(680px, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px) !important;
+    min-width: 0 !important;
+    max-height: calc(100dvh - 32px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+}
+
+.telebirr-branch-popup #atlasBranchSection,
+.telebirr-branch-popup #atlasBranchList,
+.telebirr-branch-popup .profile-section,
+.telebirr-branch-popup .profile-list,
+.telebirr-branch-popup .profile-entry,
+.telebirr-branch-popup #telebirrSettingsSection {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.telebirr-branch-popup .profile-entry {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+}
+
+.telebirr-branch-popup .profile-entry > span,
+.telebirr-branch-popup .profile-entry > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.telebirr-branch-popup input,
+.telebirr-branch-popup select,
+.telebirr-branch-popup textarea {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.telebirr-branch-popup .telebirr-add-branch-form {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+@media (max-width: 600px) {
+    .telebirr-branch-popup {
+        width: calc(100vw - 20px) !important;
+        max-width: calc(100vw - 20px) !important;
+        max-height: calc(100dvh - 20px) !important;
+        padding: 16px !important;
+        border-radius: 14px !important;
+    }
+
+    .telebirr-branch-popup .profile-entry {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .telebirr-branch-popup .profile-entry > div {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .telebirr-branch-popup .profile-entry button {
+        max-width: 100%;
+        white-space: normal;
+    }
+
+    .telebirr-branch-popup #telebirrSettingsSection {
+        padding: 12px !important;
+    }
+
+    .telebirr-branch-popup .telebirr-add-branch-actions {
+        display: flex;
+        flex-wrap: wrap;
+    }
+}
+
+@media (min-width: 601px) and (max-width: 900px) {
+    .telebirr-branch-popup {
+        width: min(620px, calc(100vw - 40px)) !important;
+        max-width: calc(100vw - 40px) !important;
+    }
+}
+
+/* Telebirr Payment Settings - Cancel button */
+#telebirrSettingsForm button[type="button"] {
+    min-height: 42px;
+    padding: 10px 20px;
+    border: 1px solid #d5d9e0;
+    border-radius: 9px;
+    background: #f8fafc;
+    color: #374151;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.2s ease;
+}
+
+#telebirrSettingsForm button[type="button"]:hover {
+    background: #eef2f7;
+    border-color: #aeb7c4;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+#telebirrSettingsForm button[type="button"]:focus-visible {
+    outline: 3px solid rgba(169, 99, 39, 0.3);
+    outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+    #telebirrSettingsForm button[type="button"] {
+        min-height: 46px;
+        padding: 11px 16px;
+    }
+}
