@@ -4296,7 +4296,7 @@ function renderOrderFormSummary() {
 }
 
 function updateOrderFormFields() {
-    const type = document.getElementById('orderType')?.value || 'dine-in';
+    const type = document.getElementById('orderType')?.value || '';
     const tableField = document.getElementById('orderTableField');
     const addressField = document.getElementById('orderAddressField');
     const tableInput = document.getElementById('orderTableNumber');
