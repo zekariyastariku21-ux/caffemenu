@@ -1,4 +1,4 @@
-﻿/* ================================================================
+/* ================================================================
    CAFFE MENU - CAFE ADMIN PANEL
    ================================================================ */
 
@@ -2781,12 +2781,20 @@ async function loadTelebirrSettings() {
         return;
     }
 
+    // Loading restaurant-level settings must never inherit branch edit mode.
+    delete form.dataset.branchId;
+
     const fields = {
         orderNow: document.getElementById('orderNowEnabled'),
-        enabled: document.getElementById('telebirrEnabled'),
         name: document.getElementById('telebirrMerchantName'),
         code: document.getElementById('telebirrMerchantCode'),
-        appId: document.getElementById('telebirrMerchantAppId')
+        appId: document.getElementById('telebirrMerchantAppId'),
+        fabricAppId: document.getElementById('telebirrFabricAppId'),
+        appSecret: document.getElementById('telebirrAppSecret'),
+        privateKey: document.getElementById('telebirrPrivateKey'),
+        environment: document.getElementById('telebirrEnvironment'),
+        notifyUrl: document.getElementById('telebirrNotifyUrl'),
+        returnUrl: document.getElementById('telebirrReturnUrl')
     };
 
     if (message) message.textContent = 'Loading settings...';
@@ -2810,13 +2818,34 @@ async function loadTelebirrSettings() {
 
         const settings = data.settings || {};
 
-        // Telebirr checkbox removed; keep Order Now independent.
         fields.orderNow.checked = settings.order_now_enabled !== false;
         fields.name.value = settings.merchant_name || '';
         fields.code.value = settings.merchant_code || '';
         fields.appId.value = settings.merchant_app_id || '';
+        fields.fabricAppId.value = settings.fabric_app_id || '';
+        fields.environment.value =
+            settings.environment === 'production' ? 'production' : 'sandbox';
+        fields.notifyUrl.value = settings.notify_url || '';
+        fields.returnUrl.value = settings.return_url || '';
 
-        if (message) message.textContent = '';
+        // Secrets are write-only: never fill them from the API.
+        fields.appSecret.value = '';
+        fields.privateKey.value = '';
+
+        fields.appSecret.placeholder = settings.has_app_secret
+            ? 'Saved securely — leave blank to keep current value'
+            : 'Enter App Secret';
+
+        fields.privateKey.placeholder = settings.has_private_key
+            ? 'Saved securely — leave blank to keep current value'
+            : 'Paste Private Key (PEM)';
+
+        if (message) {
+            message.textContent =
+                settings.has_app_secret || settings.has_private_key
+                    ? 'Saved secrets are protected. Leave secret fields blank to keep them.'
+                    : '';
+        }
     } catch (error) {
         console.error('[telebirr] Load failed:', error);
         if (message) {
@@ -2838,6 +2867,8 @@ async function saveTelebirrSettings(event) {
     }
 
     const branchId = form.dataset.branchId;
+
+    // Keep the existing branch payload unchanged.
     const payload = {
         order_now_enabled: document.getElementById('orderNowEnabled').checked,
         merchant_name: document.getElementById('telebirrMerchantName').value.trim(),
@@ -2845,14 +2876,40 @@ async function saveTelebirrSettings(event) {
         merchant_app_id: document.getElementById('telebirrMerchantAppId').value.trim()
     };
 
+    if (!branchId) {
+        payload.telebirr_enabled = false;
+        payload.fabric_app_id =
+            document.getElementById('telebirrFabricAppId').value.trim();
+        payload.app_secret =
+            document.getElementById('telebirrAppSecret').value;
+        payload.private_key =
+            document.getElementById('telebirrPrivateKey').value;
+        payload.environment =
+            document.getElementById('telebirrEnvironment').value;
+        payload.notify_url =
+            document.getElementById('telebirrNotifyUrl').value.trim();
+        payload.return_url =
+            document.getElementById('telebirrReturnUrl').value.trim();
+    }
+
+    if (branchId) {
+        payload.fabric_app_id =
+            document.getElementById('telebirrFabricAppId').value.trim();
+        payload.app_secret =
+            document.getElementById('telebirrAppSecret').value;
+        payload.private_key =
+            document.getElementById('telebirrPrivateKey').value;
+        payload.environment = document.getElementById('telebirrEnvironment').value;
+        payload.notify_url = document.getElementById('telebirrNotifyUrl').value.trim();
+        payload.return_url = document.getElementById('telebirrReturnUrl').value.trim();
+    }
+
     const url = branchId
         ? '/api/admin/payment-branches/' +
             encodeURIComponent(currentRestaurant.slug) + '/' +
             encodeURIComponent(branchId)
         : '/api/admin/payment-settings/' +
             encodeURIComponent(currentRestaurant.slug);
-
-    if (!branchId) payload.telebirr_enabled = false;
 
     if (submitButton) submitButton.disabled = true;
     if (message) message.textContent = 'Saving settings...';
@@ -2871,6 +2928,24 @@ async function saveTelebirrSettings(event) {
             throw new Error(data.message || 'Unable to save Telebirr settings.');
         }
 
+        if (!branchId) {
+            const appSecret = document.getElementById('telebirrAppSecret');
+            const privateKey = document.getElementById('telebirrPrivateKey');
+
+            // Clear sensitive values from the form after a successful save.
+            if (appSecret.value) {
+                appSecret.placeholder =
+                    'Saved securely — leave blank to keep current value';
+            }
+            if (privateKey.value) {
+                privateKey.placeholder =
+                    'Saved securely — leave blank to keep current value';
+            }
+
+            appSecret.value = '';
+            privateKey.value = '';
+        }
+
         if (message) {
             message.textContent = branchId
                 ? 'Branch settings saved.'
@@ -2878,11 +2953,14 @@ async function saveTelebirrSettings(event) {
         }
     } catch (error) {
         console.error('[telebirr] Save failed:', error);
-        if (message) message.textContent = error.message || 'Unable to save settings.';
+        if (message) {
+            message.textContent = error.message || 'Unable to save settings.';
+        }
     } finally {
         if (submitButton) submitButton.disabled = false;
     }
 }
+
 async function openProfileModal() {
     const modal =
         document.getElementById(
@@ -5039,6 +5117,36 @@ document.addEventListener(
                             const branchList = popup.querySelector('#atlasBranchList');
 const addBranchButton = popup.querySelector('#addAtlasBranchBtn');
 const settingsForm = document.getElementById('telebirrSettingsForm');
+let telebirrBranchSaveFooter = null;
+if (!telebirrBranchSaveFooter) {
+    telebirrBranchSaveFooter = document.createElement('div');
+    telebirrBranchSaveFooter.className = 'telebirr-branch-save-footer';
+
+    const footerSaveButton = document.createElement('button');
+    footerSaveButton.type = 'button';
+    footerSaveButton.className = 'profile-save-btn';
+    footerSaveButton.textContent = 'Save Telebirr Settings';
+    footerSaveButton.disabled = false;
+
+    footerSaveButton.addEventListener('click', () => {
+        if (!settingsForm?.dataset.branchId) {
+            const message = document.getElementById('telebirrSettingsMessage');
+            if (message) {
+                message.textContent = 'Click Details on the branch you want to save first.';
+            }
+            return;
+        }
+
+        if (typeof settingsForm.requestSubmit === 'function') {
+            settingsForm.requestSubmit();
+        }
+    });
+
+    telebirrBranchSaveFooter.appendChild(footerSaveButton);
+}
+
+popup.appendChild(telebirrBranchSaveFooter);
+telebirrBranchSaveFooter.hidden = false;
 let activeDetailsButton = null;
 
 const hideTelebirrDetails = () => {
@@ -5057,15 +5165,76 @@ const hideTelebirrDetails = () => {
         );
     }
 
+    if (telebirrBranchSaveFooter) {
+        telebirrBranchSaveFooter.hidden = false;
+        const saveButton = telebirrBranchSaveFooter.querySelector('button');
+        if (saveButton) saveButton.disabled = false;
+    }
     if (settingsForm) delete settingsForm.dataset.branchId;
 };
 
+window.loadSavedTelebirrSecret = async function (fieldId, button) {
+    if (!currentRestaurant?.slug || !settingsForm?.dataset.branchId) {
+        alert('Select a payment branch first.');
+        return false;
+    }
+
+    const field = document.getElementById(fieldId);
+    if (!field) return false;
+
+    const branchId = settingsForm.dataset.branchId;
+    const secretProperty = fieldId === 'telebirrAppSecret'
+        ? 'app_secret'
+        : 'private_key';
+
+    button.disabled = true;
+
+    try {
+        const url =
+            '/api/admin/payment-branches/' +
+            encodeURIComponent(currentRestaurant.slug) + '/' +
+            encodeURIComponent(branchId) +
+            '/secrets?field=' + encodeURIComponent(secretProperty);
+
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.message || 'Unable to reveal saved credential.'
+            );
+        }
+
+        if (settingsForm.dataset.branchId !== branchId) return false;
+
+        field.value = data.value || '';
+
+        if (!field.value) {
+            alert('No saved value exists for this field.');
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        alert(error.message || 'Unable to reveal saved credential.');
+        return false;
+    } finally {
+        button.disabled = false;
+    }
+};
 const showBranchDetails = (branch, button) => {
     if (!telebirrSettingsSection || !settingsForm) return;
 
     hideTelebirrDetails();
 
     settingsForm.dataset.branchId = String(branch.id);
+    const branchSaveButton = telebirrBranchSaveFooter?.querySelector('button');
+    if (branchSaveButton) branchSaveButton.disabled = false;
     document.getElementById('orderNowEnabled').checked =
         branch.order_now_enabled !== false;
     document.getElementById('telebirrMerchantName').value =
@@ -5074,6 +5243,25 @@ const showBranchDetails = (branch, button) => {
         branch.merchant_code || '';
     document.getElementById('telebirrMerchantAppId').value =
         branch.merchant_app_id || '';
+    document.getElementById('telebirrFabricAppId').value =
+        branch.fabric_app_id || '';
+    document.getElementById('telebirrEnvironment').value =
+        branch.environment === 'production' ? 'production' : 'sandbox';
+    document.getElementById('telebirrNotifyUrl').value =
+        branch.notify_url || '';
+    document.getElementById('telebirrReturnUrl').value =
+        branch.return_url || '';
+
+    const branchAppSecret = document.getElementById('telebirrAppSecret');
+    const branchPrivateKey = document.getElementById('telebirrPrivateKey');
+    branchAppSecret.value = '';
+    branchPrivateKey.value = '';
+    branchAppSecret.placeholder = branch.has_app_secret
+        ? 'Saved securely — leave blank to keep current value'
+        : 'Enter App Secret';
+    branchPrivateKey.placeholder = branch.has_private_key
+        ? 'Saved securely — leave blank to keep current value'
+        : 'Paste Private Key (PEM)';
 
     const branchRow = button.closest('.profile-entry');
     if (!branchRow) {
@@ -5088,6 +5276,7 @@ const showBranchDetails = (branch, button) => {
     branchRow.insertAdjacentElement('afterend', telebirrSettingsSection);
 
     telebirrSettingsSection.style.display = 'block';
+
     telebirrSettingsSection.dataset.atlasExpanded = 'true';
     button.textContent = 'Hide Details';
     activeDetailsButton = button;

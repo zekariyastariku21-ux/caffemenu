@@ -4016,3 +4016,42 @@ body.admin-loading-active {
         padding: 11px 16px;
     }
 }
+
+
+/* Telebirr settings: keep Save visible while scrolling */
+#telebirrSettingsForm {
+    padding-bottom: 76px;
+}
+
+#telebirrSettingsForm > button[type="submit"] {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    box-shadow: 0 -8px 18px rgba(255, 255, 255, 0.9);
+}
+
+
+/* Dedicated Save footer for the Telebirr branch popup */
+.telebirr-branch-save-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: flex-end;
+    padding: 14px 0 max(14px, env(safe-area-inset-bottom));
+    margin-top: 12px;
+    background: #fff;
+    border-top: 1px solid #e5e7eb;
+}
+
+.telebirr-branch-save-footer[hidden] {
+    display: none !important;
+}
+
+.telebirr-branch-save-footer .profile-save-btn {
+    width: 100%;
+    min-height: 46px;
+}

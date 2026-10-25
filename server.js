@@ -5,7 +5,81 @@ const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
+
+function encryptTelebirrSecret(value) {
+  const secret = String(value || '');
+  if (!secret) return '';
+
+  const configuredKey =
+    process.env.TELEBIRR_CONFIG_ENCRYPTION_KEY ||
+    process.env.JWT_SECRET;
+
+  if (!configuredKey) {
+    throw new Error(
+      'Configure JWT_SECRET or TELEBIRR_CONFIG_ENCRYPTION_KEY to save Telebirr secrets.'
+    );
+  }
+
+  const key = crypto.createHash('sha256').update(configuredKey).digest();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(secret, 'utf8'),
+    cipher.final()
+  ]);
+
+  return [
+    iv.toString('hex'),
+    cipher.getAuthTag().toString('hex'),
+    encrypted.toString('hex')
+  ].join(':');
+}
+function decryptTelebirrSecret(value) {
+  const encryptedValue = String(value || '');
+  if (!encryptedValue) return '';
+
+  const configuredKey =
+    process.env.TELEBIRR_CONFIG_ENCRYPTION_KEY ||
+    process.env.JWT_SECRET;
+
+  if (!configuredKey) {
+    throw new Error('Telebirr encryption key is not configured.');
+  }
+
+  const parts = encryptedValue.split(':');
+  if (parts.length !== 3 || parts.some(part => !part)) {
+    throw new Error('Invalid encrypted Telebirr secret format.');
+  }
+
+  const [ivHex, authTagHex, encryptedHex] = parts;
+
+  if (
+    !/^[0-9a-f]+$/i.test(ivHex) ||
+    !/^[0-9a-f]+$/i.test(authTagHex) ||
+    !/^[0-9a-f]*$/i.test(encryptedHex) ||
+    ivHex.length !== 24 ||
+    authTagHex.length !== 32 ||
+    encryptedHex.length % 2 !== 0
+  ) {
+    throw new Error('Invalid encrypted Telebirr secret format.');
+  }
+
+  const key = crypto.createHash('sha256').update(configuredKey).digest();
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    key,
+    Buffer.from(ivHex, 'hex')
+  );
+
+  decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
+
+  return Buffer.concat([
+    decipher.update(Buffer.from(encryptedHex, 'hex')),
+    decipher.final()
+  ]).toString('utf8');
+}
 const app = express();
 
 /* ================================================================
@@ -343,6 +417,16 @@ async function ensureDatabaseStructure() {
     `);
 
     await pool.query(`
+      ALTER TABLE restaurant_payment_settings
+      ADD COLUMN IF NOT EXISTS fabric_app_id TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS app_secret_encrypted TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS private_key_encrypted TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS environment TEXT NOT NULL DEFAULT 'sandbox',
+      ADD COLUMN IF NOT EXISTS notify_url TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS return_url TEXT NOT NULL DEFAULT ''
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS restaurant_payment_branches (
         id SERIAL PRIMARY KEY,
         restaurant_id INTEGER NOT NULL
@@ -356,6 +440,15 @@ async function ensureDatabaseStructure() {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
         UNIQUE (restaurant_id, name)
       )
+    `);
+    await pool.query(`
+      ALTER TABLE restaurant_payment_branches
+      ADD COLUMN IF NOT EXISTS fabric_app_id TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS app_secret_encrypted TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS private_key_encrypted TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS environment TEXT NOT NULL DEFAULT 'sandbox',
+      ADD COLUMN IF NOT EXISTS notify_url TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS return_url TEXT NOT NULL DEFAULT ''
     `);
 
     await pool.query(`
@@ -1009,6 +1102,66 @@ if (!email || !password) {
    ADMIN LOGOUT
    ================================================================ */
 
+app.get(
+  '/api/admin/payment-branches/:slug/:branchId/secrets',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const restaurant = await getPaymentBranchRestaurant(req, res);
+      if (!restaurant) return;
+
+      const branchId = Number(req.params.branchId);
+      const field = req.query.field;
+
+      if (!Number.isInteger(branchId) || branchId < 1) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid branch ID.'
+        });
+      }
+
+      if (field !== 'app_secret' && field !== 'private_key') {
+        return res.status(400).json({
+          ok: false,
+          message: 'Invalid credential field.'
+        });
+      }
+
+      const column = field === 'app_secret'
+        ? 'app_secret_encrypted'
+        : 'private_key_encrypted';
+
+      const result = await pool.query(`
+        SELECT ${column} AS encrypted_value
+        FROM restaurant_payment_branches
+        WHERE id = $1 AND restaurant_id = $2
+        LIMIT 1
+      `, [branchId, restaurant.id]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Payment branch not found.'
+        });
+      }
+
+      const value = decryptTelebirrSecret(
+        result.rows[0].encrypted_value
+      );
+
+      res.set('Cache-Control', 'no-store, private');
+      return res.json({ ok: true, value });
+    } catch (error) {
+      console.error(
+        '[payment-branches:reveal] Unable to reveal saved credential.'
+      );
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to reveal saved credential. Check server configuration.'
+      });
+    }
+  }
+);
 app.post(
   '/api/admin/logout',
   (req, res) => {
@@ -1618,7 +1771,10 @@ app.get(
 
       const settingsResult = await pool.query(`
         SELECT telebirr_enabled, order_now_enabled, merchant_name, merchant_code,
-               merchant_app_id, updated_at
+               merchant_app_id, fabric_app_id, environment, notify_url, return_url,
+               (COALESCE(app_secret_encrypted, '') <> '') AS has_app_secret,
+               (COALESCE(private_key_encrypted, '') <> '') AS has_private_key,
+               updated_at
         FROM restaurant_payment_settings
         WHERE restaurant_id = $1
         LIMIT 1
@@ -1636,7 +1792,13 @@ app.get(
           order_now_enabled: true,
           merchant_name: '',
           merchant_code: '',
-          merchant_app_id: ''
+          merchant_app_id: '',
+          fabric_app_id: '',
+          environment: 'sandbox',
+          notify_url: '',
+          return_url: '',
+          has_app_secret: false,
+          has_private_key: false
         }
       });
     } catch (error) {
@@ -1660,7 +1822,13 @@ app.put(
         order_now_enabled = true,
         merchant_name = '',
         merchant_code = '',
-        merchant_app_id = ''
+        merchant_app_id = '',
+        fabric_app_id = '',
+        app_secret = '',
+        private_key = '',
+        environment = 'sandbox',
+        notify_url = '',
+        return_url = ''
       } = req.body || {};
 
       const restaurantResult = await pool.query(`
@@ -1705,9 +1873,21 @@ app.put(
         typeof merchant_name !== 'string' ||
         typeof merchant_code !== 'string' ||
         typeof merchant_app_id !== 'string' ||
+        typeof fabric_app_id !== 'string' ||
+        typeof app_secret !== 'string' ||
+        typeof private_key !== 'string' ||
+        typeof environment !== 'string' ||
+        typeof notify_url !== 'string' ||
+        typeof return_url !== 'string' ||
+        !['sandbox', 'production'].includes(environment) ||
         merchant_name.length > 200 ||
         merchant_code.length > 200 ||
-        merchant_app_id.length > 200
+        merchant_app_id.length > 200 ||
+        fabric_app_id.length > 500 ||
+        app_secret.length > 5000 ||
+        private_key.length > 20000 ||
+        notify_url.length > 2000 ||
+        return_url.length > 2000
       ) {
         return res.status(400).json({
           ok: false,
@@ -1718,9 +1898,11 @@ app.put(
       await pool.query(`
         INSERT INTO restaurant_payment_settings (
           restaurant_id, telebirr_enabled, order_now_enabled, merchant_name,
-          merchant_code, merchant_app_id, updated_at
+          merchant_code, merchant_app_id, fabric_app_id,
+          app_secret_encrypted, private_key_encrypted,
+          environment, notify_url, return_url, updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
         ON CONFLICT (restaurant_id)
         DO UPDATE SET
           telebirr_enabled = EXCLUDED.telebirr_enabled,
@@ -1728,6 +1910,20 @@ app.put(
           merchant_name = EXCLUDED.merchant_name,
           merchant_code = EXCLUDED.merchant_code,
           merchant_app_id = EXCLUDED.merchant_app_id,
+          fabric_app_id = EXCLUDED.fabric_app_id,
+          app_secret_encrypted = CASE
+            WHEN EXCLUDED.app_secret_encrypted <> ''
+            THEN EXCLUDED.app_secret_encrypted
+            ELSE restaurant_payment_settings.app_secret_encrypted
+          END,
+          private_key_encrypted = CASE
+            WHEN EXCLUDED.private_key_encrypted <> ''
+            THEN EXCLUDED.private_key_encrypted
+            ELSE restaurant_payment_settings.private_key_encrypted
+          END,
+          environment = EXCLUDED.environment,
+          notify_url = EXCLUDED.notify_url,
+          return_url = EXCLUDED.return_url,
           updated_at = NOW()
       `, [
         restaurant.id,
@@ -1735,7 +1931,13 @@ app.put(
         order_now_enabled,
         merchant_name.trim(),
         merchant_code.trim(),
-        merchant_app_id.trim()
+        merchant_app_id.trim(),
+        fabric_app_id.trim(),
+        app_secret ? encryptTelebirrSecret(app_secret) : '',
+        private_key ? encryptTelebirrSecret(private_key) : '',
+        environment,
+        notify_url.trim(),
+        return_url.trim()
       ]);
 
       return res.json({
@@ -1862,7 +2064,11 @@ app.get(
 
       const result = await pool.query(`
         SELECT id, name, order_now_enabled, merchant_name,
-               merchant_code, merchant_app_id, created_at, updated_at
+               merchant_code, merchant_app_id, fabric_app_id,
+               (COALESCE(app_secret_encrypted, '') <> '') AS has_app_secret,
+               (COALESCE(private_key_encrypted, '') <> '') AS has_private_key,
+               environment, notify_url, return_url,
+               created_at, updated_at
         FROM restaurant_payment_branches
         WHERE restaurant_id = $1
         ORDER BY id ASC
@@ -1947,7 +2153,13 @@ app.put(
         order_now_enabled = true,
         merchant_name = '',
         merchant_code = '',
-        merchant_app_id = ''
+        merchant_app_id = '',
+        fabric_app_id = '',
+        app_secret = '',
+        private_key = '',
+        environment = 'sandbox',
+        notify_url = '',
+        return_url = ''
       } = req.body || {};
 
       if (
@@ -1955,9 +2167,20 @@ app.put(
         typeof merchant_name !== 'string' ||
         typeof merchant_code !== 'string' ||
         typeof merchant_app_id !== 'string' ||
+        typeof fabric_app_id !== 'string' ||
+        typeof app_secret !== 'string' ||
+        typeof private_key !== 'string' ||
+        !['sandbox', 'production'].includes(environment) ||
+        typeof notify_url !== 'string' ||
+        typeof return_url !== 'string' ||
+        notify_url.length > 2000 ||
+        return_url.length > 2000 ||
         merchant_name.length > 200 ||
         merchant_code.length > 200 ||
-        merchant_app_id.length > 200
+        merchant_app_id.length > 200 ||
+        fabric_app_id.length > 500 ||
+        app_secret.length > 5000 ||
+        private_key.length > 20000
       ) {
         return res.status(400).json({
           ok: false,
@@ -1965,21 +2188,48 @@ app.put(
         });
       }
 
+      const encryptedAppSecret = app_secret
+        ? encryptTelebirrSecret(app_secret)
+        : '';
+      const encryptedPrivateKey = private_key
+        ? encryptTelebirrSecret(private_key)
+        : '';
+
       const result = await pool.query(`
         UPDATE restaurant_payment_branches
         SET order_now_enabled = $1,
             merchant_name = $2,
             merchant_code = $3,
             merchant_app_id = $4,
+            fabric_app_id = $5,
+            app_secret_encrypted = CASE
+              WHEN $6 <> '' THEN $6 ELSE app_secret_encrypted
+            END,
+            private_key_encrypted = CASE
+              WHEN $7 <> '' THEN $7 ELSE private_key_encrypted
+            END,
+            environment = $8,
+            notify_url = $9,
+            return_url = $10,
             updated_at = NOW()
-        WHERE id = $5 AND restaurant_id = $6
+        WHERE id = $11 AND restaurant_id = $12
         RETURNING id, name, order_now_enabled, merchant_name,
-                  merchant_code, merchant_app_id, created_at, updated_at
+                  merchant_code, merchant_app_id, fabric_app_id,
+                  (COALESCE(app_secret_encrypted, '') <> '') AS has_app_secret,
+                  (COALESCE(private_key_encrypted, '') <> '') AS has_private_key,
+                  environment, notify_url, return_url,
+                  created_at, updated_at
       `, [
         order_now_enabled,
         merchant_name.trim(),
         merchant_code.trim(),
         merchant_app_id.trim(),
+        fabric_app_id.trim(),
+        encryptedAppSecret,
+        encryptedPrivateKey,
+        environment,
+        notify_url.trim(),
+        return_url.trim(),
         branchId,
         restaurant.id
       ]);

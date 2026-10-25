@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -707,14 +707,30 @@
                     </div>
 
                     <div class="profile-field">
-                        <label for="telebirrAppSecret">App Secret / Secret Key</label>
-                        <input type="password" id="telebirrAppSecret" name="app_secret" maxlength="5000" autocomplete="new-password">
-                    </div>
+    <label for="telebirrAppSecret">App Secret / Secret Key</label>
+    <div style="display:flex; align-items:center; gap:8px;">
+        <input type="password" id="telebirrAppSecret" name="app_secret"
+            maxlength="5000" autocomplete="new-password"
+            style="flex:1; min-width:0;">
+        <button type="button"
+            onclick="toggleTelebirrSecret('telebirrAppSecret', this)"
+            aria-label="Show App Secret"
+            style="white-space:nowrap;">Show</button>
+    </div>
+</div>
 
                     <div class="profile-field">
-                        <label for="telebirrPrivateKey">Private Key (PEM)</label>
-                        <textarea id="telebirrPrivateKey" name="private_key" rows="5" maxlength="20000" autocomplete="off" spellcheck="false"></textarea>
-                    </div>
+    <label for="telebirrPrivateKey">Private Key (PEM)</label>
+    <div style="display:flex; align-items:flex-start; gap:8px;">
+        <textarea id="telebirrPrivateKey" name="private_key" rows="5"
+            maxlength="20000" autocomplete="off" spellcheck="false"
+            style="flex:1; min-width:0; -webkit-text-security:disc;"></textarea>
+        <button type="button"
+            onclick="toggleTelebirrSecret('telebirrPrivateKey', this)"
+            aria-label="Show Private Key"
+            style="white-space:nowrap;">Show</button>
+    </div>
+</div>
 
                     <div class="profile-field">
                         <label for="telebirrEnvironment">Environment</label>
@@ -865,6 +881,48 @@
 <script src="/scripts/menu-expiration.js?v=20261013a"></script>
 <script src="/scripts/admin.js?v=20261013a"></script>
 
+<script>
+async function toggleTelebirrSecret(fieldId, button) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+
+    const isPrivateKey = field.tagName === 'TEXTAREA';
+    const isHidden = isPrivateKey
+        ? field.style.webkitTextSecurity === 'disc'
+        : field.type === 'password';
+
+    if (
+        isHidden &&
+        !field.value &&
+        field.placeholder.startsWith('Saved securely')
+    ) {
+        if (typeof window.loadSavedTelebirrSecret !== 'function') {
+            alert('Credential reveal is unavailable. Refresh the page and try again.');
+            return;
+        }
+
+        const loaded = await window.loadSavedTelebirrSecret(fieldId, button);
+        if (!loaded) return;
+    }
+
+    if (isPrivateKey) {
+        field.style.webkitTextSecurity = isHidden ? 'none' : 'disc';
+    } else {
+        field.type = isHidden ? 'text' : 'password';
+    }
+
+    button.textContent = isHidden ? 'Hide' : 'Show';
+
+    const label = fieldId === 'telebirrAppSecret'
+        ? 'App Secret'
+        : 'Private Key';
+
+    button.setAttribute(
+        'aria-label',
+        (isHidden ? 'Hide ' : 'Show ') + label
+    );
+}
+</script>
 </body>
 
 </html>

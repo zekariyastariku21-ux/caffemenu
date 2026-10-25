@@ -4661,6 +4661,17 @@ function setupPayment() {
         });
 
 
+    const superAppPayButton =
+        paymentForm.querySelector('button[type="button"].payment-submit');
+
+    if (superAppPayButton) {
+        superAppPayButton.addEventListener('click', () => {
+            showToast(
+                'Telebirr Super App payment is not configured yet. Please use Pay with Telebirr or try again after setup.',
+                'error'
+            );
+        });
+    }
     paymentForm.addEventListener(
         'submit',
         startTelebirrPayment
@@ -4699,7 +4710,7 @@ async function startTelebirrPayment(
 
     const submitButton =
         event.target.querySelector(
-            '.payment-submit'
+            'button[type="submit"].payment-submit'
         );
 
 
