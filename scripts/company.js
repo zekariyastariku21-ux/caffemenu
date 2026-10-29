@@ -720,7 +720,7 @@ async function loadClientDirectory() {
             const emptyState = document.createElement('p');
             emptyState.className = 'client-directory-status';
             emptyState.textContent =
-                'No active cafés or restaurants are listed yet.';
+                'No active cafes or restaurants are listed yet.';
             container.appendChild(emptyState);
             if (resultCount) {
                 resultCount.textContent = 'No clients to show';
@@ -766,7 +766,7 @@ async function loadClientDirectory() {
                 });
 
             const name = document.createElement('h3');
-            name.textContent = restaurant.name || 'Café or restaurant';
+            name.textContent = restaurant.name || 'cafe or restaurant';
 
             heading.append(logo, name);
             card.appendChild(heading);
@@ -890,7 +890,7 @@ async function loadClientDirectory() {
         searchPrompt.className =
             'client-directory-status';
         searchPrompt.textContent =
-            'Search by café name, mobile number, or address to see matching clients.';
+            'Search by cafe name, mobile number, or address to see matching clients.';
         container.appendChild(searchPrompt);
 
         const noResults =
@@ -898,7 +898,7 @@ async function loadClientDirectory() {
         noResults.className =
             'client-directory-status';
         noResults.textContent =
-            'No cafés or restaurants match your search.';
+            'No cafes or restaurants match your search.';
         noResults.hidden = true;
         container.appendChild(noResults);
 
@@ -936,7 +936,7 @@ async function loadClientDirectory() {
             error
         );
         container.textContent =
-            'Unable to load cafés and restaurants right now.';
+            'Unable to load cafes and restaurants right now.';
     }
 }
 

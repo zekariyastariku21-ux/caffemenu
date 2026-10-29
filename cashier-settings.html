@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CaffeMenu | Cashier PIN</title>
+  <style>
+    :root{color-scheme:dark;--bg:#17120f;--panel:#241b16;--gold:#d8ad62;--cream:#f8f0df;--muted:#b9aa98;--line:#49372b}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#392719,var(--bg) 65%);font-family:Arial,sans-serif;color:var(--cream);display:grid;place-items:center;padding:22px}
+    main{width:min(100%,480px);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 18px 60px #0005}
+    h1{margin:0 0 8px;font-size:25px}p{color:var(--muted);line-height:1.5}.eyebrow{color:var(--gold);font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase}
+    label{display:block;margin:22px 0 8px;font-weight:bold}input{width:100%;padding:14px;border:1px solid var(--line);border-radius:10px;background:#130f0d;color:var(--cream);font-size:18px;letter-spacing:4px}
+    button{width:100%;margin-top:16px;border:0;border-radius:10px;padding:14px;background:var(--gold);color:#24170c;font-size:15px;font-weight:bold;cursor:pointer}button.secondary{background:transparent;color:var(--cream);border:1px solid var(--line)}
+    #message{min-height:24px;color:var(--gold);font-size:14px}.row{display:flex;gap:10px}.row button{flex:1}small{color:var(--muted)}
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">CaffeMenu - Restaurant admin</div>
+  <h1>Cashier PIN</h1>
+  <p id="restaurantLabel">Set or change the shared PIN your cashiers use to view this restaurant's orders. The PIN must be 6&ndash;12 digits.</p>
+  <form id="pinForm">
+    <label for="pin">New shared PIN</label>
+    <input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6,12}" minlength="6" maxlength="12" required>
+    <label for="confirmPin">Confirm PIN</label>
+    <input id="confirmPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6,12}" minlength="6" maxlength="12" required>
+    <button type="submit">Save Cashier PIN</button>
+  </form>
+  <p id="message" role="status"></p>
+  <div class="row">
+    <button type="button" class="secondary" id="backBtn">Back to Admin</button>
+    <button type="button" class="secondary" id="loginLink">Cashier Sign In</button>
+  </div>
+  <p><small>Only a restaurant administrator can set or change this PIN. It is stored as a salted hash and is never shown again.</small></p>
+</main>
+<script>
+(function(){
+  const params=new URLSearchParams(location.search);
+  const slug=(params.get('restaurant')||'').trim();
+  const form=document.getElementById('pinForm');
+  const message=document.getElementById('message');
+  if(!slug){message.textContent='Restaurant not identified. Return to the admin panel and try again.';form.querySelector('button').disabled=true;return;}
+  document.getElementById('restaurantLabel').textContent='Restaurant: '+slug+'. Set or change the shared PIN your cashiers use to view this restaurant\u2019s orders. Use 6\u201312 digits.';
+  fetch('/api/admin/cashier-pin/'+encodeURIComponent(slug),{credentials:'same-origin',cache:'no-store'})
+    .then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to verify admin access.');message.textContent=d.configured?'A cashier PIN is already configured. Saving a new PIN will replace it.':'No cashier PIN is configured yet.';})
+    .catch(e=>{message.textContent=e.message;form.querySelector('button').disabled=true;});
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const pin=document.getElementById('pin').value;
+    if(!/^[0-9]{6,12}$/.test(pin)){message.textContent='Enter 6\u201312 digits.';return;}
+    if(pin!==document.getElementById('confirmPin').value){message.textContent='The PINs do not match.';return;}
+    const button=form.querySelector('button');button.disabled=true;message.textContent='Saving\u2026';
+    try{
+      const r=await fetch('/api/admin/cashier-pin/'+encodeURIComponent(slug),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin}),cache:'no-store'});
+      const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to save PIN.');
+      form.reset();message.textContent='Cashier PIN saved successfully.';
+    }catch(err){message.textContent=err.message;}finally{button.disabled=false;}
+  });
+  document.getElementById('backBtn').addEventListener('click',()=>location.href='/cafe-dashboard');
+  document.getElementById('loginLink').addEventListener('click',()=>location.href='/'+encodeURIComponent(slug)+'/cashier-login');
+})();
+</script>
+</body>
+</html>

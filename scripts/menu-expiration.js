@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 let menuExpirationRecords = [];
 const shownMenuExpirationWarnings = new Set();
@@ -105,7 +105,7 @@ function renderMenuExpirationCountdown() {
 
             const details = document.createElement('span');
             details.textContent =
-                `${name}${slug ? ` · ${slug}` : ''} · ${formatMenuExpirationDate(expirationDate)}`;
+                `${name}${slug ? ` - ${slug}` : ''} - ${formatMenuExpirationDate(expirationDate)}`;
 
             banner.append(title, details);
         }

@@ -74,7 +74,7 @@ function localizeCustomerDigits(value) {
         return String(value);
     }
 
-    const arabicDigits = 'Ù Ù¡Ù¢Ù£Ù¤Ù¥Ù¦Ù§Ù¨Ù©';
+    const arabicDigits = '\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669';
 
     return String(value).replace(
         /[0-9]/g,
@@ -112,13 +112,13 @@ function protectCustomerNumbers(root = document.body) {
             document.createDocumentFragment();
 
         node.nodeValue
-            .split(/(\d+(?:[,.Ù¬Ù«]\d+)*)/g)
+            .split(/(\d+(?:[,.]\d+)*)/g)
             .forEach(part => {
                 if (!part) {
                     return;
                 }
 
-                if (/^\d+(?:[,.Ù¬Ù«]\d+)*$/.test(part)) {
+                if (/^\d+(?:[,.]\d+)*$/.test(part)) {
                     const number =
                         document.createElement('span');
 
@@ -1280,7 +1280,7 @@ function showCustomerMenuExpirationStatus(data) {
 
     const status = document.createElement('strong');
     status.className = 'menu-expiration-days';
-    status.textContent = 'Expired · 0 days remaining';
+    status.textContent = 'Expired - 0 days remaining';
 
     const message = document.createElement('p');
     message.className = 'menu-expiration-explanation';
@@ -4277,7 +4277,7 @@ function renderOrderFormSummary() {
                         </div>
                         <div class="order-form-item-details">
                             Qty: ${formatCustomerNumber(quantity)}
-                            · ${formatCustomerCurrency(price)} each
+                            - ${formatCustomerCurrency(price)} each
                         </div>
                         ${note ? `<p class="order-form-item-note">Note: ${escapeHtml(note)}</p>` : ''}
                     </article>
@@ -4372,34 +4372,131 @@ function setupOrderFormEvents() {
         if (message) message.textContent = '';
     });
 
-    form.addEventListener('submit', event => {
-        event.preventDefault();
 
-        const message = document.getElementById('orderFormMessage');
+form.addEventListener('submit', async event => {
+    event.preventDefault();
 
-        if (!cart.length) {
-            if (message) message.textContent = 'Your cart is empty. Add items before continuing.';
-            return;
+    const message = document.getElementById('orderFormMessage');
+
+    if (!cart.length) {
+        if (message) {
+            message.textContent = 'Your cart is empty. Add items before continuing.';
+        }
+        return;
+    }
+
+    updateOrderFormFields();
+
+    if (!form.reportValidity()) return;
+
+    const phoneInput = document.getElementById('orderCustomerPhone');
+    const phone = phoneInput?.value.trim() || '';
+
+    if (!/^[+\d][\d\s()+.-]{5,29}$/.test(phone)) {
+        phoneInput?.setCustomValidity('Enter a valid phone number.');
+        phoneInput?.reportValidity();
+
+        phoneInput?.addEventListener(
+            'input',
+            () => phoneInput.setCustomValidity(''),
+            { once: true }
+        );
+        return;
+    }
+
+    const submitButton = form.querySelector('[type="submit"]');
+
+    if (submitButton?.disabled) return;
+
+    const originalButtonText = submitButton?.textContent;
+
+    try {
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Placing order...';
         }
 
-        updateOrderFormFields();
-
-        if (!form.reportValidity()) return;
-
-        const phone = document.getElementById('orderCustomerPhone')?.value.trim() || '';
-
-        if (!/^[+\d][\d\s()+.-]{5,29}$/.test(phone)) {
-            const phoneInput = document.getElementById('orderCustomerPhone');
-            phoneInput?.setCustomValidity('Enter a valid phone number.');
-            phoneInput?.reportValidity();
-            phoneInput?.addEventListener('input', () => phoneInput.setCustomValidity(''), { once: true });
-            return;
+        if (message) {
+            message.textContent = 'Submitting your order...';
         }
+
+        const response = await fetch(
+            `${API_BASE}/api/orders/${encodeURIComponent(CAFE_SLUG)}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    customer_name:
+                        document.getElementById('orderCustomerName')?.value.trim() || '',
+                    customer_phone: phone,
+                    branch_id:
+                        document.getElementById('orderBranch')?.value || '',
+                    order_type:
+                        document.getElementById('orderType')?.value || '',
+                    table_number:
+                        document.getElementById('orderTableNumber')?.value.trim() || '',
+                    customer_address:
+                        document.getElementById('orderCustomerAddress')?.value.trim() || '',
+                    items: cart.map(item => ({
+    id: item.id,
+    name: item.name,
+    quantity: Number(item.quantity),
+    note: String(item.note || '').trim()
+}))
+                })
+            }
+        );
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.ok) {
+            throw new Error(
+                result.message || 'Unable to place your order. Please try again.'
+            );
+        }
+
+        const orderId = result.order?.display_number ?? result.order?.id;
+
+        cart = [];
+        saveCart();
+        renderCart();
+        renderOrderFormSummary();
+
+        if (message) {
+            message.textContent = `Order #${orderId} placed successfully!`;
+        }
+
+        showToast(
+            `Order #${orderId} placed successfully!`,
+            'success'
+        );
 
         closeOrderFormModal();
-        openPaymentModal();
-    });
+    } catch (error) {
+        if (message) {
+            message.textContent =
+                error.message || 'Unable to place your order. Please try again.';
+        }
+
+        showToast(
+            error.message || 'Unable to place your order. Please try again.',
+            'error'
+        );
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent =
+                originalButtonText || 'Place Your Order';
+        }
+    }
+});
+
 }
+
+
+
 
 function openOrderFormModal() {
     if (!cart.length) return;
@@ -4545,7 +4642,7 @@ async function loadCustomerTelebirrSetting() {
         if (telebirrOption) telebirrOption.hidden = !enabled;
     } catch (error) {
         console.error(
-            '[payment-settings] Unable to load café setting:',
+            '[payment-settings] Unable to load cafe setting:',
             error
         );
     }

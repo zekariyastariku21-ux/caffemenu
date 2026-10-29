@@ -5420,7 +5420,7 @@ html body {
     }
 }
 
-/* Hide customer payment controls until the café setting is confirmed. */
+/* Hide customer payment controls until the cafe setting is confirmed. */
 .payment[hidden],
 #orderNowButton[hidden],
 #paymentModal .payment-option[hidden] {

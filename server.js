@@ -441,6 +441,53 @@ async function ensureDatabaseStructure() {
         UNIQUE (restaurant_id, name)
       )
     `);
+
+
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS customer_orders (
+        id BIGSERIAL PRIMARY KEY,
+        restaurant_id INTEGER NOT NULL
+          REFERENCES restaurants(id) ON DELETE CASCADE,
+        branch_id INTEGER NOT NULL
+          REFERENCES restaurant_payment_branches(id),
+        branch_name TEXT NOT NULL,
+        customer_name TEXT NOT NULL,
+        customer_phone TEXT NOT NULL,
+        order_type TEXT NOT NULL
+          CHECK (order_type IN ('dine-in', 'delivery', 'pickup')),
+        table_number TEXT NOT NULL DEFAULT '',
+        customer_address TEXT NOT NULL DEFAULT '',
+        items JSONB NOT NULL,
+        total NUMERIC(12,2) NOT NULL CHECK (total >= 0),
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      ALTER TABLE customer_orders
+        ADD COLUMN IF NOT EXISTS preparing_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ
+    `);
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_customer_orders_restaurant_created
+      ON customer_orders (restaurant_id, created_at DESC)
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS restaurant_cashier_settings (
+        restaurant_id INTEGER PRIMARY KEY
+          REFERENCES restaurants(id) ON DELETE CASCADE,
+        pin_salt TEXT NOT NULL,
+        pin_hash TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+
     await pool.query(`
       ALTER TABLE restaurant_payment_branches
       ADD COLUMN IF NOT EXISTS fabric_app_id TEXT NOT NULL DEFAULT '',
@@ -836,6 +883,138 @@ async function requireRestaurantAdmin(
 }
 
 
+
+/* ================================================================
+   CASHIER AUTHENTICATION
+   ================================================================ */
+
+const cashierPinAttempts = new Map();
+const CASHIER_PIN_MAX_ATTEMPTS = 5;
+const CASHIER_PIN_LOCK_MS = 15 * 60 * 1000;
+const CASHIER_SESSION_MS = 8 * 60 * 60 * 1000;
+
+function getCashierTokenFromRequest(req) {
+  const cookieHeader = req.headers.cookie || '';
+  const match = cookieHeader.match(
+    /(?:^|;\s*)cashierToken=([^;]+)/
+  );
+
+  if (match) {
+    try {
+      return decodeURIComponent(match[1]);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+async function requireCashier(req, res, next) {
+  const token = getCashierTokenFromRequest(req);
+
+  if (!token) {
+    return res.status(401).json({
+      ok: false,
+      code: 'CASHIER_AUTH_REQUIRED',
+      message: 'Please sign in with your restaurant cashier PIN.'
+    });
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (_) {
+    clearCashierCookie(res);
+    return res.status(401).json({
+      ok: false,
+      code: 'CASHIER_SESSION_EXPIRED',
+      message: 'Your cashier session has expired. Please sign in again.'
+    });
+  }
+
+  if (
+    decoded.role !== 'cashier' ||
+    !decoded.restaurant_id ||
+    !decoded.restaurant_slug
+  ) {
+    clearCashierCookie(res);
+    return res.status(403).json({
+      ok: false,
+      message: 'Cashier access required.'
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT id, name, slug FROM restaurants WHERE id = $1 LIMIT 1',
+      [decoded.restaurant_id]
+    );
+
+    const restaurant = result.rows[0];
+
+    if (
+      !restaurant ||
+      String(restaurant.id) !== String(decoded.restaurant_id) ||
+      restaurant.slug !== decoded.restaurant_slug
+    ) {
+      clearCashierCookie(res);
+      res.set('Cache-Control', 'no-store');
+      return res.status(401).json({
+        ok: false,
+        code: 'CASHIER_SESSION_INVALID',
+        message: 'Restaurant details changed. Please sign in again.'
+      });
+    }
+
+    req.cashier = {
+      ...decoded,
+      restaurant_id: restaurant.id,
+      restaurant_slug: restaurant.slug,
+      restaurant_name: restaurant.name
+    };
+
+    res.set('Cache-Control', 'no-store');
+    return next();
+  } catch (error) {
+    console.error('[cashier:session-check] Failed:', error);
+    return res.status(500).json({
+      ok: false,
+      message: 'Unable to verify cashier access right now.'
+    });
+  }
+}
+function hashCashierPin(pin, salt) {
+  return crypto.scryptSync(String(pin), salt, 64).toString('hex');
+}
+
+function safeCompareCashierPin(pin, salt, expectedHash) {
+  const actual = Buffer.from(hashCashierPin(pin, salt), 'hex');
+  const expected = Buffer.from(String(expectedHash || ''), 'hex');
+
+  return actual.length === expected.length &&
+    crypto.timingSafeEqual(actual, expected);
+}
+
+function cashierCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: CASHIER_SESSION_MS
+  };
+}
+
+function clearCashierCookie(res) {
+  res.clearCookie('cashierToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/'
+  });
+}
+
 function requireCafeDashboardAccess(
   req,
   res,
@@ -932,6 +1111,30 @@ app.get('/save.html', (req, res) => {
 /* ================================================================
    STATIC FILES
    ================================================================ */
+
+app.get('/order-management', (req, res) => {
+  return res.sendFile(path.join(__dirname, 'orders-display.html'));
+});
+
+app.get('/:slug/cashier-login', (req, res, next) => {
+  const slug = String(req.params.slug || '').trim();
+
+  if (!/^[a-z0-9-]+$/i.test(slug)) {
+    return next();
+  }
+
+  return res.sendFile(path.join(__dirname, 'cashier-login.html'));
+});
+
+app.get('/:slug/cashier-orders', (req, res, next) => {
+  const slug = String(req.params.slug || '').trim();
+
+  if (!/^[a-z0-9-]+$/i.test(slug)) {
+    return next();
+  }
+
+  return res.sendFile(path.join(__dirname, 'cashier-orders.html'));
+});
 
 app.use(express.static(__dirname));
 
@@ -2929,6 +3132,730 @@ app.get('/api/menu/:slug/logo', async (req, res) => {
     });
   }
 });
+
+
+/* ============================================================
+   CUSTOMER ORDERS
+   ============================================================ */
+
+app.post('/api/orders/:slug', async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').trim();
+
+    const {
+      customer_name,
+      customer_phone,
+      branch_id,
+      order_type,
+      table_number,
+      customer_address,
+      items
+    } = req.body || {};
+
+    const customerName = String(customer_name || '').trim();
+    const customerPhone = String(customer_phone || '').trim();
+    const branchId = Number(branch_id);
+    const orderType = String(order_type || '').trim();
+    const tableNumber = String(table_number || '').trim();
+    const customerAddress = String(customer_address || '').trim();
+
+    if (!customerName || !customerPhone) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Enter your name and phone number.'
+      });
+    }
+
+    if (!/^[+\d][\d\s()+.-]{5,29}$/.test(customerPhone)) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Enter a valid phone number.'
+      });
+    }
+
+    if (!Number.isSafeInteger(branchId) || branchId <= 0) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Select a valid branch.'
+      });
+    }
+
+    if (!['dine-in', 'delivery', 'pickup'].includes(orderType)) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Select a valid order type.'
+      });
+    }
+
+    if (orderType === 'dine-in' && !tableNumber) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Enter your table number.'
+      });
+    }
+
+    if (orderType === 'delivery' && !customerAddress) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Enter your delivery address.'
+      });
+    }
+
+    if (!Array.isArray(items) || items.length < 1 || items.length > 100) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Your order must contain between 1 and 100 items.'
+      });
+    }
+
+    // Find the active restaurant and read its menu directly from the database.
+    const restaurantResult = await pool.query(
+      `SELECT r.id, r.name, md.menu
+       FROM restaurants r
+       LEFT JOIN menu_data md ON md.restaurant_id = r.id
+       WHERE r.slug = $1
+         AND r.status = 'active'
+       LIMIT 1`,
+      [slug]
+    );
+
+    if (!restaurantResult.rows.length) {
+      return res.status(404).json({
+        ok: false,
+        message: 'Restaurant not found or unavailable.'
+      });
+    }
+
+    const restaurant = restaurantResult.rows[0];
+
+    const menu =
+      restaurant.menu &&
+      typeof restaurant.menu === 'object' &&
+      !Array.isArray(restaurant.menu)
+        ? restaurant.menu
+        : {};
+
+    // Verify the selected branch belongs to this restaurant.
+    const branchResult = await pool.query(
+      `SELECT id, name
+       FROM restaurant_payment_branches
+       WHERE id = $1
+         AND restaurant_id = $2
+         AND order_now_enabled = TRUE
+       LIMIT 1`,
+      [branchId, restaurant.id]
+    );
+
+    if (!branchResult.rows.length) {
+      return res.status(400).json({
+        ok: false,
+        message: 'The selected branch is unavailable for orders.'
+      });
+    }
+
+    // Flatten the category-based menu.
+    const menuItems = Object.values(menu).flatMap(category =>
+      Array.isArray(category) ? category : []
+    );
+
+    const savedItems = [];
+    let totalCents = 0;
+
+    for (const requestedItem of items) {
+      const itemName = String(requestedItem?.name || '').trim();
+      const requestedId = requestedItem?.id;
+      const quantity = Number(requestedItem?.quantity);
+      const note = String(requestedItem?.note || '').trim();
+
+      if (
+        !itemName ||
+        !Number.isSafeInteger(quantity) ||
+        quantity < 1 ||
+        quantity > 99 ||
+        note.length > 500
+      ) {
+        return res.status(400).json({
+          ok: false,
+          message: 'One or more order items are invalid.'
+        });
+      }
+
+      const matches = menuItems.filter(food =>
+        food &&
+        typeof food === 'object' &&
+        String(food.name || '').trim() === itemName &&
+        (
+          requestedId == null ||
+          requestedId === '' ||
+          String(food.id) === String(requestedId)
+        )
+      );
+
+      if (matches.length !== 1) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            `The menu item "${itemName}" could not be verified. Refresh the menu and try again.`
+        });
+      }
+
+      const food = matches[0];
+      const price = Number(food.price);
+
+      if (!Number.isFinite(price) || price < 0) {
+        return res.status(400).json({
+          ok: false,
+          message: `The price for "${itemName}" is invalid.`
+        });
+      }
+
+      const priceCents = Math.round(price * 100);
+
+      if (!Number.isSafeInteger(priceCents)) {
+        return res.status(400).json({
+          ok: false,
+          message: `The price for "${itemName}" is invalid.`
+        });
+      }
+
+      totalCents += priceCents * quantity;
+
+      if (!Number.isSafeInteger(totalCents)) {
+        return res.status(400).json({
+          ok: false,
+          message: 'The order total is too large.'
+        });
+      }
+
+      savedItems.push({
+        id: food.id ?? null,
+        name: String(food.name).trim(),
+        quantity,
+        price: priceCents / 100,
+        note
+      });
+    }
+
+    const total = totalCents / 100;
+
+    // Persist the order. No payment endpoint is called.
+    const insertResult = await pool.query(
+      `INSERT INTO customer_orders (
+         restaurant_id,
+         branch_id,
+         branch_name,
+         customer_name,
+         customer_phone,
+         order_type,
+         table_number,
+         customer_address,
+         items,
+         total
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)
+       RETURNING id, status, created_at, total`,
+      [
+        restaurant.id,
+        branchResult.rows[0].id,
+        branchResult.rows[0].name,
+        customerName,
+        customerPhone,
+        orderType,
+        tableNumber,
+        customerAddress,
+        JSON.stringify(savedItems),
+        total
+      ]
+    );
+
+    const order = insertResult.rows[0];
+
+    const displayNumberResult = await pool.query(
+      'SELECT COUNT(*)::int AS display_number FROM customer_orders WHERE restaurant_id = $1 AND id <= $2',
+      [restaurant.id, order.id]
+    );
+
+    const displayNumber = displayNumberResult.rows[0].display_number;
+
+    return res.status(201).json({
+      ok: true,
+      message: 'Order placed successfully.',
+      order: {
+        id: order.id,
+        display_number: displayNumber,
+        status: order.status,
+        created_at: order.created_at,
+        total: Number(order.total)
+      }
+    });
+  } catch (error) {
+    console.error('[orders:create] Failed to save order:', error);
+
+    return res.status(500).json({
+      ok: false,
+      message: 'Unable to place your order right now. Please try again.'
+    });
+  }
+});
+
+
+/* ============================================================
+   CUSTOMER ORDERS
+   ============================================================ */
+
+app.get(
+  '/api/admin/orders/:slug',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const slug = String(req.params.slug || '').trim();
+
+      const restaurantResult = await pool.query(
+        `SELECT id, name, slug
+         FROM restaurants
+         WHERE slug = $1
+         LIMIT 1`,
+        [slug]
+      );
+
+      if (!restaurantResult.rows.length) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Restaurant not found.'
+        });
+      }
+
+      const restaurant = restaurantResult.rows[0];
+      const isSuperAdmin = isSuperAdminRole(req.user?.role);
+
+      if (
+        !isSuperAdmin &&
+        Number(req.user?.restaurant_id) !== Number(restaurant.id)
+      ) {
+        return res.status(403).json({
+          ok: false,
+          message: 'You are not authorized to view these orders.'
+        });
+      }
+
+      const ordersResult = await pool.query(
+        `SELECT
+           (
+             SELECT COUNT(*)::int
+             FROM customer_orders AS earlier
+             WHERE earlier.restaurant_id = customer_orders.restaurant_id
+               AND earlier.id <= customer_orders.id
+           ) AS display_number,
+           id,
+           status,
+           created_at,
+           preparing_at,
+           ready_at,
+           completed_at,
+           customer_name,
+           customer_phone,
+           branch_name,
+           order_type,
+           table_number,
+           customer_address,
+           items,
+           total
+         FROM customer_orders
+         WHERE restaurant_id = $1
+         ORDER BY created_at DESC, id DESC
+         LIMIT 100`,
+        [restaurant.id]
+      );
+
+      return res.json({
+        ok: true,
+        restaurant: {
+          name: restaurant.name,
+          slug: restaurant.slug
+        },
+        orders: ordersResult.rows.map(order => ({
+          ...order,
+          total: Number(order.total),
+          items: Array.isArray(order.items) ? order.items : []
+        }))
+      });
+    } catch (error) {
+      console.error('[orders:list] Failed to load orders:', error);
+
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to load orders right now.'
+      });
+    }
+  }
+);
+
+
+async function applyCustomerOrderStatus(restaurantId, orderId, requestedStatus, res) {
+  const transitions = {
+    preparing: 'pending',
+    ready: 'preparing',
+    completed: 'ready'
+  };
+
+  const nextStatus = String(requestedStatus || '').trim().toLowerCase();
+  const previousStatus = transitions[nextStatus];
+  const id = Number(orderId);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.status(400).json({ ok: false, message: 'Invalid order ID.' });
+  }
+
+  if (!previousStatus) {
+    return res.status(400).json({
+      ok: false,
+      message: 'Invalid status. Allowed statuses are preparing, ready, and completed.'
+    });
+  }
+
+  const updated = await pool.query(
+    `UPDATE customer_orders
+     SET status = $1,
+         preparing_at = CASE WHEN $1 = 'preparing' THEN NOW() ELSE preparing_at END,
+         ready_at = CASE WHEN $1 = 'ready' THEN NOW() ELSE ready_at END,
+         completed_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE completed_at END
+     WHERE id = $2
+       AND restaurant_id = $3
+       AND LOWER(status) = $4
+     RETURNING id, status`,
+    [nextStatus, id, restaurantId, previousStatus]
+  );
+
+  if (updated.rows.length) {
+    return res.json({
+      ok: true,
+      order: updated.rows[0],
+      message: `Order status updated to ${nextStatus}.`
+    });
+  }
+
+  const existing = await pool.query(
+    `SELECT id, status
+     FROM customer_orders
+     WHERE id = $1 AND restaurant_id = $2
+     LIMIT 1`,
+    [id, restaurantId]
+  );
+
+  if (!existing.rows.length) {
+    return res.status(404).json({
+      ok: false,
+      message: 'Order not found for this restaurant.'
+    });
+  }
+
+  return res.status(409).json({
+    ok: false,
+    message: `This order is currently ${existing.rows[0].status}. Refresh orders and try again.`
+  });
+}
+
+app.patch(
+  '/api/admin/orders/:slug/:orderId/status',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const slug = String(req.params.slug || '').trim();
+      const result = await pool.query(
+        `SELECT id FROM restaurants WHERE slug = $1 LIMIT 1`,
+        [slug]
+      );
+
+      if (!result.rows.length) {
+        return res.status(404).json({ ok: false, message: 'Restaurant not found.' });
+      }
+
+      const restaurantId = result.rows[0].id;
+      const isSuperAdmin = isSuperAdminRole(req.user?.role);
+
+      if (!isSuperAdmin &&
+          Number(req.user?.restaurant_id) !== Number(restaurantId)) {
+        return res.status(403).json({
+          ok: false,
+          message: 'You are not authorized to update these orders.'
+        });
+      }
+
+      return await applyCustomerOrderStatus(
+        restaurantId, req.params.orderId, req.body?.status, res
+      );
+    } catch (error) {
+      console.error('[orders:update-status] Failed:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to update order status right now.'
+      });
+    }
+  }
+);
+
+app.patch(
+  '/api/cashier/orders/:slug/:orderId/status',
+  requireCashier,
+  async (req, res) => {
+    try {
+      const slug = String(req.params.slug || '').trim();
+
+      if (slug !== req.cashier.restaurant_slug) {
+        return res.status(403).json({
+          ok: false,
+          message: 'You are not authorized to update these orders.'
+        });
+      }
+
+      res.set('Cache-Control', 'no-store');
+
+      return await applyCustomerOrderStatus(
+        req.cashier.restaurant_id, req.params.orderId, req.body?.status, res
+      );
+    } catch (error) {
+      console.error('[cashier:orders:update-status] Failed:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to update order status right now.'
+      });
+    }
+  }
+);
+
+/* ================================================================
+   CASHIER PIN SETUP AND CASHIER ORDER VIEW
+   ================================================================ */
+
+app.get(
+  '/api/admin/cashier-pin/:slug',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const slug = String(req.params.slug || '').trim();
+      const result = await pool.query(
+        `SELECT id, slug FROM restaurants WHERE slug = $1 LIMIT 1`,
+        [slug]
+      );
+
+      if (!result.rows.length) {
+        return res.status(404).json({ ok: false, message: 'Restaurant not found.' });
+      }
+
+      const restaurant = result.rows[0];
+      if (
+        !isSuperAdminRole(req.user?.role) &&
+        Number(req.user?.restaurant_id) !== Number(restaurant.id)
+      ) {
+        return res.status(403).json({ ok: false, message: 'You are not authorized to manage this restaurant.' });
+      }
+
+      const setting = await pool.query(
+        `SELECT restaurant_id FROM restaurant_cashier_settings WHERE restaurant_id = $1`,
+        [restaurant.id]
+      );
+
+      res.set('Cache-Control', 'no-store');
+      return res.json({ ok: true, configured: setting.rows.length > 0 });
+    } catch (error) {
+      console.error('[cashier:pin-status] Failed:', error);
+      return res.status(500).json({ ok: false, message: 'Unable to check cashier PIN settings.' });
+    }
+  }
+);
+
+app.put(
+  '/api/admin/cashier-pin/:slug',
+  requireRestaurantAdmin,
+  async (req, res) => {
+    try {
+      const slug = String(req.params.slug || '').trim();
+      const pin = String(req.body?.pin || '');
+
+      if (!/^\d{6,12}$/.test(pin)) {
+        return res.status(400).json({
+          ok: false,
+          message: 'PIN must contain 6 to 12 digits.'
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT id, slug FROM restaurants WHERE slug = $1 LIMIT 1`,
+        [slug]
+      );
+
+      if (!result.rows.length) {
+        return res.status(404).json({ ok: false, message: 'Restaurant not found.' });
+      }
+
+      const restaurant = result.rows[0];
+      if (
+        !isSuperAdminRole(req.user?.role) &&
+        Number(req.user?.restaurant_id) !== Number(restaurant.id)
+      ) {
+        return res.status(403).json({ ok: false, message: 'You are not authorized to manage this restaurant.' });
+      }
+
+      const salt = crypto.randomBytes(16).toString('hex');
+      const pinHash = hashCashierPin(pin, salt);
+
+      await pool.query(
+        `INSERT INTO restaurant_cashier_settings (restaurant_id, pin_salt, pin_hash, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (restaurant_id)
+         DO UPDATE SET pin_salt = EXCLUDED.pin_salt,
+                       pin_hash = EXCLUDED.pin_hash,
+                       updated_at = NOW()`,
+        [restaurant.id, salt, pinHash]
+      );
+
+      for (const key of cashierPinAttempts.keys()) {
+        if (key.startsWith(`${restaurant.id}:`)) cashierPinAttempts.delete(key);
+      }
+      res.set('Cache-Control', 'no-store');
+      return res.json({ ok: true, message: 'Cashier PIN saved.' });
+    } catch (error) {
+      console.error('[cashier:pin-save] Failed:', error);
+      return res.status(500).json({ ok: false, message: 'Unable to save cashier PIN.' });
+    }
+  }
+);
+
+app.post('/api/cashier/login/:slug', async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').trim();
+    const pin = String(req.body?.pin || '');
+    const restaurantResult = await pool.query(
+      `SELECT id, name, slug FROM restaurants WHERE slug = $1 LIMIT 1`,
+      [slug]
+    );
+
+    if (!restaurantResult.rows.length) {
+      return res.status(404).json({ ok: false, message: 'Restaurant not found.' });
+    }
+
+    const restaurant = restaurantResult.rows[0];
+    const attemptKey = `${restaurant.id}:${req.ip || req.socket.remoteAddress || 'unknown'}`;
+    const attempt = cashierPinAttempts.get(attemptKey);
+    const now = Date.now();
+
+    if (attempt?.lockedUntil && attempt.lockedUntil > now) {
+      res.set('Cache-Control', 'no-store');
+      return res.status(429).json({
+        ok: false,
+        message: 'Too many incorrect PIN attempts. Please try again in 15 minutes.'
+      });
+    }
+
+    const settingResult = await pool.query(
+      `SELECT pin_salt, pin_hash FROM restaurant_cashier_settings WHERE restaurant_id = $1`,
+      [restaurant.id]
+    );
+
+    if (!settingResult.rows.length) {
+      return res.status(403).json({
+        ok: false,
+        code: 'CASHIER_PIN_NOT_CONFIGURED',
+        message: 'The restaurant administrator has not configured a cashier PIN yet.'
+      });
+    }
+
+    const setting = settingResult.rows[0];
+    const valid = /^\d{6,12}$/.test(pin) &&
+      safeCompareCashierPin(pin, setting.pin_salt, setting.pin_hash);
+
+    if (!valid) {
+      const failures = (attempt?.failures || 0) + 1;
+      cashierPinAttempts.set(attemptKey, {
+        failures,
+        lockedUntil: failures >= CASHIER_PIN_MAX_ATTEMPTS
+          ? now + CASHIER_PIN_LOCK_MS
+          : 0
+      });
+      res.set('Cache-Control', 'no-store');
+      return res.status(failures >= CASHIER_PIN_MAX_ATTEMPTS ? 429 : 401).json({
+        ok: false,
+        message: failures >= CASHIER_PIN_MAX_ATTEMPTS
+          ? 'Too many incorrect PIN attempts. Please try again in 15 minutes.'
+          : 'Incorrect cashier PIN.'
+      });
+    }
+
+    cashierPinAttempts.delete(attemptKey);
+    const token = jwt.sign(
+      {
+        role: 'cashier',
+        restaurant_id: restaurant.id,
+        restaurant_slug: restaurant.slug,
+        restaurant_name: restaurant.name
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: Math.floor(CASHIER_SESSION_MS / 1000) }
+    );
+
+    res.set('Cache-Control', 'no-store');
+    res.cookie('cashierToken', token, cashierCookieOptions());
+    return res.json({
+      ok: true,
+      restaurant: { name: restaurant.name, slug: restaurant.slug }
+    });
+  } catch (error) {
+    console.error('[cashier:login] Failed:', error);
+    return res.status(500).json({ ok: false, message: 'Unable to sign in right now.' });
+  }
+});
+
+app.get('/api/cashier/orders/:slug', requireCashier, async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').trim();
+
+    if (slug !== req.cashier.restaurant_slug) {
+      return res.status(403).json({ ok: false, message: 'You are not authorized to view these orders.' });
+    }
+
+    const ordersResult = await pool.query(
+      `SELECT
+              (
+                SELECT COUNT(*)::int
+                FROM customer_orders AS earlier
+                WHERE earlier.restaurant_id = customer_orders.restaurant_id
+                  AND earlier.id <= customer_orders.id
+              ) AS display_number,
+              id, status, created_at, preparing_at, ready_at, completed_at, customer_name, customer_phone,
+              branch_name, order_type, table_number, customer_address,
+              items, total
+       FROM customer_orders
+       WHERE restaurant_id = $1
+       ORDER BY created_at DESC, id DESC
+       LIMIT 100`,
+      [req.cashier.restaurant_id]
+    );
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      ok: true,
+      restaurant: {
+        name: req.cashier.restaurant_name || slug,
+        slug
+      },
+      orders: ordersResult.rows.map(order => ({
+        ...order,
+        total: Number(order.total),
+        items: Array.isArray(order.items) ? order.items : []
+      }))
+    });
+  } catch (error) {
+    console.error('[cashier:orders] Failed:', error);
+    return res.status(500).json({ ok: false, message: 'Unable to load orders right now.' });
+  }
+});
+
+app.post('/api/cashier/logout', (req, res) => {
+  clearCashierCookie(res);
+  res.set('Cache-Control', 'no-store');
+  return res.json({ ok: true });
+});
+
 
 /* ================================================================
    TELEBIRR PAYMENT

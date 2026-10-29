@@ -54,14 +54,21 @@
                 >
                     ✨ Day Special ✨
                 </button>
+                <button
+                    type="button"
+                    id="cashierSettingsBtn"
+                    class="profile-btn"
+                >
+                    Cashier PIN
+                </button>
 
                 <button
                     type="button"
-                    id="telebirrSettingBtn"
+                    id="ordersDisplayBtn"
+                    class="profile-btn"
                 >
-                    Telebirr Setting
+                    Order Management
                 </button>
-
 
                 <button
                     type="button"
@@ -472,6 +479,14 @@
      PROFILE MODAL
 ========================================================= -->
 
+<!-- ============================================================
+     CENTER SCREEN ADMIN STATUS POPUP
+     ============================================================ -->
+
+<!-- =========================================================
+     PROFILE MODAL
+========================================================= -->
+
 <div
     id="profileModal"
     class="profile-modal-overlay"
@@ -647,121 +662,6 @@
 
 
 
-<div class="profile-section" id="telebirrSettingsSection" style="display:none;">
-
-                <form id="telebirrSettingsForm">
-                    <label for="orderNowEnabled">
-                        <input
-                            type="checkbox"
-                            id="orderNowEnabled"
-                            name="order_now_enabled"
-                            checked
-                        >
-                        Enable Order Now for this café
-                    </label>
-
-
-
-                    <div class="profile-field">
-                        <label for="telebirrMerchantName">
-                            Merchant Name
-                        </label>
-                        <input
-                            type="text"
-                            id="telebirrMerchantName"
-                            name="merchant_name"
-                            maxlength="200"
-                            autocomplete="organization"
-                        >
-                    </div>
-
-                    <div class="profile-field">
-                        <label for="telebirrMerchantCode">
-                            Merchant Code
-                        </label>
-                        <input
-                            type="text"
-                            id="telebirrMerchantCode"
-                            name="merchant_code"
-                            maxlength="200"
-                            autocomplete="off"
-                        >
-                    </div>
-
-                    <div class="profile-field">
-                        <label for="telebirrMerchantAppId">
-                            Merchant App ID
-                        </label>
-                        <input
-                            type="text"
-                            id="telebirrMerchantAppId"
-                            name="merchant_app_id"
-                            maxlength="200"
-                            autocomplete="off"
-                        >
-                    </div>
-
-                    <div class="profile-field">
-                        <label for="telebirrFabricAppId">Fabric App ID</label>
-                        <input type="text" id="telebirrFabricAppId" name="fabric_app_id" maxlength="500" autocomplete="off">
-                    </div>
-
-                    <div class="profile-field">
-    <label for="telebirrAppSecret">App Secret / Secret Key</label>
-    <div style="display:flex; align-items:center; gap:8px;">
-        <input type="password" id="telebirrAppSecret" name="app_secret"
-            maxlength="5000" autocomplete="new-password"
-            style="flex:1; min-width:0;">
-        <button type="button"
-            onclick="toggleTelebirrSecret('telebirrAppSecret', this)"
-            aria-label="Show App Secret"
-            style="white-space:nowrap;">Show</button>
-    </div>
-</div>
-
-                    <div class="profile-field">
-    <label for="telebirrPrivateKey">Private Key (PEM)</label>
-    <div style="display:flex; align-items:flex-start; gap:8px;">
-        <textarea id="telebirrPrivateKey" name="private_key" rows="5"
-            maxlength="20000" autocomplete="off" spellcheck="false"
-            style="flex:1; min-width:0; -webkit-text-security:disc;"></textarea>
-        <button type="button"
-            onclick="toggleTelebirrSecret('telebirrPrivateKey', this)"
-            aria-label="Show Private Key"
-            style="white-space:nowrap;">Show</button>
-    </div>
-</div>
-
-                    <div class="profile-field">
-                        <label for="telebirrEnvironment">Environment</label>
-                        <select id="telebirrEnvironment" name="environment">
-                            <option value="sandbox">Sandbox / Testing</option>
-                            <option value="production">Production / Live</option>
-                        </select>
-                    </div>
-
-                    <div class="profile-field">
-                        <label for="telebirrNotifyUrl">Notification URL</label>
-                        <input type="url" id="telebirrNotifyUrl" name="notify_url" maxlength="2000" autocomplete="url">
-                    </div>
-
-                    <div class="profile-field">
-                        <label for="telebirrReturnUrl">Return URL</label>
-                        <input type="url" id="telebirrReturnUrl" name="return_url" maxlength="2000" autocomplete="url">
-                    </div>
-                    <button type="submit" class="profile-save-btn">
-                        Save Telebirr Settings
-                    </button>
-
-                    <p
-                        id="telebirrSettingsMessage"
-                        role="status"
-                        aria-live="polite"
-                    ></p>
-                </form>
-
-            </div>
-
 <!-- LOCATIONS -->
 
             <div class="profile-section">
@@ -824,25 +724,10 @@
 
 </div>
 
-<!-- ATLAS BRANCH SECTION -->
-<div id="atlasBranchSection" class="profile-section">
-    <div class="profile-section-header">
-        <div>
-            <div class="profile-section-title">Telebirr Branch Settings</div>
-            <div class="profile-section-description">Manage your Telebirr payment branches and settings.</div>
-        </div>
-    </div>
-    <div id="atlasBranchList" class="profile-list">
-    </div>
-    <div style="display:flex; justify-content:center; margin-top:16px;">
-        <button type="button" id="addAtlasBranchBtn" class="profile-add-btn">
-            + Add Branch
-        </button>
-    </div>
-</div>
 <!-- ============================================================
      CENTER SCREEN ADMIN STATUS POPUP
      ============================================================ -->
+
 
 <div
     id="adminStatusPopup"
@@ -857,7 +742,7 @@
             id="adminStatusIcon"
             class="admin-status-icon"
         >
-            ✓
+            &#10003;
         </div>
 
         <div
@@ -882,48 +767,47 @@
 <script src="/scripts/admin.js?v=20261013a"></script>
 
 <script>
-async function toggleTelebirrSecret(fieldId, button) {
-    const field = document.getElementById(fieldId);
-    if (!field) return;
+(function () {
+    const button = document.getElementById('ordersDisplayBtn');
+    if (!button) return;
 
-    const isPrivateKey = field.tagName === 'TEXTAREA';
-    const isHidden = isPrivateKey
-        ? field.style.webkitTextSecurity === 'disc'
-        : field.type === 'password';
+    button.addEventListener('click', function () {
+        const slug = (
+            localStorage.getItem('adminRestaurantSlug') ||
+            localStorage.getItem('selectedRestaurantSlug') ||
+            ''
+        ).trim();
 
-    if (
-        isHidden &&
-        !field.value &&
-        field.placeholder.startsWith('Saved securely')
-    ) {
-        if (typeof window.loadSavedTelebirrSecret !== 'function') {
-            alert('Credential reveal is unavailable. Refresh the page and try again.');
+        if (!slug) {
+            alert('Restaurant not identified. Please log in again.');
             return;
         }
 
-        const loaded = await window.loadSavedTelebirrSecret(fieldId, button);
-        if (!loaded) return;
-    }
+        window.location.href = '/orders-display.html';
+    });
+})();
+</script>
+<script>
+(function () {
+    const button = document.getElementById('cashierSettingsBtn');
+    if (!button) return;
 
-    if (isPrivateKey) {
-        field.style.webkitTextSecurity = isHidden ? 'none' : 'disc';
-    } else {
-        field.type = isHidden ? 'text' : 'password';
-    }
+    button.addEventListener('click', function () {
+        const slug = (
+            localStorage.getItem('adminRestaurantSlug') ||
+            localStorage.getItem('selectedRestaurantSlug') ||
+            ''
+        ).trim();
 
-    button.textContent = isHidden ? 'Hide' : 'Show';
+        if (!slug) {
+            alert('Restaurant not identified. Please log in again.');
+            return;
+        }
 
-    const label = fieldId === 'telebirrAppSecret'
-        ? 'App Secret'
-        : 'Private Key';
-
-    button.setAttribute(
-        'aria-label',
-        (isHidden ? 'Hide ' : 'Show ') + label
-    );
-}
+        window.location.href = '/cashier-settings.html?restaurant=' + encodeURIComponent(slug);
+    });
+})();
 </script>
 </body>
 
 </html>
-
