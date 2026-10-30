@@ -234,9 +234,12 @@ main {
          if(items.length){items.forEach(item=>{
            const qty=Number(item&& (item.quantity??item.qty))||1;
            const price=Number(item&& (item.price??item.unit_price))||0;
-           itemWrap.append(el('div','item',`${itemText(item)}`));
-           const last=itemWrap.lastElementChild;
-           if(last)last.append(el('span','',money(price*qty)));
+            const row=el('div','item');row.append(el('span','',itemText(item)),el('span','',money(price*qty)));
+            const block=el('div','');block.style.cssText='padding-bottom:6px;';block.append(row);
+            const sub=el('div','muted','Qty: '+qty+' - '+money(price)+' each');sub.style.cssText='font-size:13px;color:var(--muted);';block.append(sub);
+            const noteText=item&&typeof item==='object'?String(item.note||'').trim():'';
+            if(noteText){const n=el('div','muted','Note: '+noteText);n.style.cssText='font-size:13px;color:var(--muted);';block.append(n);}
+            itemWrap.append(block);
          });}else itemWrap.append(el('div','muted','No item details available.'));
          card.append(itemWrap);
          const total=el('div','total');total.append(el('span','','Total'),el('span','',money(order.total)));card.append(total);
@@ -294,6 +297,18 @@ main {
    }
  });
  document.getElementById('refreshBtn').addEventListener('click',load);
+// ---- Real-time orders ----
+try {
+  const liveSlug = (typeof slug !== 'undefined' && slug) ? slug : '';
+  if (liveSlug && window.EventSource) {
+    let liveTimer = null;
+    const liveReload = () => { clearTimeout(liveTimer); liveTimer = setTimeout(() => { load(); }, 300); };
+    const liveStream = new EventSource('/api/orders-stream/' + encodeURIComponent(liveSlug));
+    liveStream.addEventListener('orders', liveReload);
+    setInterval(() => { if (!document.hidden) load(); }, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+  }
+} catch (e) { console.error('Real-time setup failed:', e); }
  document.getElementById('logoutBtn').addEventListener('click',async()=>{
    try{await fetch('/api/cashier/logout',{method:'POST',credentials:'same-origin',cache:'no-store'});}finally{location.href='/'+encodeURIComponent(slug)+'/cashier-login';}
  });

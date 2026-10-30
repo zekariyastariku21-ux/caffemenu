@@ -3138,6 +3138,164 @@ app.get('/api/menu/:slug/logo', async (req, res) => {
    CUSTOMER ORDERS
    ============================================================ */
 
+// ---- Admin: order history, customers, delete ----
+async function getAdminRestaurant(req, res) {
+  const slug = String(req.params.slug || '').trim();
+  const found = await pool.query('SELECT id, name, slug FROM restaurants WHERE slug = $1 LIMIT 1', [slug]);
+  if (!found.rows.length) {
+    res.status(404).json({ ok: false, message: 'Restaurant not found.' });
+    return null;
+  }
+  const restaurant = found.rows[0];
+  if (!isSuperAdminRole(req.user?.role) && Number(req.user?.restaurant_id) !== Number(restaurant.id)) {
+    res.status(403).json({ ok: false, message: 'You are not authorized to manage these orders.' });
+    return null;
+  }
+  return restaurant;
+}
+
+const ADMIN_DAY_TZ = 'Africa/Addis_Ababa';
+const ADMIN_ORDER_COLUMNS = `
+  (SELECT COUNT(*)::int FROM customer_orders AS earlier
+    WHERE earlier.restaurant_id = customer_orders.restaurant_id AND earlier.id <= customer_orders.id) AS display_number,
+  id, status, created_at, preparing_at, ready_at, completed_at, customer_name, customer_phone,
+  branch_name, order_type, table_number, customer_address, items, total`;
+const mapAdminOrder = order => ({
+  ...order,
+  total: Number(order.total),
+  items: Array.isArray(order.items) ? order.items : []
+});
+
+app.delete('/api/admin/orders/:slug/:orderId', requireRestaurantAdmin, async (req, res) => {
+  try {
+    const restaurant = await getAdminRestaurant(req, res);
+    if (!restaurant) return;
+    const id = Number(req.params.orderId);
+    if (!Number.isSafeInteger(id) || id < 1) {
+      return res.status(400).json({ ok: false, message: 'Invalid order ID.' });
+    }
+    const removed = await pool.query(
+      'DELETE FROM customer_orders WHERE id = $1 AND restaurant_id = $2 RETURNING id',
+      [id, restaurant.id]
+    );
+    if (!removed.rows.length) {
+      return res.status(404).json({ ok: false, message: 'Order not found for this restaurant.' });
+    }
+    broadcastOrderEvent(restaurant.slug, 'deleted');
+    return res.json({ ok: true, message: 'Order deleted.' });
+  } catch (error) {
+    console.error('[admin:orders:delete] Failed:', error);
+    return res.status(500).json({ ok: false, message: 'Unable to delete the order right now.' });
+  }
+});
+
+app.get('/api/admin/order-history/:slug', requireRestaurantAdmin, async (req, res) => {
+  try {
+    const restaurant = await getAdminRestaurant(req, res);
+    if (!restaurant) return;
+    const date = String(req.query.date || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ ok: false, message: 'Choose a valid date.' });
+    }
+    const result = await pool.query(
+      `SELECT ${ADMIN_ORDER_COLUMNS}
+       FROM customer_orders
+       WHERE restaurant_id = $1
+         AND (created_at::timestamptz AT TIME ZONE $2)::date = $3::date
+       ORDER BY created_at ASC, id ASC`,
+      [restaurant.id, ADMIN_DAY_TZ, date]
+    );
+    res.set('Cache-Control', 'no-store');
+    return res.json({ ok: true, date, orders: result.rows.map(mapAdminOrder) });
+  } catch (error) {
+    console.error('[admin:order-history] Failed:', error);
+    return res.status(500).json({ ok: false, message: 'Unable to load order history right now.' });
+  }
+});
+
+app.get('/api/admin/customers/:slug', requireRestaurantAdmin, async (req, res) => {
+  try {
+    const restaurant = await getAdminRestaurant(req, res);
+    if (!restaurant) return;
+    const result = await pool.query(
+      `SELECT COALESCE(NULLIF(TRIM(customer_phone), ''), customer_name) AS customer_key,
+              (ARRAY_AGG(customer_name ORDER BY created_at DESC))[1] AS name,
+              (ARRAY_AGG(customer_phone ORDER BY created_at DESC))[1] AS phone,
+              (ARRAY_AGG(customer_address ORDER BY created_at DESC)
+                 FILTER (WHERE customer_address IS NOT NULL AND TRIM(customer_address) <> ''))[1] AS address,
+              COUNT(*)::int AS order_count,
+              COALESCE(SUM(total), 0) AS total_spent,
+              MAX(created_at) AS last_order_at
+       FROM customer_orders
+       WHERE restaurant_id = $1
+       GROUP BY COALESCE(NULLIF(TRIM(customer_phone), ''), customer_name)
+       ORDER BY MAX(created_at) DESC`,
+      [restaurant.id]
+    );
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      ok: true,
+      customers: result.rows.map(c => ({ ...c, total_spent: Number(c.total_spent) }))
+    });
+  } catch (error) {
+    console.error('[admin:customers] Failed:', error);
+    return res.status(500).json({ ok: false, message: 'Unable to load customers right now.' });
+  }
+});
+
+app.get('/api/admin/customers/:slug/orders', requireRestaurantAdmin, async (req, res) => {
+  try {
+    const restaurant = await getAdminRestaurant(req, res);
+    if (!restaurant) return;
+    const key = String(req.query.key || '').trim();
+    if (!key) {
+      return res.status(400).json({ ok: false, message: 'Customer is required.' });
+    }
+    const result = await pool.query(
+      `SELECT ${ADMIN_ORDER_COLUMNS}
+       FROM customer_orders
+       WHERE restaurant_id = $1
+         AND COALESCE(NULLIF(TRIM(customer_phone), ''), customer_name) = $2
+       ORDER BY created_at DESC, id DESC`,
+      [restaurant.id, key]
+    );
+    res.set('Cache-Control', 'no-store');
+    return res.json({ ok: true, orders: result.rows.map(mapAdminOrder) });
+  } catch (error) {
+    console.error('[admin:customer-orders] Failed:', error);
+    return res.status(500).json({ ok: false, message: 'Unable to load customer orders right now.' });
+  }
+});
+
+// ---- Real-time order signals (Server-Sent Events) ----
+const orderStreamClients = new Map();
+function orderStreamKey(slug) { return String(slug || '').trim().toLowerCase(); }
+function broadcastOrderEvent(slug, type) {
+  const clients = orderStreamClients.get(orderStreamKey(slug));
+  if (!clients) return;
+  for (const client of clients) {
+    try { client.write('event: orders\ndata: ' + JSON.stringify({ type }) + '\n\n'); } catch (e) {}
+  }
+}
+app.get('/api/orders-stream/:slug', (req, res) => {
+  const key = orderStreamKey(req.params.slug);
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+  res.flushHeaders();
+  res.write('retry: 3000\n\n');
+  if (!orderStreamClients.has(key)) orderStreamClients.set(key, new Set());
+  orderStreamClients.get(key).add(res);
+  const keepAlive = setInterval(() => { try { res.write(': ping\n\n'); } catch (e) {} }, 25000);
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    const set = orderStreamClients.get(key);
+    if (set) { set.delete(res); if (!set.size) orderStreamClients.delete(key); }
+  });
+});
 app.post('/api/orders/:slug', async (req, res) => {
   try {
     const slug = String(req.params.slug || '').trim();
@@ -3376,6 +3534,8 @@ app.post('/api/orders/:slug', async (req, res) => {
     );
 
     const displayNumber = displayNumberResult.rows[0].display_number;
+    
+broadcastOrderEvent(req.params.slug, 'new-order');
 
     return res.status(201).json({
       ok: true,
@@ -3527,6 +3687,8 @@ async function applyCustomerOrderStatus(restaurantId, orderId, requestedStatus, 
   );
 
   if (updated.rows.length) {
+  
+  pool.query('SELECT slug FROM restaurants WHERE id = $1 LIMIT 1', [restaurantId]).then(r => { if (r.rows[0]) broadcastOrderEvent(r.rows[0].slug, 'status'); }).catch(() => {});
     return res.json({
       ok: true,
       order: updated.rows[0],
