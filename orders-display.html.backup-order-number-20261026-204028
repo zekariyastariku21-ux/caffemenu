@@ -1,0 +1,129 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customer Orders | CaffeMenu</title>
+  <style>
+    :root { color-scheme: light; font-family: Arial, sans-serif; }
+    body { margin: 0; background: #f5f2ed; color: #29231e; }
+    main { max-width: 1100px; margin: 32px auto; padding: 0 16px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    h1 { margin: 0; font-size: 1.7rem; }
+    button { border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; background: #503521; color: white; }
+    #message { margin: 18px 0; }
+    .order { background: white; border: 1px solid #e5ddd3; border-radius: 12px; padding: 18px; margin: 14px 0; }
+    .order-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .muted { color: #6f665e; font-size: .92rem; }
+    .items { padding-left: 20px; }
+    .status { display: inline-block; background: #eee6dc; border-radius: 20px; padding: 4px 9px; font-size: .82rem; }
+    .empty { background: white; border-radius: 12px; padding: 24px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Customer Orders</h1>
+      <p id="restaurantName" class="muted">Loading restaurant...</p>
+    </div>
+    <button id="refreshButton" type="button">Refresh orders</button>
+  </header>
+  <p id="message" role="status">Loading orders...</p>
+  <section id="orders" aria-live="polite"></section>
+</main>
+<script>
+(() => {
+  const token = localStorage.getItem('adminToken') || '';
+  const slug = (
+    localStorage.getItem('adminRestaurantSlug') ||
+    localStorage.getItem('selectedRestaurantSlug') ||
+    ''
+  ).trim();
+
+  const message = document.getElementById('message');
+  const ordersContainer = document.getElementById('orders');
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;',
+      '"': '&quot;', "'": '&#39;'
+    })[character]);
+  }
+
+  function formatDate(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
+  }
+
+  async function loadOrders() {
+    if (!token || !slug) {
+      message.textContent = 'Please sign in to the admin panel and select a restaurant first.';
+      ordersContainer.replaceChildren();
+      return;
+    }
+
+    message.textContent = 'Loading orders...';
+
+    try {
+      const response = await fetch(
+        `/api/admin/orders/${encodeURIComponent(slug)}`,
+        { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
+      );
+      const data = await response.json();
+
+      if (!response.ok || data?.ok !== true) {
+        throw new Error(data?.message || 'Unable to load orders.');
+      }
+
+      document.getElementById('restaurantName').textContent = data.restaurant.name;
+      const orders = Array.isArray(data.orders) ? data.orders : [];
+
+      if (!orders.length) {
+        message.textContent = 'No orders have been placed yet.';
+        ordersContainer.innerHTML = '<div class="empty">New customer orders will appear here.</div>';
+        return;
+      }
+
+      message.textContent = `${orders.length} recent order(s).`;
+      ordersContainer.innerHTML = orders.map(order => {
+        const items = Array.isArray(order.items) ? order.items : [];
+        const itemMarkup = items.map(item => `
+          <li>${escapeHtml(item.quantity)} × ${escapeHtml(item.name)}
+            — ${escapeHtml(item.price)} ETB each
+            ${item.note ? `<div class="muted">Note: ${escapeHtml(item.note)}</div>` : ''}
+          </li>
+        `).join('');
+
+        return `
+          <article class="order">
+            <div class="order-head">
+              <strong>Order #${escapeHtml(order.id)}</strong>
+              <span class="status">${escapeHtml(order.status)}</span>
+            </div>
+            <p class="muted">${escapeHtml(formatDate(order.created_at))}</p>
+            <p><strong>Customer:</strong> ${escapeHtml(order.customer_name)}</p>
+            <p><strong>Phone:</strong> ${escapeHtml(order.customer_phone)}</p>
+            <p><strong>Branch:</strong> ${escapeHtml(order.branch_name)}</p>
+            <p><strong>Order type:</strong> ${escapeHtml(order.order_type)}</p>
+            ${order.table_number ? `<p><strong>Table:</strong> ${escapeHtml(order.table_number)}</p>` : ''}
+            ${order.customer_address ? `<p><strong>Address:</strong> ${escapeHtml(order.customer_address)}</p>` : ''}
+            <strong>Items</strong>
+            <ul class="items">${itemMarkup}</ul>
+            <h3>Total: ${escapeHtml(order.total)} ETB</h3>
+          </article>
+        `;
+      }).join('');
+    } catch (error) {
+      message.textContent = error.message || 'Unable to load orders.';
+      ordersContainer.replaceChildren();
+    }
+  }
+
+  document.getElementById('refreshButton').addEventListener('click', loadOrders);
+  loadOrders();
+})();
+</script>
+</body>
+</html>
+

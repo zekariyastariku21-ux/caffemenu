@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cafe Menu</title>
+  <link rel="stylesheet" href="stylesheets/save.css?v=20261015o">
+  <link rel="stylesheet" href="stylesheets/day-special.css">
+  <link rel="stylesheet" href="stylesheets/menu-expiration.css?v=20261013a">
+</head>
+
+<body>
+
+  <!-- PROFESSIONAL SUPER ADMIN NOTIFICATION -->
+  <div id="ownerTopNotification" class="owner-top-notification">
+    <div class="owner-notification-content">
+
+      <div id="ownerNotificationIcon" class="owner-notification-icon">
+        ✓
+      </div>
+
+      <div class="owner-notification-text">
+        <div id="ownerNotificationTitle" class="owner-notification-title">
+          Success
+        </div>
+
+        <div
+          id="ownerNotificationMessage"
+          class="owner-notification-message"
+        ></div>
+      </div>
+
+      <button
+        class="owner-notification-close"
+        onclick="closeOwnerNotification()"
+      >
+        ✕
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- PROFESSIONAL SUPER ADMIN ACTION PANEL -->
+  <div id="ownerActionPanel" class="owner-action-panel">
+
+    <div class="owner-action-header">
+
+      <h3 id="ownerActionTitle">
+        Restaurant Action
+      </h3>
+
+      <button
+        class="owner-action-close"
+        onclick="closeOwnerActionPanel()"
+      >
+        ✕
+      </button>
+
+    </div>
+
+    <div id="ownerActionContent"></div>
+
+  </div>
+
+
+  <!-- IMAGE VIEWER -->
+  <div id="imageViewer" class="image-viewer">
+
+    <button
+      class="close-image"
+      onclick="closeImage()"
+    >
+      ✕
+    </button>
+
+    <img
+      id="bigImage"
+      alt="Menu item"
+    >
+
+  </div>
+
+
+  <!-- CUSTOMER ORDER FORM -->
+<div
+  id="orderFormModal"
+  class="order-form-overlay"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="orderFormTitle"
+  aria-hidden="true"
+>
+  <section class="order-form-card">
+    <button
+      type="button"
+      class="order-form-close"
+      onclick="closeOrderFormModal()"
+      aria-label="Close order form"
+    >&times;</button>
+
+    <h2 id="orderFormTitle">Your Order Details</h2>
+    <p class="order-form-intro">Check your items and enter your details before continuing.</p>
+
+    <div class="order-form-summary">
+      <h3>Order summary</h3>
+      <div id="orderFormItems"></div>
+      <div class="order-form-grand-total">
+        <span>Total</span>
+        <strong id="orderFormTotal">0 ETB</strong>
+      </div>
+    </div>
+
+    <form id="customerOrderForm" novalidate>
+      <label for="orderCustomerName">Full name *</label>
+      <input
+        id="orderCustomerName"
+        name="customerName"
+        type="text"
+        autocomplete="name"
+        maxlength="120"
+        required
+        placeholder="Enter your full name"
+      />
+
+      <label for="orderCustomerPhone">Phone number *</label>
+      <input
+        id="orderCustomerPhone"
+        name="customerPhone"
+        type="tel"
+        autocomplete="tel"
+        maxlength="30"
+        required
+        placeholder="Enter your phone number"
+      />
+
+      <label for="orderBranch">Choose branch *</label>
+      <select id="orderBranch" name="orderBranch" required>
+        <option value="">Choose a branch</option>
+      </select>
+      <label for="orderType">Order type *</label>
+      <select id="orderType" name="orderType" required>
+        <option value="dine-in">Dine-in</option>
+        <option value="delivery">Delivery</option>
+        <option value="pickup">Pick-up</option>
+      </select>
+
+      <div id="orderTableField">
+        <label for="orderTableNumber">Table number *</label>
+        <input
+          id="orderTableNumber"
+          name="tableNumber"
+          type="text"
+          maxlength="30"
+          placeholder="Enter your table number"
+        />
+      </div>
+
+      <div id="orderAddressField">
+        <label for="orderCustomerAddress">Address / location *</label>
+        <textarea
+          id="orderCustomerAddress"
+          name="customerAddress"
+          rows="3"
+          maxlength="500"
+          placeholder="Enter your delivery address or location"
+        ></textarea>
+      </div>
+
+      <p id="orderFormMessage" class="order-form-message" role="status" aria-live="polite"></p>
+
+      <button type="submit" class="order-form-continue">
+        Pay Now
+      </button>
+      <button type="button" class="order-form-cancel" onclick="closeOrderFormModal()">
+        Back to cart
+      </button>
+    </form>
+  </section>
+</div>
+<!-- PAYMENT MODAL -->
+  <div
+    id="paymentModal"
+    class="payment-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="paymentTitle"
+  >
+
+    <div class="payment-card">
+
+      <button
+        class="payment-close"
+        type="button"
+        onclick="closePaymentModal()"
+        aria-label="Close payment options"
+      >
+        &times;
+      </button>
+
+      <h2 id="paymentTitle">Pay securely with Telebirr</h2>
+      <p class="telebirr-payment-intro">Use your Telebirr account to continue with payment. Review the total before proceeding.</p>
+
+      <p class="payment-total">
+        Total to pay:
+        <strong id="payment-total">
+          0 <span class="notranslate" translate="no">ETB</span>
+        </strong>
+      </p>
+
+      <div
+        class="payment-options"
+        role="group"
+        aria-label="Payment methods"
+      >
+
+        <button
+          type="button"
+          class="payment-option selected" hidden
+          data-method="Telebirr"
+        >
+          Telebirr
+        </button>
+
+      </div>
+
+      <form
+        id="telebirrPaymentForm"
+        class="payment-form"
+      >
+
+        <label for="telebirrAccount">
+          Telebirr account number
+        </label>
+
+        <input
+          id="telebirrAccount"
+          name="telebirrAccount"
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel"
+          placeholder="09XXXXXXXX"
+          required
+        >
+
+        <button
+          type="submit"
+          class="payment-submit"
+        >
+          Pay with Telebirr
+        </button>
+
+      </form>
+
+      <p
+        id="paymentMessage"
+        class="payment-message"
+        aria-live="polite"
+      ></p>
+
+    </div>
+
+  </div>
+
+
+  <!-- CUSTOMER RESTAURANT HEADER -->
+  <header class="menu-profile-header" hidden>
+
+    <div class="menu-brand-row">
+
+      <div class="menu-profile-image">
+
+        <img
+          id="restaurantLogo"
+          src=""
+          alt="Restaurant"
+          fetchpriority="high"
+          decoding="async"
+        >
+
+      </div>
+
+
+      <div class="menu-brand-info">
+
+        <h1 id="restaurantName" aria-busy="true">
+          Loading...
+        </h1>
+
+
+        <!--
+          Customer contact information is populated
+          automatically from the restaurant profile.
+        -->
+        <div
+          id="restaurantContactRow"
+          class="menu-contact-row"
+        ></div>
+
+      </div>
+
+      <div class="customer-language-control" id="customerLanguageControl">
+        <button
+          type="button"
+          class="customer-language-toggle"
+          id="customerLanguageToggle"
+          aria-label="Choose menu language"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-controls="customerLanguageMenu"
+        >
+          <span class="customer-language-icon" aria-hidden="true">文</span>
+          <span
+            class="customer-language-current notranslate"
+            id="customerLanguageLabel"
+            translate="no"
+          >English</span>
+          <span class="customer-language-chevron" aria-hidden="true"></span>
+        </button>
+
+        <div
+          class="customer-language-menu"
+          id="customerLanguageMenu"
+          role="menu"
+          aria-label="Choose menu language"
+          hidden
+        >
+          <button type="button" role="menuitemradio" aria-checked="true" data-language-option="en">
+            <span class="customer-language-name notranslate" translate="no">English</span>
+            <span class="customer-language-code notranslate" translate="no" aria-hidden="true">EN</span>
+          </button>
+          <button type="button" role="menuitemradio" aria-checked="false" data-language-option="am">
+            <span class="customer-language-name notranslate" translate="no">አማርኛ</span>
+            <span class="customer-language-code notranslate" translate="no" aria-hidden="true">AM</span>
+          </button>
+          <button type="button" role="menuitemradio" aria-checked="false" data-language-option="ar">
+            <span class="customer-language-name notranslate" translate="no">العربية</span>
+            <span class="customer-language-code notranslate" translate="no" aria-hidden="true">AR</span>
+          </button>
+          <button type="button" role="menuitemradio" aria-checked="false" data-language-option="zh-CN">
+            <span class="customer-language-name notranslate" translate="no">中文</span>
+            <span class="customer-language-code notranslate" translate="no" aria-hidden="true">ZH</span>
+          </button>
+        </div>
+
+        <select id="customerLanguage" class="customer-language-state" tabindex="-1" aria-hidden="true">
+          <option value="en">English</option>
+          <option value="am">አማርኛ</option>
+          <option value="ar">العربية</option>
+          <option value="zh-CN">中文</option>
+        </select>
+      </div>
+
+    </div>
+
+  </header>
+
+  <section
+    id="customerMenuLoading"
+    class="customer-menu-loading"
+    role="status"
+    aria-live="polite"
+  >
+    <span class="customer-menu-loading-spinner" aria-hidden="true"></span>
+    <p>Loading menu...</p>
+  </section>
+
+  <section
+    id="customerMenuLoadError"
+    class="customer-menu-load-error"
+    role="alert"
+    aria-live="assertive"
+    hidden
+  >
+    <div class="customer-menu-load-error-icon" aria-hidden="true">!</div>
+    <div class="customer-menu-load-error-content">
+      <h2 id="customerMenuLoadErrorTitle"></h2>
+      <p id="customerMenuLoadErrorMessage"></p>
+      <dl class="customer-menu-load-error-details">
+        <div>
+          <dt>Restaurant slug</dt>
+          <dd id="customerMenuLoadErrorSlug"></dd>
+        </div>
+        <div>
+          <dt>Request status</dt>
+          <dd id="customerMenuLoadErrorStatus"></dd>
+        </div>
+      </dl>
+      <button id="customerMenuRetryButton" type="button">
+        Try again
+      </button>
+    </div>
+  </section>
+
+  <div id="google_translate_element" class="customer-translation-widget" aria-hidden="true"></div>
+
+
+  <!-- MAIN MENU -->
+  <div class="main" hidden>
+
+    <div class="filter-bar">
+
+      <div class="filter-bar-top">
+
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="Search items..."
+        >
+
+        <button
+          id="daySpecialBtn"
+          class="menu-day-special"
+          type="button"
+      >
+         ✨ DAY SPECIAL ✨
+      </button> 
+
+      </div>
+
+      <div
+        class="buttons"
+        id="categoryButtons"
+      >
+        <button>
+          all item
+        </button>
+      </div>
+
+    </div>
+
+
+    <div class="container"></div>
+
+
+    <!-- CART -->
+    <div class="container2" id="cartSheet">
+
+      <img
+        id="cartSheetBackground"
+        class="cart-sheet-background"
+        src=""
+        alt=""
+        aria-hidden="true"
+        fetchpriority="high"
+        decoding="async"
+      >
+
+      <button
+        class="cart-sheet-handle"
+        type="button"
+        aria-label="Expand cart"
+      >
+        <span aria-hidden="true"></span>
+      </button>
+
+      <div class="cart">
+
+        <div class="cart-topbar">
+          <div class="cart-header">
+            <div>
+              <h2>Cart</h2>
+            </div>
+
+            <div class="cart-header-actions">
+              <button
+                class="cart-close"
+                type="button"
+                aria-label="Close cart"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+
+          <div class="cart-summary" aria-live="polite">
+            <div class="cart-summary-item">
+              <span class="cart-summary-label">Items</span>
+              <strong id="cart-item-count">0 items</strong>
+            </div>
+            <div class="cart-summary-total">
+              <span class="cart-summary-label">Total</span>
+              <strong id="total-price">0</strong>
+            </div>
+          </div>
+        </div>
+
+        <table>
+
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Price</th>
+            </tr>
+          </thead>
+
+          <tbody id="cart-body"></tbody>
+        </table>
+
+        <div class="cart-footer">
+          <button
+            id="orderNowButton"
+            class="cart-order-button"
+            type="button"
+            disabled
+          >
+            Order Now
+          </button>
+          <button
+            id="clearCartButton"
+            class="cart-clear-button"
+            type="button"
+            disabled
+          >
+            Clear all
+          </button>
+        </div>
+
+       <button class="payment" type="button" hidden>Pay Now</button>
+
+      </div>
+
+    </div>
+
+
+    <!-- CART BUTTON -->
+    <div>
+
+      <button
+        class="cartbutton"
+        type="button"
+        aria-expanded="false"
+        aria-controls="cartSheet"
+      >
+        <span class="cartbutton-icon-wrap">
+          <svg class="cartbutton-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 4h2l2.1 10.1a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 1.9-1.4L21 8H6"></path>
+            <circle cx="10" cy="20" r="1"></circle>
+            <circle cx="18" cy="20" r="1"></circle>
+          </svg>
+          <span id="cart-button-count" class="cartbutton-count">0</span>
+        </span>
+        <span class="cartbutton-label">View Cart</span>
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <script src="scripts/menu-expiration.js?v=20261013a"></script>
+  <script src="scripts/saveAdd.js?v=20261015g"></script>
+  <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
+
+</body>
+</html>

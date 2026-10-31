@@ -1,0 +1,5658 @@
+﻿/* ================================================================
+   CAFFE MENU - CAFE ADMIN PANEL
+   ================================================================ */
+
+let currentRestaurant = null;
+let foods = {};
+const MENU_CATEGORY_ORDER_FIELD = '__categoryOrder';
+
+let restaurantProfile = {
+    logo: '',
+    phone_numbers: [],
+    addresses: []
+};
+
+let adminLoadingTimer = null;
+
+const MAX_DAY_SPECIALS = 5;
+
+/* ================================================================
+   ADMIN INACTIVITY TIMEOUT
+   Logs the admin out after 1 hour without activity.
+   ================================================================ */
+
+const ADMIN_INACTIVITY_LIMIT = 60 * 60 * 1000;
+let adminInactivityTimer = null;
+
+function resetAdminInactivityTimer() {
+    clearTimeout(adminInactivityTimer);
+
+    adminInactivityTimer = setTimeout(() => {
+        adminSessionTimeout();
+    }, ADMIN_INACTIVITY_LIMIT);
+}
+
+async function adminSessionTimeout() {
+    clearTimeout(adminInactivityTimer);
+
+    try {
+        await fetch('/api/admin/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+    } catch (error) {
+        console.warn(
+            '[admin] Session timeout logout request failed.',
+            error
+        );
+    }
+
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminRole');
+    localStorage.removeItem('adminRestaurantId');
+    localStorage.removeItem('adminRestaurantSlug');
+    localStorage.removeItem('adminRestaurantName');
+    localStorage.removeItem('selectedRestaurantSlug');
+
+    window.location.href = '/admin.html';
+}
+
+[
+    'mousemove',
+    'mousedown',
+    'keydown',
+    'touchstart',
+    'scroll',
+    'click'
+].forEach(eventName => {
+    document.addEventListener(
+        eventName,
+        resetAdminInactivityTimer,
+        {
+            passive: true
+        }
+    );
+});
+
+resetAdminInactivityTimer();
+
+
+
+/* ================================================================
+   CENTER SCREEN STATUS POPUP
+   ================================================================ */
+
+function showAdminStatus(
+    message = 'Please wait...',
+    type = 'loading',
+    duration = 0
+) {
+    const popup =
+        document.getElementById('adminStatusPopup');
+
+    const icon =
+        document.getElementById('adminStatusIcon');
+
+    const messageElement =
+        document.getElementById('adminStatusMessage');
+
+    if (!popup || !icon || !messageElement) {
+        console.warn(
+            '[admin] Status popup elements not found.'
+        );
+        return;
+    }
+
+    popup.classList.remove(
+        'success',
+        'error',
+        'loading',
+        'show'
+    );
+
+    popup.classList.add(type);
+
+    if (type === 'success') {
+        icon.textContent = '\u2713';
+    } else if (type === 'error') {
+        icon.textContent = '!';
+    } else {
+        icon.textContent = '';
+    }
+
+    messageElement.textContent = message;
+
+    requestAnimationFrame(() => {
+        popup.classList.add('show');
+    });
+
+    if (duration > 0) {
+        setTimeout(() => {
+            hideAdminStatus();
+        }, duration);
+    }
+}
+
+
+function hideAdminStatus() {
+    const popup =
+        document.getElementById('adminStatusPopup');
+
+    if (!popup) {
+        return;
+    }
+
+    popup.classList.remove('show');
+}
+
+
+/* ================================================================
+   BASIC HELPERS
+   ================================================================ */
+
+function removeEmptyCategories() {
+    Object.keys(foods).forEach(category => {
+        if (
+            !Array.isArray(foods[category]) ||
+            foods[category].length === 0
+        ) {
+            delete foods[category];
+        }
+    });
+}
+
+function getOrderedMenuCategories() {
+    const categories = Object.keys(foods).filter(category =>
+        Array.isArray(foods[category])
+    );
+    const originalPositions = new Map(
+        categories.map((category, index) => [category, index])
+    );
+
+    return categories.sort((firstCategory, secondCategory) => {
+        const getPosition = category => {
+            const item = foods[category].find(
+                value =>
+                    value &&
+                    typeof value === 'object' &&
+                    Number.isInteger(value[MENU_CATEGORY_ORDER_FIELD])
+            );
+
+            return item
+                ? item[MENU_CATEGORY_ORDER_FIELD]
+                : originalPositions.get(category);
+        };
+
+        return (
+            getPosition(firstCategory) -
+            getPosition(secondCategory)
+        );
+    });
+}
+
+function setMenuCategoryOrder(categories) {
+    categories.forEach((category, categoryIndex) => {
+        foods[category].forEach(item => {
+            if (item && typeof item === 'object') {
+                item[MENU_CATEGORY_ORDER_FIELD] = categoryIndex;
+            }
+        });
+    });
+}
+
+function escapeHtmlForAdmin(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function escapeAttributeForAdmin(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+
+/* ================================================================
+   PROFESSIONAL LOADING
+   ================================================================ */
+
+function showAdminLoading(message = 'Please wait...') {
+    let overlay = document.getElementById('adminLoadingOverlay');
+
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'adminLoadingOverlay';
+
+        overlay.innerHTML = `
+            <div class="admin-loading-box">
+                <div class="admin-loading-spinner"></div>
+                <div class="admin-loading-text" id="adminLoadingText">
+                    ${escapeHtmlForAdmin(message)}
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+    }
+
+    const text = document.getElementById('adminLoadingText');
+
+    if (text) {
+        text.textContent = message;
+    }
+
+    overlay.classList.add('active');
+    overlay.style.display = 'flex';
+
+    clearTimeout(adminLoadingTimer);
+}
+
+function hideAdminLoading(delay = 0) {
+    clearTimeout(adminLoadingTimer);
+
+    adminLoadingTimer = setTimeout(() => {
+        const overlay =
+            document.getElementById('adminLoadingOverlay');
+
+        if (!overlay) {
+            return;
+        }
+
+        overlay.classList.remove('active');
+
+        setTimeout(() => {
+            if (!overlay.classList.contains('active')) {
+                overlay.style.display = 'none';
+            }
+        }, 200);
+    }, delay);
+}
+
+
+/* ================================================================
+   CENTERED ADMIN MESSAGE
+   All existing admin messages use the center-screen popup.
+   ================================================================ */
+
+function showMessage(message, type = 'success') {
+
+    let popup =
+        document.getElementById('adminStatusPopup');
+
+    let icon =
+        document.getElementById('adminStatusIcon');
+
+    let messageElement =
+        document.getElementById('adminStatusMessage');
+
+    /*
+     * Safety fallback:
+     * If the popup HTML is not available for some reason,
+     * do not break the admin panel.
+     */
+    if (!popup || !icon || !messageElement) {
+        console.warn(
+            '[admin] Center status popup not found:',
+            message
+        );
+
+        return;
+    }
+
+    /*
+     * Convert the old message types to
+     * the new popup types.
+     */
+    let popupType = 'success';
+
+    if (
+        type === 'error' ||
+        type === 'danger' ||
+        type === 'failed'
+    ) {
+        popupType = 'error';
+    }
+
+    if (
+        type === 'loading' ||
+        type === 'info'
+    ) {
+        popupType = type === 'loading'
+            ? 'loading'
+            : 'success';
+    }
+
+    /*
+     * Clear previous popup states.
+     */
+    popup.classList.remove(
+        'success',
+        'error',
+        'loading',
+        'show'
+    );
+
+    /*
+     * Apply new state.
+     */
+    popup.classList.add(
+        popupType
+    );
+
+    /*
+     * Set icon.
+     */
+    if (popupType === 'success') {
+        icon.textContent = '\u2713';
+    } else if (popupType === 'error') {
+        icon.textContent = '!';
+    } else {
+        icon.textContent = '';
+    }
+
+    /*
+     * Set message.
+     */
+    messageElement.textContent =
+        message;
+
+    /*
+     * Show popup.
+     */
+    requestAnimationFrame(() => {
+        popup.classList.add('show');
+    });
+
+    /*
+     * Automatically hide.
+     */
+    const duration =
+        popupType === 'error'
+            ? 3000
+            : popupType === 'loading'
+                ? 0
+                : 1800;
+
+    if (duration > 0) {
+        setTimeout(() => {
+            hideAdminStatus();
+        }, duration);
+    }
+}
+
+
+
+/* ================================================================
+   CONFIRMATION MODAL
+   ================================================================ */
+
+function showAdminConfirm({
+    title = 'Are you sure?',
+    message = '',
+    confirmText = 'Confirm',
+    cancelText = 'Cancel',
+    icon = '!'
+} = {}) {
+    return new Promise(resolve => {
+        const oldModal =
+            document.getElementById('adminConfirmModal');
+
+        if (oldModal) {
+            oldModal.remove();
+        }
+
+        const modal =
+            document.createElement('div');
+
+        modal.id = 'adminConfirmModal';
+        modal.className = 'admin-confirm-modal-overlay active';
+
+        modal.innerHTML = `
+            <div class="admin-confirm-modal">
+                <div class="admin-confirm-icon">
+                    ${escapeHtmlForAdmin(icon)}
+                </div>
+
+                <div class="admin-confirm-content">
+                    <h3>
+                        ${escapeHtmlForAdmin(title)}
+                    </h3>
+
+                    <p>
+                        ${escapeHtmlForAdmin(message)}
+                    </p>
+                </div>
+
+                <div class="admin-confirm-actions">
+                    <button
+                        type="button"
+                        class="admin-confirm-cancel"
+                        id="adminConfirmCancel"
+                    >
+                        ${escapeHtmlForAdmin(cancelText)}
+                    </button>
+
+                    <button
+                        type="button"
+                        class="admin-confirm-ok"
+                        id="adminConfirmOk"
+                    >
+                        ${escapeHtmlForAdmin(confirmText)}
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const finish = result => {
+            modal.classList.remove('active');
+
+            setTimeout(() => {
+                modal.remove();
+            }, 200);
+
+            resolve(result);
+        };
+
+        document
+            .getElementById('adminConfirmCancel')
+            ?.addEventListener('click', () => {
+                finish(false);
+            });
+
+        document
+            .getElementById('adminConfirmOk')
+            ?.addEventListener('click', () => {
+                finish(true);
+            });
+
+        modal.addEventListener('click', event => {
+            if (event.target === modal) {
+                finish(false);
+            }
+        });
+    });
+}
+
+
+/* ================================================================
+   CHECK LOGIN / RESTAURANT ACCESS
+
+   IMPORTANT:
+   The backend login response uses camelCase:
+   restaurantId
+   restaurantSlug
+   restaurantName
+
+   The session endpoint may use snake_case or camelCase.
+   This function supports BOTH.
+   ================================================================ */
+
+async function checkCafeAdminAccess() {
+
+    const dashboardAccess =
+    sessionStorage.getItem(
+        'dashboardAccess'
+    );
+
+if (dashboardAccess !== 'cafe_admin') {
+    window.location.replace('/admin.html');
+    return;
+}
+
+    try {
+        const response = await fetch(
+            '/api/admin/session',
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }
+        );
+
+        let data = {};
+
+        try {
+            data = await response.json();
+        } catch (error) {
+            data = {};
+        }
+
+        if (!response.ok || !data.ok) {
+            window.location.replace('/admin.html');
+            return;
+        }
+
+        const user = data.user || {};
+
+        const role =
+            user.role ??
+            data.role ??
+            localStorage.getItem('adminRole');
+
+        if (role !== 'cafe_admin') {
+            window.location.replace('/admin.html');
+            return;
+        }
+
+        /* --------------------------------------------------------
+           RESTAURANT ID
+           -------------------------------------------------------- */
+
+        const sessionRestaurantId =
+            user.restaurant_id ??
+            user.restaurantId ??
+            data.restaurant_id ??
+            data.restaurantId ??
+            '';
+
+        const savedRestaurantId =
+            localStorage.getItem(
+                'adminRestaurantId'
+            ) || '';
+
+        const restaurantId =
+            sessionRestaurantId ||
+            savedRestaurantId;
+
+
+        /* --------------------------------------------------------
+           RESTAURANT NAME
+           -------------------------------------------------------- */
+
+        const sessionRestaurantName =
+            user.restaurant_name ??
+            user.restaurantName ??
+            data.restaurant_name ??
+            data.restaurantName ??
+            '';
+
+        const savedRestaurantName =
+            localStorage.getItem(
+                'adminRestaurantName'
+            ) || '';
+
+        const restaurantName =
+            sessionRestaurantName ||
+            savedRestaurantName ||
+            'Restaurant';
+
+
+        /* --------------------------------------------------------
+           RESTAURANT SLUG
+
+           Priority:
+           1. URL
+           2. session
+           3. localStorage
+           -------------------------------------------------------- */
+
+        const params =
+            new URLSearchParams(
+                window.location.search
+            );
+
+        const urlRestaurant =
+            params.get('restaurant');
+
+        const sessionRestaurantSlug =
+            user.restaurant_slug ??
+            user.restaurantSlug ??
+            data.restaurant_slug ??
+            data.restaurantSlug ??
+            '';
+
+        const savedRestaurantSlug =
+            localStorage.getItem(
+                'adminRestaurantSlug'
+            ) ||
+            localStorage.getItem(
+                'selectedRestaurantSlug'
+            ) ||
+            '';
+
+        const restaurantSlug =
+            (
+                urlRestaurant ||
+                sessionRestaurantSlug ||
+                savedRestaurantSlug ||
+                ''
+            ).trim();
+
+        const menuExpirationDate =
+            user.menuExpirationDate ??
+            user.menu_expires_at ??
+            null;
+
+
+        /* --------------------------------------------------------
+           SLUG REQUIRED
+           -------------------------------------------------------- */
+
+        if (!restaurantSlug) {
+            throw new Error(
+                'Restaurant slug is missing. Please log in again.'
+            );
+        }
+
+
+        /* --------------------------------------------------------
+           IF URL HAS A SLUG, MAKE SURE IT MATCHES THE
+           RESTAURANT ASSIGNED TO THE CURRENT SESSION.
+           -------------------------------------------------------- */
+
+        if (
+            sessionRestaurantSlug &&
+            urlRestaurant &&
+            urlRestaurant !== sessionRestaurantSlug
+        ) {
+            showMessage(
+                'You can only access your assigned restaurant.',
+                'error'
+            );
+
+            setTimeout(() => {
+                window.location.replace('/admin.html');
+            }, 1000);
+
+            return;
+        }
+
+
+        /* --------------------------------------------------------
+           SET CURRENT RESTAURANT
+           -------------------------------------------------------- */
+
+        currentRestaurant = {
+            id: restaurantId,
+            name: restaurantName,
+            slug: restaurantSlug,
+            menu_expires_at: menuExpirationDate
+        };
+
+        setMenuExpirationWarnings([
+            currentRestaurant
+        ]);
+
+
+        /* --------------------------------------------------------
+           KEEP LOCAL STORAGE IN SYNC
+           -------------------------------------------------------- */
+
+        localStorage.setItem(
+            'adminRole',
+            'cafe_admin'
+        );
+
+        if (restaurantId !== '') {
+            localStorage.setItem(
+                'adminRestaurantId',
+                String(restaurantId)
+            );
+        }
+
+        localStorage.setItem(
+            'adminRestaurantSlug',
+            restaurantSlug
+        );
+
+        localStorage.setItem(
+            'selectedRestaurantSlug',
+            restaurantSlug
+        );
+
+        localStorage.setItem(
+            'adminRestaurantName',
+            restaurantName
+        );
+
+
+        /* --------------------------------------------------------
+           UPDATE HEADER
+           -------------------------------------------------------- */
+
+        const headerName =
+            document.getElementById(
+                'restaurantName'
+            );
+
+        if (headerName) {
+            headerName.textContent =
+                restaurantName;
+        }
+
+
+        /* --------------------------------------------------------
+           HIDE PAGE LOADING
+           -------------------------------------------------------- */
+
+        const pageLoading =
+            document.getElementById(
+                'pageLoading'
+            );
+
+        if (pageLoading) {
+            pageLoading.style.display = 'none';
+        }
+
+
+        /* --------------------------------------------------------
+           LOAD MENU
+           -------------------------------------------------------- */
+
+        await loadRestaurantMenu();
+
+        updateAdminCategoryOptions();
+        updateCategoryManager();
+        updateExistingItemCategorySelect();
+        refreshExistingItemsSelect();
+        renderCurrentMenu();
+
+        console.log(
+            'Cafe menu loaded successfully:',
+            currentRestaurant,
+            foods
+        );
+
+    } catch (error) {
+        console.error(
+            'Cafe admin access error:',
+            error
+        );
+
+        const pageLoading =
+            document.getElementById(
+                'pageLoading'
+            );
+
+        if (pageLoading) {
+            pageLoading.style.display = 'none';
+        }
+
+        showMessage(
+            error.message ||
+            'Unable to load restaurant menu.',
+            'error'
+        );
+    }
+}
+
+
+/* ================================================================
+   LOAD RESTAURANT MENU
+   ================================================================ */
+
+async function loadRestaurantMenu() {
+    if (!currentRestaurant) {
+        throw new Error(
+            'Restaurant information is not available.'
+        );
+    }
+
+    if (!currentRestaurant.slug) {
+        throw new Error(
+            'Restaurant slug is missing.'
+        );
+    }
+
+    const response =
+        await fetch(
+            '/api/menu/' +
+            encodeURIComponent(
+                currentRestaurant.slug
+            ),
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }
+        );
+
+    let data = {};
+
+    try {
+        data = await response.json();
+    } catch (error) {
+        throw new Error(
+            'The server returned an invalid menu response.'
+        );
+    }
+
+    if (
+    response.status === 401 ||
+    response.status === 403
+) {
+    sessionStorage.removeItem(
+        'dashboardAccess'
+    );
+
+    window.location.replace(
+        '/admin.html'
+    );
+
+    return;
+}
+
+if (!response.ok || !data.ok) {
+    throw new Error(
+        data.message ||
+        'Unable to load restaurant menu.'
+    );
+}
+
+    if (
+        !data.menu ||
+        typeof data.menu !== 'object' ||
+        Array.isArray(data.menu)
+    ) {
+        throw new Error(
+            'Restaurant menu data is empty or invalid.'
+        );
+    }
+
+    foods = data.menu;
+
+    if (
+        data.profile &&
+        typeof data.profile === 'object'
+    ) {
+        restaurantProfile = {
+            logo:
+                typeof data.profile.logo === 'string'
+                    ? data.profile.logo
+                    : '',
+
+            phone_numbers:
+                Array.isArray(
+                    data.profile.phone_numbers
+                )
+                    ? data.profile.phone_numbers
+                    : [],
+
+            addresses:
+                Array.isArray(
+                    data.profile.addresses
+                )
+                    ? data.profile.addresses
+                    : []
+        };
+    } else {
+        restaurantProfile = {
+            logo: '',
+            phone_numbers: [],
+            addresses: []
+        };
+    }
+
+    removeEmptyCategories();
+
+    return foods;
+}
+
+
+/* ================================================================
+   RENDER CURRENT MENU
+   ================================================================ */
+
+function renderCurrentMenu() {
+    const container =
+        document.getElementById('menuList');
+
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = '';
+
+    const categories =
+        getOrderedMenuCategories();
+
+    if (!categories.length) {
+        container.innerHTML = `
+            <div class="admin-empty-menu">
+                No menu items available yet.
+            </div>
+        `;
+        return;
+    }
+
+    categories.forEach(category => {
+        const items =
+            Array.isArray(foods[category])
+                ? foods[category]
+                : [];
+
+        if (!items.length) {
+            return;
+        }
+
+        const categoryBlock =
+            document.createElement('div');
+
+        categoryBlock.className =
+            'admin-menu-category';
+
+        categoryBlock.innerHTML = `
+            <div class="admin-menu-category-header">
+                <div class="admin-menu-category-title">
+                    ${escapeHtmlForAdmin(category)}
+                </div>
+                <div class="admin-menu-reorder-actions">
+                    <button
+                        type="button"
+                        class="admin-menu-reorder-button"
+                        data-category-direction="-1"
+                        aria-label="Move ${escapeAttributeForAdmin(category)} category up"
+                        title="Move category up"
+                        ${categories.indexOf(category) === 0 ? 'disabled' : ''}
+                    >&#8593;</button>
+                    <button
+                        type="button"
+                        class="admin-menu-reorder-button"
+                        data-category-direction="1"
+                        aria-label="Move ${escapeAttributeForAdmin(category)} category down"
+                        title="Move category down"
+                        ${categories.indexOf(category) === categories.length - 1 ? 'disabled' : ''}
+                    >&#8595;</button>
+                </div>
+            </div>
+
+            <div class="admin-menu-items">
+                ${items.map((item, index) => {
+                    const image =
+                        typeof item.image === 'string' &&
+                        item.image.trim()
+                            ? item.image
+                            : 'image/food.jpeg';
+
+                    const ingredient =
+                        item.ingridient ??
+                        item.ingredient ??
+                        '';
+
+                    return `
+                        <div
+                            class="admin-menu-item"
+                            data-category="${escapeAttributeForAdmin(category)}"
+                            data-index="${index}"
+                        >
+                            <div class="admin-menu-item-image">
+                                ${
+                                    image
+                                        ? `
+                                            <img
+                                                src="${escapeAttributeForAdmin(image)}"
+                                                alt="${escapeAttributeForAdmin(item.name || '')}"
+                                            >
+                                        `
+                                        : `
+                                            <div class="admin-menu-no-image">
+                                                ??
+                                            </div>
+                                        `
+                                }
+                            </div>
+
+                            <div class="admin-menu-item-info">
+                                <strong>
+                                    ${escapeHtmlForAdmin(
+                                        item.name ||
+                                        'Unnamed item'
+                                    )}
+                                </strong>
+
+                                <span>
+                                    ${escapeHtmlForAdmin(
+                                        item.price ?? 0
+                                    )} ETB
+                                </span>
+
+                                ${
+                                    ingredient
+                                        ? `
+                                            <small>
+                                                ${escapeHtmlForAdmin(
+                                                    ingredient
+                                                )}
+                                            </small>
+                                        `
+                                        : ''
+                                }
+                            </div>
+
+                            <div class="admin-menu-reorder-actions admin-menu-item-reorder-actions">
+                                <button
+                                    type="button"
+                                    class="admin-menu-reorder-button"
+                                    data-item-direction="-1"
+                                    data-index="${index}"
+                                    aria-label="Move ${escapeAttributeForAdmin(item.name || 'item')} up in ${escapeAttributeForAdmin(category)}"
+                                    title="Move item up"
+                                    ${index === 0 ? 'disabled' : ''}
+                                >&#8593;</button>
+                                <button
+                                    type="button"
+                                    class="admin-menu-reorder-button"
+                                    data-item-direction="1"
+                                    data-index="${index}"
+                                    aria-label="Move ${escapeAttributeForAdmin(item.name || 'item')} down in ${escapeAttributeForAdmin(category)}"
+                                    title="Move item down"
+                                    ${index === items.length - 1 ? 'disabled' : ''}
+                                >&#8595;</button>
+                            </div>
+
+                            ${
+                                item.isDaySpecial === true
+                                    ? `
+                                        <div class="admin-day-special-badge">Day Special</div>
+                                    `
+                                    : ''
+                            }
+
+                            ${
+                                item.available === false
+                                    ? `
+                                        <div class="admin-unavailable-badge">
+                                            UNAVAILABLE
+                                        </div>
+                                    `
+                                    : ''
+                            }
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+
+        container.appendChild(categoryBlock);
+
+        categoryBlock
+            .querySelectorAll('[data-category-direction]')
+            .forEach(button => {
+                button.addEventListener('click', () => {
+                    moveMenuCategory(
+                        category,
+                        Number(button.dataset.categoryDirection)
+                    );
+                });
+            });
+
+        categoryBlock
+            .querySelectorAll('[data-item-direction]')
+            .forEach(button => {
+                button.addEventListener('click', () => {
+                    moveMenuItem(
+                        category,
+                        Number(button.dataset.index),
+                        Number(button.dataset.itemDirection)
+                    );
+                });
+            });
+    });
+}
+
+function moveMenuCategory(category, direction) {
+    const categories = getOrderedMenuCategories();
+    const currentIndex = categories.indexOf(category);
+    const targetIndex = currentIndex + direction;
+
+    if (
+        currentIndex < 0 ||
+        targetIndex < 0 ||
+        targetIndex >= categories.length
+    ) {
+        return;
+    }
+
+    [categories[currentIndex], categories[targetIndex]] = [
+        categories[targetIndex],
+        categories[currentIndex]
+    ];
+
+    setMenuCategoryOrder(categories);
+    updateAdminCategoryOptions();
+    updateCategoryManager();
+    updateExistingItemCategorySelect();
+    refreshExistingItemsSelect();
+    renderCurrentMenu();
+}
+
+function moveMenuItem(category, itemIndex, direction) {
+    const items = foods[category];
+    const targetIndex = itemIndex + direction;
+
+    if (
+        !Array.isArray(items) ||
+        itemIndex < 0 ||
+        targetIndex < 0 ||
+        targetIndex >= items.length
+    ) {
+        return;
+    }
+
+    [items[itemIndex], items[targetIndex]] = [
+        items[targetIndex],
+        items[itemIndex]
+    ];
+
+    renderCurrentMenu();
+}
+
+
+/* ================================================================
+   CATEGORY SELECT
+   ================================================================ */
+
+
+function updateAdminCategoryOptions() {
+    const categories = getOrderedMenuCategories();
+
+    const selects = [
+        document.getElementById('newItemCategory'),
+        document.getElementById('editItemCategory')
+    ];
+
+    selects.forEach(select => {
+        if (!select) return;
+
+        const oldValue = select.value;
+
+        select.innerHTML = `
+            <option value="">Select category</option>
+        `;
+
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            select.appendChild(option);
+        });
+
+        if (oldValue && categories.includes(oldValue)) {
+            select.value = oldValue;
+        }
+    });
+}
+
+
+
+/* ================================================================
+   EXISTING ITEM CATEGORY SELECT
+   ================================================================ */
+
+function updateExistingItemCategorySelect() {
+    const select =
+        document.getElementById(
+            'existingItemCategorySelect'
+        );
+
+    if (!select) {
+        return;
+    }
+
+    const oldValue = select.value;
+
+    select.innerHTML = `
+        <option value="">
+            Select category
+        </option>
+    `;
+
+    getOrderedMenuCategories().forEach(category => {
+        if (
+            !Array.isArray(foods[category]) ||
+            !foods[category].length
+        ) {
+            return;
+        }
+
+        const option =
+            document.createElement('option');
+
+        option.value = category;
+        option.textContent = category;
+
+        select.appendChild(option);
+    });
+
+    if (oldValue && foods[oldValue]) {
+        select.value = oldValue;
+    }
+
+    updateExistingItemsByCategory();
+}
+
+
+/* ================================================================
+   REFRESH EXISTING ITEMS
+   ================================================================ */
+
+function refreshExistingItemsSelect() {
+    const categorySelect =
+        document.getElementById(
+            'existingItemCategorySelect'
+        );
+
+    if (categorySelect) {
+        updateExistingItemsByCategory();
+        return;
+    }
+
+    const itemSelect =
+        document.getElementById(
+            'existingItemSelect'
+        );
+
+    if (!itemSelect) {
+        return;
+    }
+
+    itemSelect.innerHTML = `
+        <option value="">
+            Select item
+        </option>
+    `;
+
+    getOrderedMenuCategories().forEach(category => {
+        const items =
+            Array.isArray(foods[category])
+                ? foods[category]
+                : [];
+
+        items.forEach((item, index) => {
+            const option =
+                document.createElement('option');
+
+            option.value =
+                `${category}::${index}`;
+
+            option.textContent =
+                `${category} Ã¢â‚¬Â¢ ${
+                    item.name || 'Unnamed item'
+                }`;
+
+            itemSelect.appendChild(option);
+        });
+    });
+}
+
+
+/* ================================================================
+   UPDATE EXISTING ITEMS BY CATEGORY
+   ================================================================ */
+
+function updateExistingItemsByCategory() {
+    const categorySelect =
+        document.getElementById(
+            'existingItemCategorySelect'
+        );
+
+    const itemSelect =
+        document.getElementById(
+            'existingItemSelect'
+        );
+
+    if (!itemSelect) {
+        return;
+    }
+
+    const category =
+        categorySelect?.value || '';
+
+    itemSelect.innerHTML = `
+        <option value="">
+            Select item
+        </option>
+    `;
+    itemSelect.disabled = !category;
+
+    if (!category) {
+        clearEditFields();
+        return;
+    }
+
+    const items =
+        Array.isArray(foods[category])
+            ? foods[category]
+            : [];
+
+    items.forEach((item, index) => {
+        const option =
+            document.createElement('option');
+
+        option.value = String(index);
+
+        option.textContent =
+            item.name || 'Unnamed item';
+
+        itemSelect.appendChild(option);
+    });
+
+    clearEditFields();
+}
+
+
+/* ================================================================
+   GET SELECTED ITEM
+   ================================================================ */
+
+function getSelectedItemData() {
+    const category =
+        document.getElementById(
+            'existingItemCategorySelect'
+        )?.value || '';
+
+    const indexValue =
+        document.getElementById(
+            'existingItemSelect'
+        )?.value ?? '';
+
+    if (
+        !category ||
+        indexValue === ''
+    ) {
+        return null;
+    }
+
+    const index =
+        Number(indexValue);
+
+    const items =
+        Array.isArray(foods[category])
+            ? foods[category]
+            : [];
+
+    const item =
+        items[index];
+
+    if (!item) {
+        return null;
+    }
+
+    return {
+        category,
+        index,
+        item
+    };
+}
+
+
+/* ================================================================
+   POPULATE EDIT ITEM
+   ================================================================ */
+
+function populateSelectedItemFields() {
+    const selected =
+        getSelectedItemData();
+
+    if (!selected) {
+        clearEditFields();
+        return;
+    }
+
+    const item =
+        selected.item;
+
+    const name =
+        document.getElementById(
+            'editItemName'
+        );
+
+    const price =
+        document.getElementById(
+            'editItemPrice'
+        );
+
+    const ingredient =
+        document.getElementById(
+            'editItemIngredient'
+        );
+
+    const image =
+        document.getElementById(
+            'editItemImage'
+        );
+
+    const category =
+        document.getElementById(
+            'editItemCategory'
+        );
+
+    const available =
+        document.getElementById(
+            'editItemAvailable'
+        );
+
+    if (name) {
+        name.value =
+            item.name || '';
+    }
+
+    if (price) {
+        price.value =
+            item.price ?? '';
+    }
+
+    if (ingredient) {
+        ingredient.value =
+            item.ingridient ??
+            item.ingredient ??
+            '';
+    }
+
+    if (image) {
+        image.value = '';
+    }
+
+    if (category) {
+        category.value =
+            selected.category;
+    }
+
+    if (available) {
+        available.checked =
+            item.available !== false;
+    }
+
+    renderEditItemImage(
+        item.image || ''
+    );
+}
+
+
+/* ================================================================
+   EDIT ITEM IMAGE PREVIEW
+   ================================================================ */
+
+function renderEditItemImage(image) {
+    const img =
+        document.getElementById(
+            'editItemImagePreviewImg'
+        );
+
+    const placeholder =
+        document.getElementById(
+            'editItemImagePlaceholder'
+        );
+
+    if (!img || !placeholder) {
+        return;
+    }
+
+    if (
+        typeof image === 'string' &&
+        image.trim()
+    ) {
+        img.src = image;
+        img.style.display = 'block';
+        placeholder.style.display = 'none';
+    } else {
+        img.removeAttribute('src');
+        img.style.display = 'none';
+        placeholder.style.display = 'flex';
+    }
+}
+
+
+/* ================================================================
+   HANDLE EDIT IMAGE
+   ================================================================ */
+
+async function handleEditItemImageChange(event) {
+    const file =
+        event.target.files?.[0];
+
+    if (!file) {
+        return;
+    }
+
+    showAdminLoading(
+        'Processing image...'
+    );
+
+    try {
+        const image =
+            await readImageFile(file);
+
+        renderEditItemImage(image);
+
+        const selected =
+            getSelectedItemData();
+
+        if (selected) {
+            selected.item.image =
+                image;
+        }
+
+        showMessage(
+            'Image selected successfully.',
+            'success'
+        );
+    } catch (error) {
+        showMessage(
+            error.message ||
+            'Could not process image.',
+            'error'
+        );
+    } finally {
+        event.target.value = '';
+        hideAdminLoading(150);
+    }
+}
+
+
+/* ================================================================
+   CLEAR EDIT IMAGE
+   ================================================================ */
+
+function clearEditItemImage() {
+    const selected =
+        getSelectedItemData();
+
+    if (selected) {
+        selected.item.image = '';
+    }
+
+    const input =
+        document.getElementById(
+            'editItemImage'
+        );
+
+    if (input) {
+        input.value = '';
+    }
+
+    renderEditItemImage('');
+
+    showMessage(
+        'Item image removed. Save the menu to apply the change.',
+        'success'
+    );
+}
+
+
+/* ================================================================
+   CLEAR EDIT FIELDS
+   ================================================================ */
+
+function clearEditFields() {
+    const fields = [
+        'editItemName',
+        'editItemPrice',
+        'editItemIngredient',
+        'editItemCategory'
+    ];
+
+    fields.forEach(id => {
+        const element =
+            document.getElementById(id);
+
+        if (element) {
+            element.value = '';
+        }
+    });
+
+    const available =
+        document.getElementById(
+            'editItemAvailable'
+        );
+
+    if (available) {
+        available.checked = true;
+    }
+
+    const image =
+        document.getElementById(
+            'editItemImage'
+        );
+
+    if (image) {
+        image.value = '';
+    }
+
+    renderEditItemImage('');
+}
+
+
+/* ================================================================
+   ADD CATEGORY
+   ================================================================ */
+
+function addCategoryFromUI() {
+    const input =
+        document.getElementById(
+            'newCategoryName'
+        );
+
+    if (!input) {
+        return;
+    }
+
+    const category =
+        input.value.trim();
+
+    if (!category) {
+        showMessage(
+            'Please enter a category name.',
+            'error'
+        );
+        return;
+    }
+
+    if (foods[category]) {
+        showMessage(
+            'That category already exists.',
+            'error'
+        );
+        return;
+    }
+
+    foods[category] = [];
+
+    input.value = '';
+
+    updateAdminCategoryOptions();
+    updateCategoryManager();
+    updateExistingItemCategorySelect();
+    renderCurrentMenu();
+
+    showMessage(
+        `"${category}" category added. Click Save Menu to apply it.`,
+        'success'
+    );
+}
+
+
+/* ================================================================
+   CATEGORY MANAGER
+   ================================================================ */
+
+function updateCategoryManager() {
+    const select =
+        document.getElementById(
+            'existingCategorySelect'
+        );
+
+    if (!select) {
+        return;
+    }
+
+    const oldValue =
+        select.value;
+
+    select.innerHTML = `
+        <option value="">
+            Select category
+        </option>
+    `;
+
+    getOrderedMenuCategories().forEach(category => {
+        const option =
+            document.createElement('option');
+
+        option.value = category;
+        option.textContent = category;
+
+        select.appendChild(option);
+    });
+
+    if (oldValue && foods[oldValue]) {
+        select.value = oldValue;
+        populateSelectedCategory();
+    }
+}
+
+
+/* ================================================================
+   POPULATE CATEGORY
+   ================================================================ */
+
+function populateSelectedCategory() {
+    const select =
+        document.getElementById(
+            'existingCategorySelect'
+        );
+
+    const input =
+        document.getElementById(
+            'editCategoryName'
+        );
+
+    if (!select || !input) {
+        return;
+    }
+
+    const category =
+        select.value;
+
+    input.value =
+        category || '';
+}
+
+
+/* ================================================================
+   UPDATE CATEGORY NAME
+   ================================================================ */
+
+async function updateSelectedCategory() {
+    const select =
+        document.getElementById(
+            'existingCategorySelect'
+        );
+
+    const input =
+        document.getElementById(
+            'editCategoryName'
+        );
+
+    if (!select || !input) {
+        return;
+    }
+
+    const oldCategory =
+        select.value;
+
+    const newCategory =
+        input.value.trim();
+
+    if (!oldCategory) {
+        showMessage(
+            'Please select a category.',
+            'error'
+        );
+        return;
+    }
+
+    if (!newCategory) {
+        showMessage(
+            'Please enter the new category name.',
+            'error'
+        );
+        return;
+    }
+
+    if (
+        oldCategory !== newCategory &&
+        foods[newCategory]
+    ) {
+        showMessage(
+            'That category name already exists.',
+            'error'
+        );
+        return;
+    }
+
+    if (oldCategory === newCategory) {
+        showMessage(
+            'No category name change was made.',
+            'error'
+        );
+        return;
+    }
+
+    const confirmed =
+        await showAdminConfirm({
+            title: 'Rename Category?',
+            message:
+                `"${oldCategory}" will be renamed to "${newCategory}".`,
+            confirmText: 'Rename',
+            cancelText: 'Cancel',
+            icon: '\u00D7'
+        });
+
+    if (!confirmed) {
+        return;
+    }
+
+    showAdminLoading(
+        'Renaming category...'
+    );
+
+    try {
+        foods[newCategory] =
+            foods[oldCategory];
+
+        delete foods[oldCategory];
+
+        updateAdminCategoryOptions();
+        updateCategoryManager();
+        updateExistingItemCategorySelect();
+        renderCurrentMenu();
+
+        const newCategorySelect =
+            document.getElementById(
+                'existingCategorySelect'
+            );
+
+        if (newCategorySelect) {
+            newCategorySelect.value =
+                newCategory;
+        }
+
+        const editCategoryName =
+            document.getElementById(
+                'editCategoryName'
+            );
+
+        if (editCategoryName) {
+            editCategoryName.value =
+                newCategory;
+        }
+
+        showMessage(
+            `"${oldCategory}" renamed to "${newCategory}". Click Save Menu to apply the change.`,
+            'success'
+        );
+    } catch (error) {
+        console.error(
+            'Rename category error:',
+            error
+        );
+
+        showMessage(
+            error.message ||
+            'Could not rename category.',
+            'error'
+        );
+    } finally {
+        hideAdminLoading(150);
+    }
+}
+
+
+/* ================================================================
+   READ IMAGE
+   ================================================================ */
+
+function readImageFile(file) {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(
+                new Error('No image selected.')
+            );
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            reject(
+                new Error(
+                    'Please select a valid image file.'
+                )
+            );
+            return;
+        }
+
+        const maxSize =
+            5 * 1024 * 1024;
+
+        if (file.size > maxSize) {
+            reject(
+                new Error(
+                    'Image must be smaller than 5 MB.'
+                )
+            );
+            return;
+        }
+
+        const reader =
+            new FileReader();
+
+        reader.onload = () => {
+            resolve(
+                reader.result
+            );
+        };
+
+        reader.onerror = () => {
+            reject(
+                new Error(
+                    'Could not read the image.'
+                )
+            );
+        };
+
+        reader.readAsDataURL(file);
+    });
+}
+
+
+/* ================================================================
+   ADD ITEM
+   ================================================================ */
+
+async function addItemFromUI() {
+    const nameInput =
+        document.getElementById(
+            'newItemName'
+        );
+
+    const priceInput =
+        document.getElementById(
+            'newItemPrice'
+        );
+
+    const imageInput =
+        document.getElementById(
+            'newItemImage'
+        );
+
+    const ingredientInput =
+        document.getElementById(
+            'newItemIngredient'
+        );
+
+    const availableInput =
+        document.getElementById(
+            'newItemAvailable'
+        );
+
+    const categoryInput =
+        document.getElementById(
+            'newItemCategory'
+        );
+
+    const name =
+        nameInput?.value.trim() || '';
+
+    const priceValue =
+        priceInput?.value.trim() || '';
+
+    const category =
+        categoryInput?.value.trim() || '';
+
+    const ingredient =
+        ingredientInput?.value.trim() || '';
+
+    if (!name) {
+        showMessage(
+            'Please enter an item name.',
+            'error'
+        );
+        return;
+    }
+
+    if (!priceValue) {
+        showMessage(
+            'Please enter an item price.',
+            'error'
+        );
+        return;
+    }
+
+    const price =
+        Number(priceValue);
+
+    if (
+        !Number.isFinite(price) ||
+        price < 0
+    ) {
+        showMessage(
+            'Please enter a valid price.',
+            'error'
+        );
+        return;
+    }
+
+    if (!category) {
+        showMessage(
+            'Please select a category.',
+            'error'
+        );
+        return;
+    }
+
+    if (!foods[category]) {
+        foods[category] = [];
+    }
+
+    let image = '';
+
+    if (
+        imageInput &&
+        imageInput.files &&
+        imageInput.files[0]
+    ) {
+        showAdminLoading(
+            'Processing item image...'
+        );
+
+        try {
+            image =
+                await readImageFile(
+                    imageInput.files[0]
+                );
+        } catch (error) {
+            showMessage(
+                error.message ||
+                'Could not process image.',
+                'error'
+            );
+
+            hideAdminLoading(150);
+            return;
+        }
+    }
+
+    const item = {
+        name,
+        price,
+        ingridient: ingredient,
+        image,
+        available:
+            availableInput
+                ? availableInput.checked
+                : true
+    };
+
+    foods[category].push(item);
+
+    if (nameInput) {
+        nameInput.value = '';
+    }
+
+    if (priceInput) {
+        priceInput.value = '';
+    }
+
+    if (imageInput) {
+        imageInput.value = '';
+    }
+
+    if (ingredientInput) {
+        ingredientInput.value = '';
+    }
+
+    if (availableInput) {
+        availableInput.checked = true;
+    }
+
+    updateAdminCategoryOptions();
+    updateCategoryManager();
+    updateExistingItemCategorySelect();
+    renderCurrentMenu();
+
+    showMessage(
+        `"${name}" added to ${category}. Click Save Menu to apply the change.`,
+        'success'
+    );
+
+    hideAdminLoading(150);
+}
+
+
+/* ================================================================
+   UPDATE ITEM
+   ================================================================ */
+
+async function updateSelectedItem() {
+    const selected =
+        getSelectedItemData();
+
+    if (!selected) {
+        showMessage(
+            'Please select an item to update.',
+            'error'
+        );
+        return;
+    }
+
+    const nameInput =
+        document.getElementById(
+            'editItemName'
+        );
+
+    const priceInput =
+        document.getElementById(
+            'editItemPrice'
+        );
+
+    const ingredientInput =
+        document.getElementById(
+            'editItemIngredient'
+        );
+
+    const categoryInput =
+        document.getElementById(
+            'editItemCategory'
+        );
+
+    const availableInput =
+        document.getElementById(
+            'editItemAvailable'
+        );
+
+    const imageInput =
+        document.getElementById(
+            'editItemImage'
+        );
+
+    const name =
+        nameInput?.value.trim() || '';
+
+    const priceValue =
+        priceInput?.value.trim() || '';
+
+    const ingredient =
+        ingredientInput?.value.trim() || '';
+
+    const newCategory =
+        categoryInput?.value.trim() ||
+        selected.category;
+
+    if (!name) {
+        showMessage(
+            'Please enter an item name.',
+            'error'
+        );
+        return;
+    }
+
+    if (!priceValue) {
+        showMessage(
+            'Please enter a price.',
+            'error'
+        );
+        return;
+    }
+
+    const price =
+        Number(priceValue);
+
+    if (
+        !Number.isFinite(price) ||
+        price < 0
+    ) {
+        showMessage(
+            'Please enter a valid price.',
+            'error'
+        );
+        return;
+    }
+
+    if (!newCategory) {
+        showMessage(
+            'Please select a category.',
+            'error'
+        );
+        return;
+    }
+
+    const oldCategory =
+        selected.category;
+
+    const oldIndex =
+        selected.index;
+
+    const oldItem =
+        selected.item;
+
+    const updatedItem = {
+        ...oldItem,
+        name,
+        price,
+        ingridient: ingredient,
+        available:
+            availableInput
+                ? availableInput.checked
+                : true
+    };
+
+    if (
+        imageInput &&
+        imageInput.files &&
+        imageInput.files[0]
+    ) {
+        showAdminLoading(
+            'Processing item image...'
+        );
+
+        try {
+            updatedItem.image =
+                await readImageFile(
+                    imageInput.files[0]
+                );
+        } catch (error) {
+            showMessage(
+                error.message ||
+                'Could not process image.',
+                'error'
+            );
+
+            hideAdminLoading(150);
+            return;
+        }
+    } else {
+        updatedItem.image =
+            oldItem.image || '';
+    }
+
+    if (!foods[newCategory]) {
+        foods[newCategory] = [];
+    }
+
+    if (newCategory === oldCategory) {
+        foods[oldCategory][oldIndex] =
+            updatedItem;
+    } else {
+        foods[oldCategory].splice(
+            oldIndex,
+            1
+        );
+
+        foods[newCategory].push(
+            updatedItem
+        );
+
+        if (
+            foods[oldCategory].length === 0
+        ) {
+            delete foods[oldCategory];
+        }
+    }
+
+    removeEmptyCategories();
+
+    updateAdminCategoryOptions();
+    updateCategoryManager();
+    updateExistingItemCategorySelect();
+    refreshExistingItemsSelect();
+    renderCurrentMenu();
+    clearEditFields();
+
+    showMessage(
+        `"${name}" updated successfully. Click Save Menu to apply the change.`,
+        'success'
+    );
+
+    hideAdminLoading(150);
+}
+
+
+/* ================================================================
+   DELETE ITEM
+   ================================================================ */
+
+async function deleteSelectedItem() {
+    const selected =
+        getSelectedItemData();
+
+    if (!selected) {
+        showMessage(
+            'Please select an item to delete.',
+            'error'
+        );
+        return;
+    }
+
+    const itemName =
+        selected.item.name ||
+        'this item';
+
+    const confirmed =
+        await showAdminConfirm({
+            title: 'Delete Item?',
+            message:
+                `"${itemName}" will be removed from the menu.`,
+            confirmText: 'Delete Item',
+            cancelText: 'Keep Item',
+            icon: '??'
+        });
+
+    if (!confirmed) {
+        return;
+    }
+
+    showAdminLoading(
+        'Deleting item...'
+    );
+
+    try {
+        foods[selected.category].splice(
+            selected.index,
+            1
+        );
+
+        if (
+            foods[selected.category].length === 0
+        ) {
+            delete foods[selected.category];
+        }
+
+        removeEmptyCategories();
+
+        updateAdminCategoryOptions();
+        updateCategoryManager();
+        updateExistingItemCategorySelect();
+        refreshExistingItemsSelect();
+        renderCurrentMenu();
+        clearEditFields();
+
+        showMessage(
+            `"${itemName}" deleted. Click Save Menu to apply the change.`,
+            'success'
+        );
+    } catch (error) {
+        console.error(
+            'Delete item error:',
+            error
+        );
+
+        showMessage(
+            error.message ||
+            'Could not delete item.',
+            'error'
+        );
+    } finally {
+        hideAdminLoading(150);
+    }
+}
+
+
+/* ================================================================
+   SAVE MENU
+   ================================================================ */
+
+async function saveMenuToServer() {
+    if (!currentRestaurant) {
+        showMessage(
+            'Restaurant information is not available.',
+            'error'
+        );
+        return;
+    }
+
+    if (!currentRestaurant.slug) {
+        showMessage(
+            'Restaurant slug is missing.',
+            'error'
+        );
+        return;
+    }
+
+    removeEmptyCategories();
+    setMenuCategoryOrder(getOrderedMenuCategories());
+
+    const button =
+        document.getElementById(
+            'saveMenuBtn'
+        );
+
+    if (button) {
+        button.disabled = true;
+    }
+
+    showAdminLoading(
+        'Saving menu...'
+    );
+
+    try {
+        const response =
+            await fetch(
+                '/api/admin/menu/' +
+                encodeURIComponent(
+                    currentRestaurant.slug
+                ),
+                {
+                    method: 'POST',
+
+                    headers: {
+                        'Content-Type':
+                            'application/json'
+                    },
+
+                    credentials:
+                        'same-origin',
+
+                    body:
+                        JSON.stringify({
+                            menu: foods
+                        })
+                }
+            );
+
+        let data = {};
+
+        try {
+            data =
+                await response.json();
+        } catch (error) {
+            data = {};
+        }
+
+        if (
+            response.status === 401 ||
+            response.status === 403
+        ) {
+            showMessage(
+                data.message ||
+                'Your admin session has expired.',
+                'error'
+            );
+
+            setTimeout(() => {
+                window.location.replace(
+                    '/admin.html'
+                );
+            }, 1000);
+
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+            throw new Error(
+                data.message ||
+                'Failed to save menu.'
+            );
+        }
+
+        renderCurrentMenu();
+
+        showMessage(
+            data.message ||
+            'Menu saved successfully.',
+            'success'
+        );
+
+    } catch (error) {
+        console.error(
+            'Save menu error:',
+            error
+        );
+
+        showMessage(
+            error.message ||
+            'Could not save menu.',
+            'error'
+        );
+    } finally {
+        if (button) {
+            button.disabled = false;
+        }
+
+        hideAdminLoading(150);
+    }
+}
+
+
+/* ================================================================
+   REFRESH ADMIN MENU
+   ================================================================ */
+
+async function refreshAdminMenu() {
+    const button =
+        document.getElementById(
+            'adminRefreshBtn'
+        );
+
+    if (button) {
+        button.disabled = true;
+        button.textContent =
+            'Ã¢â€ Â» Refreshing...';
+    }
+
+    showAdminLoading(
+        'Refreshing menu...'
+    );
+
+    try {
+        await loadRestaurantMenu();
+
+        updateAdminCategoryOptions();
+        updateCategoryManager();
+        updateExistingItemCategorySelect();
+        refreshExistingItemsSelect();
+        renderCurrentMenu();
+
+        showMessage(
+            'Menu refreshed successfully.',
+            'success'
+        );
+    } catch (error) {
+        console.error(
+            'Refresh menu error:',
+            error
+        );
+
+        showMessage(
+            error.message ||
+            'Could not refresh menu.',
+            'error'
+        );
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent =
+                'Ã¢â€ Â» Refresh';
+        }
+
+        hideAdminLoading(150);
+    }
+}
+
+
+/* ================================================================
+   PROFILE
+   ================================================================ */
+
+async function loadRestaurantProfile() {
+    if (!currentRestaurant) {
+        throw new Error(
+            'Restaurant information is not available.'
+        );
+    }
+
+    if (!currentRestaurant.slug) {
+        throw new Error(
+            'Restaurant slug is missing.'
+        );
+    }
+
+    const slug =
+        encodeURIComponent(
+            currentRestaurant.slug
+        );
+
+    /* ============================================================
+       LOAD PROFILE INFORMATION
+       ============================================================ */
+
+    const response =
+        await fetch(
+            '/api/menu/' + slug,
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }
+        );
+
+    let data = {};
+
+    try {
+        data =
+            await response.json();
+    } catch (error) {
+        throw new Error(
+            'Invalid restaurant profile response.'
+        );
+    }
+
+    if (
+        !response.ok ||
+        !data.ok
+    ) {
+        throw new Error(
+            data.message ||
+            'Unable to load restaurant profile.'
+        );
+    }
+
+    restaurantProfile = {
+        logo: '',
+        phone_numbers:
+            data.profile &&
+            Array.isArray(
+                data.profile.phone_numbers
+            )
+                ? data.profile.phone_numbers
+                : [],
+
+        addresses:
+            data.profile &&
+            Array.isArray(
+                data.profile.addresses
+            )
+                ? data.profile.addresses
+                : []
+    };
+
+    /* ============================================================
+       LOAD RESTAURANT LOGO SEPARATELY
+       ============================================================ */
+
+    try {
+        const logoResponse =
+            await fetch(
+                '/api/menu/' + slug + '/logo',
+                {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store'
+                }
+            );
+
+        if (logoResponse.ok) {
+            const logo =
+                await logoResponse.text();
+
+            if (
+                typeof logo === 'string' &&
+                logo.trim()
+            ) {
+                restaurantProfile.logo =
+                    logo.trim();
+            }
+        }
+    } catch (error) {
+        console.warn(
+            '[profile] Unable to load restaurant logo:',
+            error
+        );
+    }
+
+    return restaurantProfile;
+}
+
+
+/* ================================================================
+   RENDER PROFILE LOGO
+   ================================================================ */
+
+function renderProfileLogo() {
+    const image =
+        document.getElementById(
+            'profileLogoImage'
+        );
+
+    const placeholder =
+        document.getElementById(
+            'profileLogoPlaceholder'
+        );
+
+    if (!image || !placeholder) {
+        return;
+    }
+
+    const logo =
+        typeof restaurantProfile.logo === 'string'
+            ? restaurantProfile.logo.trim()
+            : '';
+
+    image.onerror = function () {
+        image.style.display = 'none';
+        placeholder.style.display = 'flex';
+    };
+
+    image.onload = function () {
+        image.style.display = 'block';
+        placeholder.style.display = 'none';
+    };
+
+    if (logo) {
+        image.removeAttribute('src');
+        image.src = logo;
+    } else {
+        image.removeAttribute('src');
+        image.style.display = 'none';
+        placeholder.style.display = 'flex';
+    }
+}
+/* ================================================================
+   PROFILE LOGO CHANGE
+   ================================================================ */
+
+async function handleProfileLogoChange(event) {
+    const file =
+        event.target.files?.[0];
+
+    if (!file) {
+        return;
+    }
+
+    showAdminLoading(
+        'Processing logo...'
+    );
+
+    try {
+        const image =
+            await readImageFile(file);
+
+        restaurantProfile.logo =
+            image;
+
+        renderProfileLogo();
+
+        showMessage(
+            'Logo selected. Click Save Profile to apply the change.',
+            'success'
+        );
+    } catch (error) {
+        console.error(
+            'Profile logo error:',
+            error
+        );
+
+        showMessage(
+            error.message ||
+            'Could not load the logo.',
+            'error'
+        );
+    } finally {
+        event.target.value = '';
+        hideAdminLoading(150);
+    }
+}
+
+
+/* ================================================================
+   REMOVE LOGO
+   ================================================================ */
+
+function removeProfileLogo() {
+    if (!restaurantProfile.logo) {
+        showMessage(
+            'There is no logo to remove.',
+            'error'
+        );
+        return;
+    }
+
+    restaurantProfile.logo = '';
+
+    renderProfileLogo();
+
+    showMessage(
+        'Logo removed. Click Save Profile to apply the change.',
+        'success'
+    );
+}
+
+
+/* ================================================================
+   OPEN PROFILE MODAL
+   ================================================================ */
+
+async function loadTelebirrSettings() {
+    const form = document.getElementById('telebirrSettingsForm');
+    const message = document.getElementById('telebirrSettingsMessage');
+
+    if (!form || !currentRestaurant || !currentRestaurant.slug) {
+        return;
+    }
+
+    const fields = {
+        orderNow: document.getElementById('orderNowEnabled'),
+        enabled: document.getElementById('telebirrEnabled'),
+        name: document.getElementById('telebirrMerchantName'),
+        code: document.getElementById('telebirrMerchantCode'),
+        appId: document.getElementById('telebirrMerchantAppId')
+    };
+
+    if (message) message.textContent = 'Loading settings...';
+
+    try {
+        const response = await fetch(
+            '/api/admin/payment-settings/' +
+                encodeURIComponent(currentRestaurant.slug),
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.message || 'Unable to load Telebirr settings.');
+        }
+
+        const settings = data.settings || {};
+
+        // Telebirr checkbox removed; keep Order Now independent.
+        fields.orderNow.checked = settings.order_now_enabled !== false;
+        fields.name.value = settings.merchant_name || '';
+        fields.code.value = settings.merchant_code || '';
+        fields.appId.value = settings.merchant_app_id || '';
+
+        if (message) message.textContent = '';
+    } catch (error) {
+        console.error('[telebirr] Load failed:', error);
+        if (message) {
+            message.textContent = error.message || 'Unable to load settings.';
+        }
+    }
+}
+
+async function saveTelebirrSettings(event) {
+    event.preventDefault();
+
+    const message = document.getElementById('telebirrSettingsMessage');
+    const form = document.getElementById('telebirrSettingsForm');
+    const submitButton = form?.querySelector('[type="submit"]');
+
+    if (!currentRestaurant?.slug || !form) {
+        if (message) message.textContent = 'Restaurant information is unavailable.';
+        return;
+    }
+
+    const branchId = form.dataset.branchId;
+    const payload = {
+        order_now_enabled: document.getElementById('orderNowEnabled').checked,
+        merchant_name: document.getElementById('telebirrMerchantName').value.trim(),
+        merchant_code: document.getElementById('telebirrMerchantCode').value.trim(),
+        merchant_app_id: document.getElementById('telebirrMerchantAppId').value.trim()
+    };
+
+    const url = branchId
+        ? '/api/admin/payment-branches/' +
+            encodeURIComponent(currentRestaurant.slug) + '/' +
+            encodeURIComponent(branchId)
+        : '/api/admin/payment-settings/' +
+            encodeURIComponent(currentRestaurant.slug);
+
+    if (!branchId) payload.telebirr_enabled = false;
+
+    if (submitButton) submitButton.disabled = true;
+    if (message) message.textContent = 'Saving settings...';
+
+    try {
+        const response = await fetch(url, {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.message || 'Unable to save Telebirr settings.');
+        }
+
+        if (message) {
+            message.textContent = branchId
+                ? 'Branch settings saved.'
+                : 'Telebirr settings saved.';
+        }
+    } catch (error) {
+        console.error('[telebirr] Save failed:', error);
+        if (message) message.textContent = error.message || 'Unable to save settings.';
+    } finally {
+        if (submitButton) submitButton.disabled = false;
+    }
+}
+async function openProfileModal() {
+    const modal =
+        document.getElementById(
+            'profileModal'
+        );
+
+    if (!modal) {
+        showMessage(
+            'Profile window is not available.',
+            'error'
+        );
+        return;
+    }
+
+    showAdminLoading(
+        'Loading profile...'
+    );
+
+    try {
+        await loadRestaurantProfile();
+        await loadTelebirrSettings();
+
+        const restaurantName =
+            document.getElementById(
+                'profileRestaurantName'
+            );
+
+        if (restaurantName) {
+            restaurantName.textContent =
+                currentRestaurant?.name ||
+                'Restaurant Profile';
+        }
+
+        renderProfileLogo();
+        renderProfilePhones();
+        renderProfileLocations();
+
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+
+    } catch (error) {
+        console.error(
+            'Open profile error:',
+            error
+        );
+
+        showMessage(
+            error.message ||
+            'Unable to load profile.',
+            'error'
+        );
+    } finally {
+        hideAdminLoading(150);
+    }
+}
+
+
+/* ================================================================
+   CLOSE PROFILE MODAL
+   ================================================================ */
+
+function closeProfileModal() {
+    const modal =
+        document.getElementById(
+            'profileModal'
+        );
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+}
+
+
+/* ================================================================
+   RENDER PHONE NUMBERS
+   ================================================================ */
+
+function renderProfilePhones() {
+    const list =
+        document.getElementById(
+            'phoneList'
+        );
+
+    if (!list) {
+        return;
+    }
+
+    list.innerHTML = '';
+
+    if (
+        !Array.isArray(
+            restaurantProfile.phone_numbers
+        ) ||
+        restaurantProfile.phone_numbers.length === 0
+    ) {
+        const empty =
+            document.createElement('div');
+
+        empty.className =
+            'profile-empty';
+
+        empty.textContent =
+            'No phone numbers added yet.';
+
+        list.appendChild(empty);
+
+        return;
+    }
+
+    restaurantProfile.phone_numbers.forEach(
+        (phone, index) => {
+            const row =
+                document.createElement('div');
+
+            row.className =
+                'profile-entry';
+
+            const fields =
+                document.createElement('div');
+
+            fields.className =
+                'profile-entry-fields';
+
+            const input =
+                document.createElement('input');
+
+            input.type = 'tel';
+            input.className =
+                'profile-phone-input';
+
+            input.placeholder =
+                'Phone number';
+
+            input.value =
+                phone || '';
+
+            input.dataset.index =
+                String(index);
+
+            fields.appendChild(input);
+
+            const deleteButton =
+                document.createElement('button');
+
+            deleteButton.type =
+                'button';
+
+            deleteButton.className =
+                'profile-delete-btn';
+
+            deleteButton.textContent =
+                'Delete';
+
+            deleteButton.addEventListener(
+                'click',
+                () => {
+                    restaurantProfile.phone_numbers.splice(
+                        index,
+                        1
+                    );
+
+                    renderProfilePhones();
+                }
+            );
+
+            row.appendChild(fields);
+            row.appendChild(deleteButton);
+
+            list.appendChild(row);
+        }
+    );
+}
+
+
+/* ================================================================
+   ADD PHONE
+   ================================================================ */
+
+function addPhoneRow() {
+    if (
+        !Array.isArray(
+            restaurantProfile.phone_numbers
+        )
+    ) {
+        restaurantProfile.phone_numbers = [];
+    }
+
+    restaurantProfile.phone_numbers.push('');
+
+    renderProfilePhones();
+
+    const inputs =
+        document.querySelectorAll(
+            '.profile-phone-input'
+        );
+
+    if (inputs.length) {
+        inputs[
+            inputs.length - 1
+        ].focus();
+    }
+}
+
+
+/* ================================================================
+   RENDER LOCATIONS
+   ================================================================ */
+
+function renderProfileLocations() {
+    const list =
+        document.getElementById(
+            'locationList'
+        );
+
+    if (!list) {
+        return;
+    }
+
+    list.innerHTML = '';
+
+    if (
+        !Array.isArray(
+            restaurantProfile.addresses
+        ) ||
+        restaurantProfile.addresses.length === 0
+    ) {
+        const empty =
+            document.createElement('div');
+
+        empty.className =
+            'profile-empty';
+
+        empty.textContent =
+            'No locations added yet.';
+
+        list.appendChild(empty);
+
+        return;
+    }
+
+    restaurantProfile.addresses.forEach(
+        (location, index) => {
+            const row =
+                document.createElement('div');
+
+            row.className =
+                'profile-entry profile-location-entry';
+
+            const fields =
+                document.createElement('div');
+
+            fields.className =
+                'profile-entry-fields';
+
+            const nameInput =
+                document.createElement('input');
+
+            nameInput.type = 'text';
+
+            nameInput.className =
+                'profile-location-name';
+
+            nameInput.placeholder =
+                'Location name';
+
+            nameInput.value =
+                location?.name || '';
+
+            nameInput.dataset.index =
+                String(index);
+
+            const urlInput =
+                document.createElement('input');
+
+            urlInput.type = 'url';
+
+            urlInput.className =
+                'profile-location-url';
+
+            urlInput.placeholder =
+                'Google Maps URL';
+
+            urlInput.value =
+                location?.url || '';
+
+            urlInput.dataset.index =
+                String(index);
+
+            fields.appendChild(nameInput);
+            fields.appendChild(urlInput);
+
+            const deleteButton =
+                document.createElement('button');
+
+            deleteButton.type =
+                'button';
+
+            deleteButton.className =
+                'profile-delete-btn';
+
+            deleteButton.textContent =
+                'Delete';
+
+            deleteButton.addEventListener(
+                'click',
+                () => {
+                    restaurantProfile.addresses.splice(
+                        index,
+                        1
+                    );
+
+                    renderProfileLocations();
+                }
+            );
+
+            row.appendChild(fields);
+            row.appendChild(deleteButton);
+
+            list.appendChild(row);
+        }
+    );
+}
+
+
+/* ================================================================
+   ADD LOCATION
+   ================================================================ */
+
+function addLocationRow() {
+    if (
+        !Array.isArray(
+            restaurantProfile.addresses
+        )
+    ) {
+        restaurantProfile.addresses = [];
+    }
+
+    restaurantProfile.addresses.push({
+        name: '',
+        url: ''
+    });
+
+    renderProfileLocations();
+
+    const inputs =
+        document.querySelectorAll(
+            '.profile-location-name'
+        );
+
+    if (inputs.length) {
+        inputs[
+            inputs.length - 1
+        ].focus();
+    }
+}
+
+
+/* ================================================================
+   SAVE RESTAURANT PROFILE
+   ================================================================ */
+
+async function saveRestaurantProfile() {
+    if (!currentRestaurant) {
+        showMessage(
+            'Restaurant information is not available.',
+            'error'
+        );
+        return;
+    }
+
+    if (!currentRestaurant.slug) {
+        showMessage(
+            'Restaurant slug is missing.',
+            'error'
+        );
+        return;
+    }
+
+    const phoneInputs =
+        document.querySelectorAll(
+            '.profile-phone-input'
+        );
+
+    const locationNames =
+        document.querySelectorAll(
+            '.profile-location-name'
+        );
+
+    const locationUrls =
+        document.querySelectorAll(
+            '.profile-location-url'
+        );
+
+    const phoneNumbers = [];
+
+    phoneInputs.forEach(input => {
+        const phone =
+            input.value.trim();
+
+        if (phone) {
+            phoneNumbers.push(phone);
+        }
+    });
+
+    const addresses = [];
+
+    for (
+        let index = 0;
+        index < locationNames.length;
+        index++
+    ) {
+        const name =
+            locationNames[index]
+                .value
+                .trim();
+
+        const url =
+            locationUrls[index]
+                ? locationUrls[index]
+                    .value
+                    .trim()
+                : '';
+
+        if (!name && !url) {
+            continue;
+        }
+
+        if (!name || !url) {
+            showMessage(
+                'Please enter both the location name and map URL.',
+                'error'
+            );
+            return;
+        }
+
+        if (
+            !/^https?:\/\/.+/i.test(url)
+        ) {
+            showMessage(
+                'Map URL must start with http:// or https://.',
+                'error'
+            );
+            return;
+        }
+
+        addresses.push({
+            name,
+            url
+        });
+    }
+
+    const logo =
+        typeof restaurantProfile.logo === 'string'
+            ? restaurantProfile.logo
+            : '';
+
+    if (
+        logo &&
+        !logo.startsWith('data:image/')
+    ) {
+        showMessage(
+            'The restaurant logo is invalid.',
+            'error'
+        );
+        return;
+    }
+
+    showAdminLoading(
+        'Saving profile...'
+    );
+
+    const saveButton =
+        document.getElementById(
+            'profileSaveBtn'
+        );
+
+    if (saveButton) {
+        saveButton.disabled = true;
+    }
+
+    try {
+        const response =
+            await fetch(
+                '/api/admin/profile/' +
+                encodeURIComponent(
+                    currentRestaurant.slug
+                ),
+                {
+                    method: 'PUT',
+
+                    headers: {
+                        'Content-Type':
+                            'application/json'
+                    },
+
+                    credentials:
+                        'same-origin',
+
+                    body:
+                        JSON.stringify({
+                            logo,
+                            phone_numbers:
+                                phoneNumbers,
+                            addresses
+                        })
+                }
+            );
+
+        let data = {};
+
+        try {
+            data =
+                await response.json();
+        } catch (error) {
+            data = {};
+        }
+
+        if (
+            response.status === 401 ||
+            response.status === 403
+        ) {
+            showMessage(
+                data.message ||
+                'Your admin session has expired. Please log in again.',
+                'error'
+            );
+
+            setTimeout(() => {
+                window.location.replace(
+                    '/admin.html'
+                );
+            }, 1200);
+
+            return;
+        }
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+            throw new Error(
+                data.message ||
+                'Failed to save restaurant profile.'
+            );
+        }
+
+        restaurantProfile = {
+            logo:
+                typeof data.profile?.logo === 'string'
+                    ? data.profile.logo
+                    : logo,
+
+            phone_numbers:
+                phoneNumbers,
+
+            addresses:
+                addresses
+        };
+
+        renderProfileLogo();
+
+        showMessage(
+            data.message ||
+            'Profile saved successfully.',
+            'success'
+        );
+
+        setTimeout(() => {
+            closeProfileModal();
+        }, 700);
+
+    } catch (error) {
+        console.error(
+            'Save profile error:',
+            error
+        );
+
+        showMessage(
+            error.message ||
+            'Could not save restaurant profile.',
+            'error'
+        );
+    } finally {
+        if (saveButton) {
+            saveButton.disabled = false;
+        }
+
+        hideAdminLoading(150);
+    }
+}
+
+
+/* ================================================================
+   DAY SPECIALS
+   ================================================================ */
+
+function getDaySpecialItems() {
+    const specials = [];
+
+    getOrderedMenuCategories().forEach(category => {
+        const items =
+            Array.isArray(foods[category])
+                ? foods[category]
+                : [];
+
+        items.forEach((item, index) => {
+            if (
+                item &&
+                item.isDaySpecial === true
+            ) {
+                specials.push({
+                    category,
+                    index,
+                    item
+                });
+            }
+        });
+    });
+
+    return specials;
+}
+
+
+function getDaySpecialItem() {
+    const specials =
+        getDaySpecialItems();
+
+    return specials.length
+        ? {
+            category:
+                specials[0].category,
+            item:
+                specials[0].item
+        }
+        : null;
+}
+
+
+/* ================================================================
+   OPEN DAY SPECIAL MODAL
+   ================================================================ */
+
+function openDaySpecialModal() {
+    const existing =
+        document.getElementById(
+            'daySpecialModal'
+        );
+
+    if (existing) {
+        existing.remove();
+    }
+
+    const specials =
+        getDaySpecialItems();
+
+    const modal =
+        document.createElement('div');
+
+    modal.id =
+        'daySpecialModal';
+
+    modal.className =
+        'day-special-modal-overlay active';
+
+    modal.innerHTML = `
+        <div class="day-special-modal">
+
+            <div class="day-special-modal-header">
+
+                <div class="day-special-modal-title">
+
+                    <div class="day-special-icon"></div>
+
+                    <div>
+                        <h2>
+                            Day Specials
+                        </h2>
+
+                        <p>
+                            Choose up to ${MAX_DAY_SPECIALS}
+                            items to feature today.
+                        </p>
+                    </div>
+
+                </div>
+
+                <button
+                    type="button"
+                    class="day-special-close"
+                    id="daySpecialCloseBtn"
+                >&#215;</button>
+
+            </div>
+
+
+            <div class="day-special-modal-body">
+
+                <div
+    class="day-special-counter"
+    id="daySpecialCounter"
+>
+    <strong>${specials.length}</strong>
+    / ${MAX_DAY_SPECIALS}
+    Day Specials Selected
+</div>
+
+
+                <div class="day-special-field">
+
+                    <label for="daySpecialCategory">
+                        Choose Category
+                    </label>
+
+                    <select id="daySpecialCategory">
+
+                        <option value="">
+                            Select category
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="day-special-field">
+
+                    <label for="daySpecialItem">
+                        Choose Item
+                    </label>
+
+                    <select
+                        id="daySpecialItem"
+                        disabled
+                    >
+
+                        <option value="">
+                            Select category first
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div
+                    id="daySpecialPreview"
+                    class="day-special-preview"
+                ></div>
+
+
+                <div
+                    id="daySpecialCurrentList"
+                    class="day-special-current-list"
+                ></div>
+
+            </div>
+
+
+            <div class="day-special-modal-footer">
+
+                <button
+                    type="button"
+                    id="daySpecialRemoveBtn"
+                    class="day-special-remove-btn"
+                    disabled
+                >
+                    Select a Current Special
+                </button>
+
+
+                <div class="day-special-footer-right">
+
+                    <button
+                        type="button"
+                        id="daySpecialCancelBtn"
+                        class="day-special-cancel-btn"
+                    >
+                        Close
+                    </button>
+
+                    <button
+                        type="button"
+                        id="daySpecialSaveBtn"
+                        class="day-special-save-btn"
+                        disabled
+                    >
+                        + Add Day Special
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+
+    const categorySelect =
+        document.getElementById(
+            'daySpecialCategory'
+        );
+
+    const itemSelect =
+        document.getElementById(
+            'daySpecialItem'
+        );
+
+    const saveButton =
+        document.getElementById(
+            'daySpecialSaveBtn'
+        );
+
+    const removeButton =
+        document.getElementById(
+            'daySpecialRemoveBtn'
+        );
+
+
+    getOrderedMenuCategories().forEach(category => {
+        const items =
+            Array.isArray(foods[category])
+                ? foods[category]
+                : [];
+
+        if (!items.length) {
+            return;
+        }
+
+        const option =
+            document.createElement('option');
+
+        option.value =
+            category;
+
+        option.textContent =
+            category;
+
+        categorySelect.appendChild(
+            option
+        );
+    });
+
+
+    categorySelect.addEventListener(
+        'change',
+        () => {
+            populateDaySpecialItems(
+                categorySelect.value
+            );
+        }
+    );
+
+
+    itemSelect.addEventListener(
+        'change',
+        () => {
+            const category =
+                categorySelect.value;
+
+            const index =
+                Number(
+                    itemSelect.value
+                );
+
+            const items =
+                Array.isArray(
+                    foods[category]
+                )
+                    ? foods[category]
+                    : [];
+
+            const item =
+                items[index];
+
+            renderDaySpecialPreview(
+                item
+            );
+
+            if (saveButton) {
+                saveButton.disabled =
+                    !item ||
+                    item.isDaySpecial === true ||
+                    getDaySpecialItems().length >=
+                        MAX_DAY_SPECIALS;
+            }
+
+            updateDaySpecialRemoveButton();
+        }
+    );
+
+
+    document
+        .getElementById(
+            'daySpecialCloseBtn'
+        )
+        ?.addEventListener(
+            'click',
+            closeDaySpecialModal
+        );
+
+
+    document
+        .getElementById(
+            'daySpecialCancelBtn'
+        )
+        ?.addEventListener(
+            'click',
+            closeDaySpecialModal
+        );
+
+
+    modal.addEventListener(
+        'click',
+        event => {
+            if (
+                event.target === modal
+            ) {
+                closeDaySpecialModal();
+            }
+        }
+    );
+
+
+    if (saveButton) {
+        saveButton.addEventListener(
+            'click',
+            saveDaySpecial
+        );
+    }
+
+
+    if (removeButton) {
+        removeButton.addEventListener(
+            'click',
+            removeDaySpecial
+        );
+    }
+
+
+    renderCurrentDaySpecialList();
+    updateDaySpecialCounter();
+    updateDaySpecialRemoveButton();
+}
+
+
+/* ================================================================
+   POPULATE DAY SPECIAL ITEMS
+   ================================================================ */
+
+function populateDaySpecialItems(category) {
+    const itemSelect =
+        document.getElementById(
+            'daySpecialItem'
+        );
+
+    if (!itemSelect) {
+        return;
+    }
+
+    itemSelect.innerHTML =
+        '<option value="">Select item</option>';
+
+    itemSelect.disabled =
+        !category;
+
+    const saveButton =
+        document.getElementById(
+            'daySpecialSaveBtn'
+        );
+
+    if (saveButton) {
+        saveButton.disabled = true;
+    }
+
+    if (!category) {
+        renderDaySpecialPreview(null);
+        updateDaySpecialRemoveButton();
+        return;
+    }
+
+    const items =
+        Array.isArray(foods[category])
+            ? foods[category]
+            : [];
+
+    items.forEach((item, index) => {
+        const option =
+            document.createElement('option');
+
+        option.value =
+            String(index);
+
+        option.textContent =
+            item.name ||
+            'Unnamed item';
+
+        itemSelect.appendChild(
+            option
+        );
+    });
+
+    renderDaySpecialPreview(null);
+    updateDaySpecialRemoveButton();
+}
+
+
+/* ================================================================
+   DAY SPECIAL COUNTER
+   ================================================================ */
+
+function updateDaySpecialCounter() {
+    const counter =
+        document.getElementById(
+            'daySpecialCounter'
+        );
+
+    if (!counter) {
+        return;
+    }
+
+    const count =
+        getDaySpecialItems().length;
+
+    counter.innerHTML = `
+        <strong>${count}</strong>
+        / ${MAX_DAY_SPECIALS}
+        Day Specials Selected
+    `;
+
+    if (
+        count >= MAX_DAY_SPECIALS
+    ) {
+        counter.classList.add(
+            'limit-reached'
+        );
+    } else {
+        counter.classList.remove(
+            'limit-reached'
+        );
+    }
+}
+
+
+/* ================================================================
+   CURRENT DAY SPECIAL LIST
+   ================================================================ */
+
+function renderCurrentDaySpecialList() {
+    const container =
+        document.getElementById(
+            'daySpecialCurrentList'
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const specials =
+        getDaySpecialItems();
+
+    if (!specials.length) {
+        container.innerHTML = `
+            <div class="day-special-no-current">
+                No Day Specials selected yet.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="day-special-current-heading">
+            Current Day Specials
+        </div>
+
+        <div class="day-special-current-items">
+
+            ${specials.map(
+                (special, number) => {
+                    const item =
+                        special.item;
+
+                    const image =
+                        typeof item.image === 'string' &&
+                        item.image.trim()
+                            ? item.image
+                            : 'image/food.jpeg';
+
+                    return `
+                        <div
+                            class="day-special-current-item"
+                            data-special-category="${escapeAttributeForAdmin(
+                                special.category
+                            )}"
+                            data-special-index="${special.index}"
+                        >
+
+                            <div
+                                class="day-special-current-number"
+                            >
+                                ${number + 1}
+                            </div>
+
+
+                            <div
+                                class="day-special-current-image"
+                            >
+                                ${
+                                    image
+                                        ? `
+                                            <img
+                                                src="${escapeAttributeForAdmin(image)}"
+                                                alt="${escapeAttributeForAdmin(
+                                                    item.name || ''
+                                                )}"
+                                            >
+                                        `
+                                        : `
+                                            <span>
+                                                ??
+                                            </span>
+                                        `
+                                }
+                            </div>
+
+
+                            <div
+                                class="day-special-current-info"
+                            >
+                                <strong>
+                                    ${escapeHtmlForAdmin(
+                                        item.name ||
+                                        'Unnamed item'
+                                    )}
+                                </strong>
+
+                                <small>
+                                    ${escapeHtmlForAdmin(
+                                        special.category
+                                    )}
+                                    Ã¢â‚¬Â¢
+                                    ${escapeHtmlForAdmin(
+                                        item.price ?? 0
+                                    )}
+                                    ETB
+                                </small>
+                            </div>
+
+
+                            <button
+                                type="button"
+                                class="day-special-remove-one"
+                                data-category="${escapeAttributeForAdmin(
+                                    special.category
+                                )}"
+                                data-index="${special.index}"
+                                title="Remove this Day Special"
+                            >&#215;</button>
+
+                        </div>
+                    `;
+                }
+            ).join('')}
+
+        </div>
+    `;
+
+
+    container
+        .querySelectorAll(
+            '.day-special-remove-one'
+        )
+        .forEach(button => {
+            button.addEventListener(
+                'click',
+                async event => {
+                    event.preventDefault();
+
+                    const category =
+                        button.dataset.category;
+
+                    const index =
+                        Number(
+                            button.dataset.index
+                        );
+
+                    await removeSpecificDaySpecial(
+                        category,
+                        index
+                    );
+                }
+            );
+        });
+}
+
+
+/* ================================================================
+   DAY SPECIAL REMOVE BUTTON
+   ================================================================ */
+
+function updateDaySpecialRemoveButton() {
+    const button =
+        document.getElementById(
+            'daySpecialRemoveBtn'
+        );
+
+    if (!button) {
+        return;
+    }
+
+    const categorySelect =
+        document.getElementById(
+            'daySpecialCategory'
+        );
+
+    const itemSelect =
+        document.getElementById(
+            'daySpecialItem'
+        );
+
+    const selectedCategory =
+        categorySelect?.value || '';
+
+    const selectedIndex =
+        itemSelect?.value ?? '';
+
+    let selectedItem = null;
+
+    if (
+        selectedCategory &&
+        selectedIndex !== ''
+    ) {
+        const items =
+            Array.isArray(
+                foods[selectedCategory]
+            )
+                ? foods[selectedCategory]
+                : [];
+
+        selectedItem =
+            items[
+                Number(selectedIndex)
+            ];
+    }
+
+    if (
+        selectedItem &&
+        selectedItem.isDaySpecial === true
+    ) {
+        button.disabled = false;
+        button.textContent =
+            'Remove Selected Special';
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent =
+        'Select a Current Special';
+}
+
+
+/* ================================================================
+   DAY SPECIAL PREVIEW
+   ================================================================ */
+
+function renderDaySpecialPreview(item) {
+    const preview =
+        document.getElementById(
+            'daySpecialPreview'
+        );
+
+    if (!preview) {
+        return;
+    }
+
+    if (!item) {
+        preview.innerHTML = `
+            <div class="day-special-empty">
+                Select a menu item to see its preview.
+            </div>
+        `;
+        return;
+    }
+
+    const image =
+        typeof item.image === 'string' &&
+        item.image.trim()
+            ? item.image
+            : 'image/food.jpeg';
+
+    const ingredient =
+        item.ingridient ||
+        item.ingredient ||
+        '';
+
+    preview.innerHTML = `
+        <div class="day-special-preview-card">
+
+            <div class="day-special-preview-image">
+                ${
+                    image
+                        ? `
+                            <img
+                                src="${escapeAttributeForAdmin(image)}"
+                                alt="${escapeAttributeForAdmin(
+                                    item.name || ''
+                                )}"
+                            >
+                        `
+                        : `
+                            <div class="day-special-empty">
+                                No image
+                            </div>
+                        `
+                }
+            </div>
+
+
+            <div class="day-special-preview-info">
+
+                <h3>
+                    ${escapeHtmlForAdmin(
+                        item.name ||
+                        'Unnamed item'
+                    )}
+                </h3>
+
+                <p class="special-price">
+                    ${escapeHtmlForAdmin(
+                        item.price ?? 0
+                    )}
+                    ETB
+                </p>
+
+                <p class="special-ingredient">
+                    ${escapeHtmlForAdmin(
+                        ingredient ||
+                        'No ingredient description'
+                    )}
+                </p>
+
+                ${
+                    item.isDaySpecial === true
+                        ? `
+                            <span class="day-special-current">
+                                ? CURRENT DAY SPECIAL
+                            </span>
+                        `
+                        : ''
+                }
+
+            </div>
+
+        </div>
+    `;
+}
+
+
+/* ================================================================
+   SAVE DAY SPECIAL
+   ================================================================ */
+
+async function saveDaySpecial() {
+    const categorySelect =
+        document.getElementById(
+            'daySpecialCategory'
+        );
+
+    const itemSelect =
+        document.getElementById(
+            'daySpecialItem'
+        );
+
+    if (
+        !categorySelect ||
+        !itemSelect ||
+        !categorySelect.value ||
+        itemSelect.value === ''
+    ) {
+        showMessage(
+            'Please choose a menu item first.',
+            'error'
+        );
+        return;
+    }
+
+    const category =
+        categorySelect.value;
+
+    const index =
+        Number(
+            itemSelect.value
+        );
+
+    const items =
+        Array.isArray(
+            foods[category]
+        )
+            ? foods[category]
+            : [];
+
+    const selectedItem =
+        items[index];
+
+    if (!selectedItem) {
+        showMessage(
+            'The selected menu item could not be found.',
+            'error'
+        );
+        return;
+    }
+
+    if (
+        selectedItem.isDaySpecial === true
+    ) {
+        showMessage(
+            `"${selectedItem.name}" is already a Day Special.`,
+            'error'
+        );
+        return;
+    }
+
+    const currentSpecials =
+        getDaySpecialItems();
+
+    if (
+        currentSpecials.length >=
+        MAX_DAY_SPECIALS
+    ) {
+        showMessage(
+            `You can have a maximum of ${MAX_DAY_SPECIALS} Day Specials.`,
+            'error'
+        );
+        return;
+    }
+
+    const saveButton =
+        document.getElementById(
+            'daySpecialSaveBtn'
+        );
+
+    if (saveButton) {
+        saveButton.disabled = true;
+    }
+
+    showAdminLoading(
+        'Adding Day Special...'
+    );
+
+    try {
+        selectedItem.isDaySpecial =
+            true;
+
+        await saveMenuDataSilently();
+
+        renderCurrentMenu();
+        renderCurrentDaySpecialList();
+        updateDaySpecialCounter();
+        updateDaySpecialRemoveButton();
+
+        itemSelect.value = '';
+
+        renderDaySpecialPreview(null);
+
+        if (
+            getDaySpecialItems().length >=
+            MAX_DAY_SPECIALS
+        ) {
+            if (saveButton) {
+                saveButton.disabled = true;
+            }
+
+            showMessage(
+                `Maximum of ${MAX_DAY_SPECIALS} Day Specials reached.`,
+                'success'
+            );
+        } else {
+            showMessage(
+                `"${selectedItem.name}" added as a Day Special.`,
+                'success'
+            );
+        }
+
+    } catch (error) {
+        console.error(
+            'Save Day Special error:',
+            error
+        );
+
+        delete selectedItem.isDaySpecial;
+
+        renderCurrentMenu();
+        renderCurrentDaySpecialList();
+        updateDaySpecialCounter();
+
+        showMessage(
+            error.message ||
+            'Could not save Day Special.',
+            'error'
+        );
+    } finally {
+        if (
+            saveButton &&
+            getDaySpecialItems().length <
+                MAX_DAY_SPECIALS
+        ) {
+            saveButton.disabled = false;
+        }
+
+        hideAdminLoading();
+    }
+}
+
+
+/* ================================================================
+   REMOVE SELECTED DAY SPECIAL
+   ================================================================ */
+
+async function removeDaySpecial() {
+    const categorySelect =
+        document.getElementById(
+            'daySpecialCategory'
+        );
+
+    const itemSelect =
+        document.getElementById(
+            'daySpecialItem'
+        );
+
+    if (
+        !categorySelect ||
+        !itemSelect ||
+        !categorySelect.value ||
+        itemSelect.value === ''
+    ) {
+        showMessage(
+            'Select a current Day Special first.',
+            'error'
+        );
+        return;
+    }
+
+    const category =
+        categorySelect.value;
+
+    const index =
+        Number(
+            itemSelect.value
+        );
+
+    const items =
+        Array.isArray(
+            foods[category]
+        )
+            ? foods[category]
+            : [];
+
+    const item =
+        items[index];
+
+    if (
+        !item ||
+        item.isDaySpecial !== true
+    ) {
+        showMessage(
+            'The selected item is not a Day Special.',
+            'error'
+        );
+        return;
+    }
+
+    const itemName =
+        item.name ||
+        'this item';
+
+    const confirmed =
+        await showAdminConfirm({
+            title:
+                'Remove Day Special?',
+            message:
+                `"${itemName}" will be removed from today's Day Specials.`,
+            confirmText:
+                'Remove Special',
+            cancelText:
+                'Keep Special',
+            icon:
+                '\u00D7'
+        });
+
+    if (!confirmed) {
+        return;
+    }
+
+    const removeButton =
+        document.getElementById(
+            'daySpecialRemoveBtn'
+        );
+
+    if (removeButton) {
+        removeButton.disabled = true;
+    }
+
+    showAdminLoading(
+        'Removing Day Special...'
+    );
+
+    try {
+        item.isDaySpecial =
+            false;
+
+        await saveMenuDataSilently();
+
+        renderCurrentMenu();
+        renderCurrentDaySpecialList();
+        updateDaySpecialCounter();
+        updateDaySpecialRemoveButton();
+
+        itemSelect.value = '';
+
+        renderDaySpecialPreview(null);
+
+        showMessage(
+            `"${itemName}" removed from Day Specials.`,
+            'success'
+        );
+
+    } catch (error) {
+        console.error(
+            'Remove Day Special error:',
+            error
+        );
+
+        item.isDaySpecial =
+            true;
+
+        renderCurrentMenu();
+        renderCurrentDaySpecialList();
+        updateDaySpecialCounter();
+
+        showMessage(
+            error.message ||
+            'Could not remove Day Special.',
+            'error'
+        );
+    } finally {
+        hideAdminLoading();
+    }
+}
+
+
+/* ================================================================
+   REMOVE SPECIFIC DAY SPECIAL
+   ================================================================ */
+
+async function removeSpecificDaySpecial(
+    category,
+    index
+) {
+    const items =
+        Array.isArray(
+            foods[category]
+        )
+            ? foods[category]
+            : [];
+
+    const item =
+        items[index];
+
+    if (
+        !item ||
+        item.isDaySpecial !== true
+    ) {
+        showMessage(
+            'Day Special could not be found.',
+            'error'
+        );
+        return;
+    }
+
+    const itemName =
+        item.name ||
+        'this item';
+
+    const confirmed =
+        await showAdminConfirm({
+            title:
+                'Remove Day Special?',
+            message:
+                `"${itemName}" will be removed from today's Day Specials.`,
+            confirmText:
+                'Remove Special',
+            cancelText:
+                'Keep Special',
+            icon:
+                '\u00D7'
+        });
+
+    if (!confirmed) {
+        return;
+    }
+
+    showAdminLoading(
+        'Removing Day Special...'
+    );
+
+    try {
+        item.isDaySpecial =
+            false;
+
+        await saveMenuDataSilently();
+
+        renderCurrentMenu();
+        renderCurrentDaySpecialList();
+        updateDaySpecialCounter();
+        updateDaySpecialRemoveButton();
+
+        const categorySelect =
+            document.getElementById(
+                'daySpecialCategory'
+            );
+
+        const itemSelect =
+            document.getElementById(
+                'daySpecialItem'
+            );
+
+        const preview =
+            document.getElementById(
+                'daySpecialPreview'
+            );
+
+        if (categorySelect) {
+            categorySelect.value =
+                category || '';
+        }
+
+        if (categorySelect) {
+            populateDaySpecialItems(
+                categorySelect.value
+            );
+        }
+
+        if (itemSelect) {
+            itemSelect.value =
+                '';
+        }
+
+        if (preview) {
+            renderDaySpecialPreview(
+                null
+            );
+        }
+
+        updateDaySpecialRemoveButton();
+
+        showMessage(
+            `"${itemName}" was removed from today's Day Specials.`,
+            'success'
+        );
+
+    } catch (error) {
+        console.error(
+            '[day-special] Failed to remove special:',
+            error
+        );
+
+        item.isDaySpecial =
+            true;
+
+        showMessage(
+            'Failed to remove the Day Special. Please try again.',
+            'error'
+        );
+
+    } finally {
+        hideAdminLoading();
+    }
+}
+/* ================================================================
+   SAVE MENU SILENTLY
+   ================================================================ */
+
+async function saveMenuDataSilently() {
+    if (!currentRestaurant) {
+        throw new Error(
+            'Restaurant information is not available.'
+        );
+    }
+
+    if (!currentRestaurant.slug) {
+        throw new Error(
+            'Restaurant slug is missing.'
+        );
+    }
+
+    removeEmptyCategories();
+    setMenuCategoryOrder(getOrderedMenuCategories());
+
+    const response =
+        await fetch(
+            '/api/admin/menu/' +
+            encodeURIComponent(
+                currentRestaurant.slug
+            ),
+            {
+                method: 'POST',
+
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+
+                credentials: 'same-origin',
+
+                cache: 'no-store',
+
+                body: JSON.stringify({
+                    menu: foods
+                })
+            }
+        );
+
+    let data = {};
+
+    try {
+        data = await response.json();
+    } catch (error) {
+        data = {};
+    }
+
+    if (
+        response.status === 401 ||
+        response.status === 403
+    ) {
+        window.location.replace('/admin.html');
+
+        throw new Error(
+            data.message ||
+            'Your admin session has expired.'
+        );
+    }
+
+    if (
+        !response.ok ||
+        !data.ok
+    ) {
+        throw new Error(
+            data.message ||
+            'Failed to save menu.'
+        );
+    }
+
+    /*
+     * The server has accepted the new menu.
+     * Reload the authoritative version from the server.
+     */
+    await loadRestaurantMenu();
+
+    updateAdminCategoryOptions();
+    updateCategoryManager();
+    updateExistingItemCategorySelect();
+    refreshExistingItemsSelect();
+    renderCurrentMenu();
+
+    return data;
+}
+
+
+/* ================================================================
+   CLOSE DAY SPECIAL MODAL
+   ================================================================ */
+
+function closeDaySpecialModal() {
+    const modal =
+        document.getElementById(
+            'daySpecialModal'
+        );
+
+    if (modal) {
+        modal.classList.remove(
+            'active'
+        );
+
+        setTimeout(() => {
+            if (modal) {
+                modal.remove();
+            }
+        }, 200);
+    }
+}
+
+
+/* ================================================================
+   LOGOUT
+   ================================================================ */
+
+async function logoutAdmin() {
+    showAdminLoading(
+        'Logging out...'
+    );
+
+    try {
+        await fetch(
+            '/api/admin/logout',
+            {
+                method: 'POST',
+                credentials:
+                    'same-origin',
+                cache: 'no-store'
+            }
+        );
+    } catch (error) {
+        console.error(
+            'Logout error:',
+            error
+        );
+    }
+
+    localStorage.removeItem(
+        'adminToken'
+    );
+
+    localStorage.removeItem(
+        'adminRole'
+    );
+
+    localStorage.removeItem(
+        'adminRestaurantId'
+    );
+
+    localStorage.removeItem(
+        'adminRestaurantSlug'
+    );
+
+    localStorage.removeItem(
+        'adminRestaurantName'
+    );
+
+    localStorage.removeItem(
+        'selectedRestaurantSlug'
+    );
+
+    window.location.replace(
+        '/admin.html'
+    );
+}
+
+
+/* ================================================================
+   BUTTON EVENTS
+   ================================================================ */
+
+document.addEventListener(
+    'DOMContentLoaded',
+    () => {
+
+        const refreshBtn =
+            document.getElementById(
+                'adminRefreshBtn'
+            );
+
+        const telebirrSettingBtn =
+            document.getElementById('telebirrSettingBtn');
+
+        const atlasBranchSection =
+
+            document.getElementById('atlasBranchSection');
+
+
+        const telebirrSettingsSection =
+
+            document.getElementById('telebirrSettingsSection');
+
+        const telebirrOriginalParent = telebirrSettingsSection?.parentNode;
+
+        const telebirrOriginalNextSibling = telebirrSettingsSection?.nextSibling;
+        if (atlasBranchSection) {
+            const atlasOriginalParent = atlasBranchSection.parentNode;
+            const atlasOriginalNextSibling = atlasBranchSection.nextSibling;
+            atlasBranchSection.style.display = 'none';
+
+            const closeAtlasPopup = (overlay) => {
+                if (atlasOriginalNextSibling &&
+                    atlasOriginalNextSibling.parentNode === atlasOriginalParent) {
+                    atlasOriginalParent.insertBefore(
+                        atlasBranchSection,
+                        atlasOriginalNextSibling
+                    );
+                } else {
+                    atlasOriginalParent.appendChild(atlasBranchSection);
+                }
+
+                if (telebirrSettingsSection && telebirrOriginalParent) {
+                    if (
+                        telebirrOriginalNextSibling &&
+                        telebirrOriginalNextSibling.parentNode === telebirrOriginalParent
+                    ) {
+                        telebirrOriginalParent.insertBefore(
+                            telebirrSettingsSection,
+                            telebirrOriginalNextSibling
+                        );
+                    } else {
+                        telebirrOriginalParent.appendChild(telebirrSettingsSection);
+                    }
+                }
+                atlasBranchSection.style.display = 'none';
+                overlay.remove();
+            };
+
+            if (telebirrSettingBtn) {
+                telebirrSettingBtn.addEventListener('click', () => {
+                    if (document.getElementById('atlasBranchPopupOverlay')) {
+                        return;
+                    }
+
+                    const overlay = document.createElement('div');
+                    overlay.id = 'atlasBranchPopupOverlay';
+                    Object.assign(overlay.style, {
+                        position: 'fixed',
+                        inset: '0',
+                        background: 'rgba(0, 0, 0, 0.6)',
+                        zIndex: '99999',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px',
+                        boxSizing: 'border-box'
+                    });
+
+                    const popup = document.createElement('div');
+                    Object.assign(popup.style, {
+                        position: 'relative',
+                        border: 'none',
+                        background: '#ffffff',
+                        color: '#222222',
+                        width: '100%',
+                        maxWidth: '600px',
+                        maxHeight: '85vh',
+                        overflowY: 'auto',
+                        padding: '24px',
+                        borderRadius: '12px',
+                        boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
+                        boxSizing: 'border-box'
+                    });
+
+                    const header = document.createElement('div');
+                    header.style.marginBottom = '22px';
+                    header.style.paddingRight = '42px';
+
+                    const heading = document.createElement('h2');
+                    heading.textContent = 'Telebirr Branch Settings';
+                    Object.assign(heading.style, {
+                        margin: '0 0 6px',
+                        fontSize: '22px',
+                        fontWeight: '700',
+                        color: '#1f2937'
+                    });
+
+                    const subtitle = document.createElement('p');
+                    subtitle.textContent = 'Manage your Telebirr payment branches and settings.';
+                    Object.assign(subtitle.style, {
+                        margin: '0',
+                        fontSize: '14px',
+                        lineHeight: '1.5',
+                        color: '#64748b'
+                    });
+
+                    header.appendChild(heading);
+                    header.appendChild(subtitle);
+                    popup.appendChild(header);
+
+                    const closeBtn = document.createElement('button');
+                    closeBtn.type = 'button';
+                    closeBtn.textContent = 'Ãƒâ€”';
+                    closeBtn.setAttribute('aria-label', 'Close Atlas popup');
+                    closeBtn.className = 'telebirr-popup-close';
+                    closeBtn.setAttribute('aria-label', 'Close Telebirr Settings');
+                    Object.assign(closeBtn.style, {
+                        position: 'absolute',
+                        top: '14px',
+                        right: '14px',
+                        width: '38px',
+                        height: '38px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0',
+                        fontSize: '27px',
+                        fontWeight: '400',
+                        lineHeight: '1',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '50%',
+                        background: '#f8fafc',
+                        cursor: 'pointer',
+                        color: '#475569',
+                        boxShadow: '0 2px 6px rgba(15,23,42,0.08)',
+                        transition: 'all 160ms ease'
+                    });
+
+                    closeBtn.addEventListener('mouseenter', () => {
+                        Object.assign(closeBtn.style, {
+                            background: '#fee2e2',
+                            color: '#b91c1c',
+                            borderColor: '#fecaca',
+                            transform: 'rotate(90deg)',
+                            boxShadow: '0 3px 10px rgba(185,28,28,0.15)'
+                        });
+                    });
+
+                    closeBtn.addEventListener('mouseleave', () => {
+                        Object.assign(closeBtn.style, {
+                            background: '#f8fafc',
+                            color: '#475569',
+                            borderColor: '#e2e8f0',
+                            transform: 'rotate(0deg)',
+                            boxShadow: '0 2px 6px rgba(15,23,42,0.08)'
+                        });
+                    });
+
+                    closeBtn.addEventListener('click', () => {
+                        closeAtlasPopup(overlay);
+                    });
+
+                    overlay.addEventListener('click', (event) => {
+                        if (event.target === overlay) {
+                            closeAtlasPopup(overlay);
+                        }
+                    });
+
+                    popup.appendChild(closeBtn);
+                    if (telebirrSettingsSection) {
+                telebirrSettingsSection.dataset.atlasExpanded = 'false';
+                telebirrSettingsSection.style.display = 'none';
+            }
+            const oldHeader = atlasBranchSection.querySelector('.profile-section-header');
+            if (oldHeader) oldHeader.remove();
+
+            atlasBranchSection.style.border = 'none';
+            atlasBranchSection.style.borderRadius = '0';
+            atlasBranchSection.style.boxShadow = 'none';
+
+            const detailsButton =
+                atlasBranchSection.querySelector('#atlasDetailsBtn');
+            if (detailsButton) {
+                detailsButton.textContent = 'Details';
+            }
+            atlasBranchSection.style.display = 'block';
+                    popup.appendChild(atlasBranchSection);
+
+                            const branchList = popup.querySelector('#atlasBranchList');
+const addBranchButton = popup.querySelector('#addAtlasBranchBtn');
+const settingsForm = document.getElementById('telebirrSettingsForm');
+let activeDetailsButton = null;
+
+const hideTelebirrDetails = () => {
+    if (activeDetailsButton) {
+        activeDetailsButton.textContent = 'Details';
+        activeDetailsButton.closest('.profile-entry')
+            ?.classList.remove('telebirr-branch-expanded');
+        activeDetailsButton = null;
+    }
+
+    if (telebirrSettingsSection) {
+        telebirrSettingsSection.style.display = 'none';
+        telebirrSettingsSection.dataset.atlasExpanded = 'false';
+        telebirrSettingsSection.classList.remove(
+            'telebirr-branch-details-expanded'
+        );
+    }
+
+    if (settingsForm) delete settingsForm.dataset.branchId;
+};
+
+const showBranchDetails = (branch, button) => {
+    if (!telebirrSettingsSection || !settingsForm) return;
+
+    hideTelebirrDetails();
+
+    settingsForm.dataset.branchId = String(branch.id);
+    document.getElementById('orderNowEnabled').checked =
+        branch.order_now_enabled !== false;
+    document.getElementById('telebirrMerchantName').value =
+        branch.merchant_name || '';
+    document.getElementById('telebirrMerchantCode').value =
+        branch.merchant_code || '';
+    document.getElementById('telebirrMerchantAppId').value =
+        branch.merchant_app_id || '';
+
+    const branchRow = button.closest('.profile-entry');
+    if (!branchRow) {
+        console.error('[telebirr] Selected branch row not found.');
+        return;
+    }
+
+    branchRow.classList.add('telebirr-branch-expanded');
+    telebirrSettingsSection.classList.add(
+        'telebirr-branch-details-expanded'
+    );
+    branchRow.insertAdjacentElement('afterend', telebirrSettingsSection);
+
+    telebirrSettingsSection.style.display = 'block';
+    telebirrSettingsSection.dataset.atlasExpanded = 'true';
+    button.textContent = 'Hide Details';
+    activeDetailsButton = button;
+
+    telebirrSettingsSection.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+    });
+};
+
+const loadBranches = async () => {
+    if (!branchList || !currentRestaurant?.slug) return;
+
+    try {
+        const response = await fetch(
+            '/api/admin/payment-branches/' +
+                encodeURIComponent(currentRestaurant.slug),
+            { credentials: 'same-origin' }
+        );
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.message || 'Unable to load branches.');
+        }
+
+        branchList.replaceChildren();
+
+        (data.branches || []).forEach((branch) => {
+            const row = document.createElement('div');
+            row.className = 'profile-entry';
+            row.dataset.branchId = String(branch.id);
+
+            const name = document.createElement('span');
+            name.textContent = branch.name;
+
+            const actions = document.createElement('div');
+            actions.style.display = 'flex';
+            actions.style.gap = '8px';
+
+            const detailsButton = document.createElement('button');
+            detailsButton.type = 'button';
+            detailsButton.className = 'profile-add-btn';
+            detailsButton.textContent = 'Details';
+
+            detailsButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (activeDetailsButton === detailsButton) {
+                    hideTelebirrDetails();
+                    return;
+                }
+
+                showBranchDetails(branch, detailsButton);
+            });
+
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'profile-delete-btn';
+            deleteButton.textContent = 'Delete';
+
+            deleteButton.addEventListener('click', async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (!window.confirm('Delete the "' + branch.name + '" branch?')) {
+                    return;
+                }
+
+                deleteButton.disabled = true;
+
+                try {
+                    const deleteResponse = await fetch(
+                        '/api/admin/payment-branches/' +
+                            encodeURIComponent(currentRestaurant.slug) + '/' +
+                            encodeURIComponent(branch.id),
+                        {
+                            method: 'DELETE',
+                            credentials: 'same-origin'
+                        }
+                    );
+                    const result = await deleteResponse.json();
+
+                    if (!deleteResponse.ok || !result.ok) {
+                        throw new Error(result.message || 'Unable to delete branch.');
+                    }
+
+                    if (activeDetailsButton === detailsButton) {
+                        hideTelebirrDetails();
+                    }
+
+                    await loadBranches();
+                } catch (error) {
+                    console.error('[telebirr] Branch delete failed:', error);
+                    window.alert(error.message || 'Unable to delete branch.');
+                    deleteButton.disabled = false;
+                }
+            });
+
+            actions.appendChild(detailsButton);
+            actions.appendChild(deleteButton);
+            row.appendChild(name);
+            row.appendChild(actions);
+            branchList.appendChild(row);
+        });
+    } catch (error) {
+        console.error('[telebirr] Branch load failed:', error);
+        const message = document.getElementById('telebirrSettingsMessage');
+        if (message) message.textContent = error.message || 'Unable to load branches.';
+    }
+};
+
+if (telebirrSettingsSection) {
+    telebirrSettingsSection.dataset.atlasExpanded = 'false';
+    telebirrSettingsSection.style.display = 'none';
+}
+
+if (settingsForm && !settingsForm.querySelector('[data-telebirr-cancel="true"]')) {
+    const cancelButton = document.createElement('button');
+    cancelButton.type = 'button';
+    cancelButton.textContent = 'Cancel';
+    cancelButton.dataset.telebirrCancel = 'true';
+
+    cancelButton.addEventListener('click', () => {
+        hideTelebirrDetails();
+        const message = document.getElementById('telebirrSettingsMessage');
+        if (message) message.textContent = '';
+    });
+
+    settingsForm.appendChild(cancelButton);
+}
+
+if (addBranchButton && branchList) {
+    addBranchButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const branchName = window.prompt('Enter the new Telebirr branch name:');
+        if (!branchName || !branchName.trim()) return;
+
+        addBranchButton.disabled = true;
+
+        try {
+            const response = await fetch(
+                '/api/admin/payment-branches/' +
+                    encodeURIComponent(currentRestaurant.slug),
+                {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: branchName.trim() })
+                }
+            );
+            const data = await response.json();
+
+            if (!response.ok || !data.ok) {
+                throw new Error(data.message || 'Unable to add branch.');
+            }
+
+            await loadBranches();
+            const message = document.getElementById('telebirrSettingsMessage');
+            if (message) message.textContent = 'Branch added.';
+        } catch (error) {
+            console.error('[telebirr] Branch creation failed:', error);
+            window.alert(error.message || 'Unable to add branch.');
+        } finally {
+            addBranchButton.disabled = false;
+        }
+    });
+}
+
+loadBranches();
+overlay.appendChild(popup);
+                    document.body.appendChild(overlay);
+                });
+            }
+        }
+        const profileBtn =
+            document.getElementById(
+                'profileBtn'
+            );
+
+        const daySpecialBtn =
+            document.getElementById(
+                'daySpecialBtn'
+            );
+
+        const logoutBtn =
+            document.getElementById(
+                'logoutBtn'
+            );
+
+        const profileCloseBtn =
+            document.getElementById(
+                'profileCloseBtn'
+            );
+
+        const profileCancelBtn =
+            document.getElementById(
+                'profileCancelBtn'
+            );
+
+        const addPhoneBtn =
+            document.getElementById(
+                'addPhoneBtn'
+            );
+
+        const addLocationBtn =
+            document.getElementById(
+                'addLocationBtn'
+            );
+
+        const profileSaveBtn =
+            document.getElementById(
+                'profileSaveBtn'
+            );
+
+        const profileLogoInput =
+            document.getElementById(
+                'profileLogoInput'
+            );
+
+        const profileLogoRemoveBtn =
+            document.getElementById(
+                'profileLogoRemoveBtn'
+            );
+
+        const editItemImage =
+            document.getElementById(
+                'editItemImage'
+            );
+
+        const existingItemCategorySelect =
+            document.getElementById(
+                'existingItemCategorySelect'
+            );
+
+        const existingItemSelect =
+            document.getElementById(
+                'existingItemSelect'
+            );
+
+        const existingCategorySelect =
+            document.getElementById(
+                'existingCategorySelect'
+            );
+
+
+        /* --------------------------------------------------------
+           REFRESH
+           -------------------------------------------------------- */
+
+        if (refreshBtn) {
+            refreshBtn.addEventListener(
+                'click',
+                refreshAdminMenu
+            );
+        }
+
+
+        /* --------------------------------------------------------
+           PROFILE
+           -------------------------------------------------------- */
+
+        const telebirrSettingsForm =
+            document.getElementById('telebirrSettingsForm');
+
+        if (telebirrSettingsForm) {
+            telebirrSettingsForm.addEventListener(
+                'submit',
+                saveTelebirrSettings
+            );
+        }
+        if (profileBtn) {
+            profileBtn.addEventListener(
+                'click',
+                openProfileModal
+            );
+        }
+
+        if (profileCloseBtn) {
+            profileCloseBtn.addEventListener(
+                'click',
+                closeProfileModal
+            );
+        }
+
+        if (profileCancelBtn) {
+            profileCancelBtn.addEventListener(
+                'click',
+                closeProfileModal
+            );
+        }
+
+        if (addPhoneBtn) {
+            addPhoneBtn.addEventListener(
+                'click',
+                addPhoneRow
+            );
+        }
+
+        if (addLocationBtn) {
+            addLocationBtn.addEventListener(
+                'click',
+                addLocationRow
+            );
+        }
+
+        if (profileSaveBtn) {
+            profileSaveBtn.addEventListener(
+                'click',
+                saveRestaurantProfile
+            );
+        }
+
+
+        /* --------------------------------------------------------
+           EDIT ITEM
+           -------------------------------------------------------- */
+
+        if (existingItemCategorySelect) {
+            existingItemCategorySelect.addEventListener(
+                'change',
+                updateExistingItemsByCategory
+            );
+        }
+
+        if (existingItemSelect) {
+            existingItemSelect.addEventListener(
+                'change',
+                populateSelectedItemFields
+            );
+        }
+
+        if (editItemImage) {
+            editItemImage.addEventListener(
+                'change',
+                handleEditItemImageChange
+            );
+        }
+
+
+        /* --------------------------------------------------------
+           PROFILE LOGO
+           -------------------------------------------------------- */
+
+        if (profileLogoInput) {
+            profileLogoInput.addEventListener(
+                'change',
+                handleProfileLogoChange
+            );
+        }
+
+        if (profileLogoRemoveBtn) {
+            profileLogoRemoveBtn.addEventListener(
+                'click',
+                removeProfileLogo
+            );
+        }
+
+
+        /* --------------------------------------------------------
+           CATEGORY MANAGER
+           -------------------------------------------------------- */
+
+        if (existingCategorySelect) {
+            existingCategorySelect.addEventListener(
+                'change',
+                populateSelectedCategory
+            );
+        }
+
+
+        /* --------------------------------------------------------
+           PROFILE MODAL CLICK OUTSIDE
+           -------------------------------------------------------- */
+
+        const profileModal =
+            document.getElementById(
+                'profileModal'
+            );
+
+        if (profileModal) {
+            profileModal.addEventListener(
+                'click',
+                event => {
+                    if (
+                        event.target ===
+                        profileModal
+                    ) {
+                        closeProfileModal();
+                    }
+                }
+            );
+        }
+
+
+        /* --------------------------------------------------------
+           ESC KEY
+           -------------------------------------------------------- */
+
+        document.addEventListener(
+            'keydown',
+            event => {
+
+                if (
+                    event.key !== 'Escape'
+                ) {
+                    return;
+                }
+
+                const confirmModal =
+                    document.getElementById(
+                        'adminConfirmModal'
+                    );
+
+                if (confirmModal) {
+                    return;
+                }
+
+                const daySpecialModal =
+                    document.getElementById(
+                        'daySpecialModal'
+                    );
+
+                if (daySpecialModal) {
+                    closeDaySpecialModal();
+                    return;
+                }
+
+                closeProfileModal();
+            }
+        );
+
+
+        /* --------------------------------------------------------
+           DAY SPECIAL
+           -------------------------------------------------------- */
+
+        if (daySpecialBtn) {
+            daySpecialBtn.addEventListener(
+                'click',
+                openDaySpecialModal
+            );
+        }
+
+
+        /* --------------------------------------------------------
+           LOGOUT
+           -------------------------------------------------------- */
+
+        if (logoutBtn) {
+            logoutBtn.addEventListener(
+                'click',
+                logoutAdmin
+            );
+        }
+
+
+        /* --------------------------------------------------------
+           START ADMIN
+           -------------------------------------------------------- */
+
+        checkCafeAdminAccess();
+    }
+);
+
+/* ================================================================
+   SILENT CUSTOMER MENU REFRESH
+   Keeps the customer menu synchronized with admin changes.
+   ================================================================ */
+
+let lastCustomerMenuUpdatedAt = '';
+
+async function refreshCustomerMenuSilently() {
+    try {
+        const response = await fetch(
+            `${API_BASE}/api/menu/${encodeURIComponent(CAFE_SLUG)}`,
+            {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }
+        );
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!data.ok || !data.menu) {
+            return;
+        }
+
+        /*
+         * If the server provides an updated timestamp,
+         * avoid rebuilding the page when nothing changed.
+         */
+        const updatedAt =
+            data.menuUpdatedAt || '';
+
+        if (
+            updatedAt &&
+            updatedAt === lastCustomerMenuUpdatedAt
+        ) {
+            return;
+        }
+
+        lastCustomerMenuUpdatedAt = updatedAt;
+
+        foods = data.menu;
+
+        if (
+            data.profile &&
+            typeof data.profile === 'object'
+        ) {
+            restaurantProfile = {
+                logo:
+                    typeof data.profile.logo === 'string'
+                        ? data.profile.logo
+                        : '',
+
+                phone_numbers:
+                    Array.isArray(
+                        data.profile.phone_numbers
+                    )
+                        ? data.profile.phone_numbers
+                        : [],
+
+                addresses:
+                    Array.isArray(
+                        data.profile.addresses
+                    )
+                        ? data.profile.addresses
+                        : []
+            };
+        }
+
+        /*
+         * Re-render only the menu-related UI.
+         * Do NOT show a loading popup/overlay.
+         */
+        renderRestaurantProfile();
+        renderItems();
+        renderCategoryButtons();
+        setupDaySpecial();
+
+    } catch (error) {
+        console.warn(
+            '[customer] Background menu refresh failed:',
+            error
+        );
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

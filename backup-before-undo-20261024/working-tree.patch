@@ -1,0 +1,1575 @@
+﻿diff --git a/admin-panel.html b/admin-panel.html
+index a0de01e..b5d14ed 100644
+--- a/admin-panel.html
++++ b/admin-panel.html
+@@ -52,7 +52,14 @@
+                     id="daySpecialBtn"
+                     class="day-special-btn"
+                 >
+-                    Γ£¿ Day Special Γ£¿
++                    ├ó┼ô┬¿ Day Special ├ó┼ô┬¿
++                </button>
++                <button
++                    type="button"
++                    id="telebirrSettingsBtn"
++                    class="profile-btn"
++                >
++                    Telebirr Settings
+                 </button>
+ 
+                 <button
+@@ -349,7 +356,7 @@
+                             id="editItemImagePlaceholder"
+                             class="edit-item-image-placeholder"
+                         >
+-                            ≡ƒû╝∩╕Å
++                            ├░┼╕ΓÇô┬╝├»┬╕┬Å
+                             <span>
+                                 Current image
+                             </span>
+@@ -481,13 +488,13 @@
+             <div class="profile-modal-title-area">
+ 
+                 <div class="profile-title-icon">
+-                    ≡ƒæñ
++                    Γëí╞Æ├ª├▒
+                 </div>
+ 
+                 <div>
+ 
+                     <h2 id="profileModalTitle">
+-                        Caf├⌐ Profile
++                        CafΓö£ΓîÉ Profile
+                     </h2>
+ 
+                     <p id="profileRestaurantName">
+@@ -504,7 +511,7 @@
+                 class="profile-close-btn"
+                 aria-label="Close profile"
+             >
+-                ├ù
++                Γö£├╣
+             </button>
+ 
+         </div>
+@@ -521,11 +528,11 @@
+                     <div>
+ 
+                         <div class="profile-section-title">
+-                            ≡ƒû╝∩╕Å Restaurant Logo
++                            Γëí╞Æ├╗Γò¥Γê⌐Γòò├à Restaurant Logo
+                         </div>
+ 
+                         <div class="profile-section-description">
+-                            Add a logo that customers will see on your caf├⌐ menu.
++                            Add a logo that customers will see on your cafΓö£ΓîÉ menu.
+                         </div>
+ 
+                     </div>
+@@ -553,7 +560,7 @@
+                         >
+ 
+                             <span class="profile-logo-placeholder-icon">
+-                                ≡ƒÅ¼
++                                Γëí╞Æ├à┬╝
+                             </span>
+ 
+                             <span class="profile-logo-placeholder-text">
+@@ -571,7 +578,7 @@
+                             for="profileLogoInput"
+                             class="profile-logo-upload-btn"
+                         >
+-                            ≡ƒô╖ Choose Logo
++                            Γëí╞Æ├┤Γòû Choose Logo
+                         </label>
+ 
+                         <input
+@@ -587,7 +594,7 @@
+                             id="profileLogoRemoveBtn"
+                             class="profile-logo-remove-btn"
+                         >
+-                            ≡ƒùæ∩╕Å Remove Logo
++                            Γëí╞Æ├╣├ªΓê⌐Γòò├à Remove Logo
+                         </button>
+ 
+                         <p class="profile-logo-help">
+@@ -611,11 +618,11 @@
+                     <div>
+ 
+                         <div class="profile-section-title">
+-                            ≡ƒô₧ Phone Numbers
++                            Γëí╞Æ├┤Γéº Phone Numbers
+                         </div>
+ 
+                         <div class="profile-section-description">
+-                            Customers can tap a number to call your caf├⌐.
++                            Customers can tap a number to call your cafΓö£ΓîÉ.
+                         </div>
+ 
+                     </div>
+@@ -638,7 +645,82 @@
+             </div>
+ 
+ 
+-            <!-- TELEBIRR SETTINGS -->
++                    
++
++<!-- LOCATIONS -->
++
++            <div class="profile-section">
++
++                <div class="profile-section-header">
++
++                    <div>
++
++                        <div class="profile-section-title">
++                            Γëí╞Æ├┤├¼ Locations
++                        </div>
++
++                        <div class="profile-section-description">
++                            Add a branch name and its map link.
++                        </div>
++
++                    </div>
++
++                    <button
++                        type="button"
++                        id="profileAddLocationBtn"
++                        class="profile-add-btn"
++                    >
++                        + Add Location
++                    </button>
++
++                </div>
++
++                <div
++                    id="profileLocationList"
++                    class="profile-list"
++                ></div>
++
++            </div>
++</div>
++
++
++        <div class="profile-modal-footer">
++
++            <button
++                type="button"
++                id="profileCancelBtn"
++                class="profile-cancel-btn"
++            >
++                Cancel
++            </button>
++
++            <button
++                type="button"
++                id="profileSaveBtn"
++                class="profile-save-btn"
++            >
++                Save Profile
++            </button>
++
++        </div>
++
++    </div>
++
++</div>
++
++<div id="telebirrModal" class="profile-modal-overlay" aria-hidden="true">
++    <div class="profile-modal" role="dialog" aria-modal="true" aria-labelledby="telebirrModalTitle">
++        <div class="profile-modal-header">
++            <div class="profile-modal-title-area">
++                <div>
++                    <h2 id="telebirrModalTitle">Telebirr Settings</h2>
++                    <p>Configure payment settings for this restaurant.</p>
++                </div>
++            </div>
++            <button type="button" id="telebirrCloseBtn" class="profile-close-btn" aria-label="Close Telebirr settings">├ù</button>
++        </div>
++        <div class="profile-modal-body">
++<!-- TELEBIRR SETTINGS -->
+ 
+             <div class="profile-section" id="telebirrSettingsSection">
+ 
+@@ -648,7 +730,7 @@
+                             Telebirr Payment Settings
+                         </div>
+                         <div class="profile-section-description">
+-                            Configure the merchant details for this caf├⌐.
++                            Configure the merchant details for this cafΓö£ΓîÉ.
+                             Saving these settings does not activate live checkout.
+                         </div>
+                     </div>
+@@ -662,7 +744,7 @@
+                             name="order_now_enabled"
+                             checked
+                         >
+-                        Enable Order Now for this caf├⌐
++                        Enable Order Now for this cafΓö£ΓîÉ
+                     </label>
+ 
+ 
+@@ -718,31 +800,22 @@
+                 </form>
+ 
+             </div>
+-            <!-- LOCATIONS -->
+-
+-            <div class="profile-section">
++            
++<div class="profile-section" id="branchManagementSection">
+ 
+                 <div class="profile-section-header">
+-
+                     <div>
+-
+                         <div class="profile-section-title">
+-                            ≡ƒôì Locations
++                            Branch Management
+                         </div>
+ 
+                         <div class="profile-section-description">
+-                            Add a branch name and its map link.
++                            Manage your branches and their map links.
+                         </div>
+ 
+                     </div>
+ 
+-                    <button
+-                        type="button"
+-                        id="addLocationBtn"
+-                        class="profile-add-btn"
+-                    >
+-                        + Add Location
+-                    </button>
++                    
+ 
+                 </div>
+ 
+@@ -751,6 +824,14 @@
+                     class="profile-list"
+                 ></div>
+ 
++                <button
++    type="button"
++    id="addLocationBtn"
++    class="profile-add-btn"
++>
++    + Add Branch
++</button>
++
+             </div>
+ 
+         </div>
+@@ -760,7 +841,7 @@
+ 
+             <button
+                 type="button"
+-                id="profileCancelBtn"
++                id="telebirrCancelBtn"
+                 class="profile-cancel-btn"
+             >
+                 Cancel
+@@ -768,10 +849,10 @@
+ 
+             <button
+                 type="button"
+-                id="profileSaveBtn"
++                id="telebirrProfileSaveBtn"
+                 class="profile-save-btn"
+             >
+-                Save Profile
++                Save Branches
+             </button>
+ 
+         </div>
+@@ -797,7 +878,7 @@
+             id="adminStatusIcon"
+             class="admin-status-icon"
+         >
+-            Γ£ô
++            ├ó┼ôΓÇ£
+         </div>
+ 
+         <div
+diff --git a/save.html b/save.html
+index 52e4099..bf346b9 100644
+--- a/save.html
++++ b/save.html
+@@ -1,4 +1,4 @@
+-<!DOCTYPE html>
++∩╗┐<!DOCTYPE html>
+ <html lang="en">
+ <head>
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+@@ -15,7 +15,7 @@
+     <div class="owner-notification-content">
+ 
+       <div id="ownerNotificationIcon" class="owner-notification-icon">
+-        Γ£ô
++        ├ó┼ôΓÇ£
+       </div>
+ 
+       <div class="owner-notification-text">
+@@ -33,7 +33,7 @@
+         class="owner-notification-close"
+         onclick="closeOwnerNotification()"
+       >
+-        Γ£ò
++        ├ó┼ôΓÇó
+       </button>
+ 
+     </div>
+@@ -53,7 +53,7 @@
+         class="owner-action-close"
+         onclick="closeOwnerActionPanel()"
+       >
+-        Γ£ò
++        ├ó┼ôΓÇó
+       </button>
+ 
+     </div>
+@@ -70,7 +70,7 @@
+       class="close-image"
+       onclick="closeImage()"
+     >
+-      Γ£ò
++      ├ó┼ôΓÇó
+     </button>
+ 
+     <img
+@@ -133,6 +133,15 @@
+         placeholder="Enter your phone number"
+       />
+ 
++      <!-- Choose Branch -->
++      <label for="orderBranch">Choose Branch *</label>
++      <select
++        id="orderBranch"
++        name="branch"
++        required
++      >
++        <option value="" selected disabled>Select your branch</option>
++      </select>
+       <label for="orderType">Order type *</label>
+       <select id="orderType" name="orderType" required>
+         <option value="dine-in">Dine-in</option>
+@@ -224,19 +233,7 @@
+         class="payment-form"
+       >
+ 
+-        <label for="telebirrAccount">
+-          Telebirr account number
+-        </label>
+-
+-        <input
+-          id="telebirrAccount"
+-          name="telebirrAccount"
+-          type="tel"
+-          inputmode="tel"
+-          autocomplete="tel"
+-          placeholder="09XXXXXXXX"
+-          required
+-        >
++        
+ 
+         <button
+           type="submit"
+@@ -304,7 +301,7 @@
+           aria-expanded="false"
+           aria-controls="customerLanguageMenu"
+         >
+-          <span class="customer-language-icon" aria-hidden="true">µûç</span>
++          <span class="customer-language-icon" aria-hidden="true">├ªΓÇôΓÇí</span>
+           <span
+             class="customer-language-current notranslate"
+             id="customerLanguageLabel"
+@@ -325,24 +322,24 @@
+             <span class="customer-language-code notranslate" translate="no" aria-hidden="true">EN</span>
+           </button>
+           <button type="button" role="menuitemradio" aria-checked="false" data-language-option="am">
+-            <span class="customer-language-name notranslate" translate="no">ßèáßê¢ßê¡ßè¢</span>
++            <span class="customer-language-name notranslate" translate="no">├í┼á┬á├í╦åΓÇ║├í╦å┬¡├í┼áΓÇ║</span>
+             <span class="customer-language-code notranslate" translate="no" aria-hidden="true">AM</span>
+           </button>
+           <button type="button" role="menuitemradio" aria-checked="false" data-language-option="ar">
+-            <span class="customer-language-name notranslate" translate="no">╪º┘ä╪╣╪▒╪¿┘è╪⌐</span>
++            <span class="customer-language-name notranslate" translate="no">├ÿ┬º├ÖΓÇ₧├ÿ┬╣├ÿ┬▒├ÿ┬¿├Ö┼á├ÿ┬⌐</span>
+             <span class="customer-language-code notranslate" translate="no" aria-hidden="true">AR</span>
+           </button>
+           <button type="button" role="menuitemradio" aria-checked="false" data-language-option="zh-CN">
+-            <span class="customer-language-name notranslate" translate="no">Σ╕¡µûç</span>
++            <span class="customer-language-name notranslate" translate="no">├ñ┬╕┬¡├ªΓÇôΓÇí</span>
+             <span class="customer-language-code notranslate" translate="no" aria-hidden="true">ZH</span>
+           </button>
+         </div>
+ 
+         <select id="customerLanguage" class="customer-language-state" tabindex="-1" aria-hidden="true">
+           <option value="en">English</option>
+-          <option value="am">ßèáßê¢ßê¡ßè¢</option>
+-          <option value="ar">╪º┘ä╪╣╪▒╪¿┘è╪⌐</option>
+-          <option value="zh-CN">Σ╕¡µûç</option>
++          <option value="am">├í┼á┬á├í╦åΓÇ║├í╦å┬¡├í┼áΓÇ║</option>
++          <option value="ar">├ÿ┬º├ÖΓÇ₧├ÿ┬╣├ÿ┬▒├ÿ┬¿├Ö┼á├ÿ┬⌐</option>
++          <option value="zh-CN">├ñ┬╕┬¡├ªΓÇôΓÇí</option>
+         </select>
+       </div>
+ 
+@@ -408,7 +405,7 @@
+           class="menu-day-special"
+           type="button"
+       >
+-         Γ£¿ DAY SPECIAL Γ£¿
++         ├ó┼ô┬¿ DAY SPECIAL ├ó┼ô┬¿
+       </button> 
+ 
+       </div>
+@@ -463,7 +460,7 @@
+                 type="button"
+                 aria-label="Close cart"
+               >
+-                ├ù
++                ├âΓÇö
+               </button>
+             </div>
+           </div>
+diff --git a/scripts/admin.js b/scripts/admin.js
+index 28a69f5..dcaf2f7 100644
+--- a/scripts/admin.js
++++ b/scripts/admin.js
+@@ -1275,7 +1275,7 @@ function refreshExistingItemsSelect() {
+                 `${category}::${index}`;
+ 
+             option.textContent =
+-                `${category} ΓÇó ${
++                `${category} ├óΓé¼┬ó ${
+                     item.name || 'Unnamed item'
+                 }`;
+ 
+@@ -2498,7 +2498,7 @@ async function refreshAdminMenu() {
+     if (button) {
+         button.disabled = true;
+         button.textContent =
+-            'Γå╗ Refreshing...';
++            '├óΓÇá┬╗ Refreshing...';
+     }
+ 
+     showAdminLoading(
+@@ -2533,7 +2533,7 @@ async function refreshAdminMenu() {
+         if (button) {
+             button.disabled = false;
+             button.textContent =
+-                'Γå╗ Refresh';
++                '├óΓÇá┬╗ Refresh';
+         }
+ 
+         hideAdminLoading(150);
+@@ -2786,7 +2786,13 @@ async function loadTelebirrSettings() {
+         enabled: document.getElementById('telebirrEnabled'),
+         name: document.getElementById('telebirrMerchantName'),
+         code: document.getElementById('telebirrMerchantCode'),
+-        appId: document.getElementById('telebirrMerchantAppId')
++        appId: document.getElementById('telebirrMerchantAppId'),
++        fabricAppId: document.getElementById('telebirrFabricAppId'),
++        appSecret: document.getElementById('telebirrAppSecret'),
++        privateKey: document.getElementById('telebirrPrivateKey'),
++        apiBaseUrl: document.getElementById('telebirrApiBaseUrl'),
++        notificationUrl: document.getElementById('telebirrNotificationUrl'),
++        returnUrl: document.getElementById('telebirrReturnUrl')
+     };
+ 
+     if (message) message.textContent = 'Loading settings...';
+@@ -2810,11 +2816,27 @@ async function loadTelebirrSettings() {
+ 
+         const settings = data.settings || {};
+ 
+-        // Telebirr checkbox removed; keep Order Now independent.
++        if (fields.enabled) {
++            fields.enabled.checked = settings.telebirr_enabled === true;
++        }
+         fields.orderNow.checked = settings.order_now_enabled !== false;
+         fields.name.value = settings.merchant_name || '';
+         fields.code.value = settings.merchant_code || '';
+         fields.appId.value = settings.merchant_app_id || '';
++        fields.fabricAppId.value = settings.fabric_app_id || '';
++        fields.apiBaseUrl.value = settings.api_base_url || '';
++        fields.notificationUrl.value = settings.notification_url || '';
++        fields.returnUrl.value = settings.return_url || '';
++
++        fields.appSecret.value = '';
++        fields.appSecret.placeholder = settings.app_secret_configured
++            ? 'Secret saved ├óΓé¼ΓÇ¥ leave blank to keep it'
++            : 'Enter secret';
++
++        fields.privateKey.value = '';
++        fields.privateKey.placeholder = settings.private_key_configured
++            ? 'Private key saved ├óΓé¼ΓÇ¥ leave blank to keep it'
++            : 'Paste the PEM private key';
+ 
+         if (message) message.textContent = '';
+     } catch (error) {
+@@ -2839,10 +2861,16 @@ async function saveTelebirrSettings(event) {
+ 
+     const payload = {
+         order_now_enabled: document.getElementById('orderNowEnabled').checked,
+-        telebirr_enabled: false,
++        telebirr_enabled: document.getElementById('telebirrEnabled').checked,
+         merchant_name: document.getElementById('telebirrMerchantName').value.trim(),
+         merchant_code: document.getElementById('telebirrMerchantCode').value.trim(),
+-        merchant_app_id: document.getElementById('telebirrMerchantAppId').value.trim()
++        merchant_app_id: document.getElementById('telebirrMerchantAppId').value.trim(),
++        fabric_app_id: document.getElementById('telebirrFabricAppId').value.trim(),
++        app_secret: document.getElementById('telebirrAppSecret').value,
++        private_key: document.getElementById('telebirrPrivateKey').value,
++        api_base_url: document.getElementById('telebirrApiBaseUrl').value.trim(),
++        notification_url: document.getElementById('telebirrNotificationUrl').value.trim(),
++        return_url: document.getElementById('telebirrReturnUrl').value.trim()
+     };
+ 
+     if (submitButton) submitButton.disabled = true;
+@@ -2898,8 +2926,6 @@ async function openProfileModal() {
+ 
+     try {
+         await loadRestaurantProfile();
+-        await loadTelebirrSettings();
+-
+         const restaurantName =
+             document.getElementById(
+                 'profileRestaurantName'
+@@ -2913,7 +2939,18 @@ async function openProfileModal() {
+ 
+         renderProfileLogo();
+         renderProfilePhones();
+-        renderProfileLocations();
++
++        if (
++            !Array.isArray(restaurantProfile.addresses) ||
++            restaurantProfile.addresses.length === 0
++        ) {
++            restaurantProfile.addresses = [{
++                name: 'Atlas',
++                url: ''
++            }];
++        }
++
++        renderProfileLocations(-1, 'profile');
+ 
+         modal.classList.add('active');
+         modal.style.display = 'flex';
+@@ -2939,6 +2976,52 @@ async function openProfileModal() {
+    CLOSE PROFILE MODAL
+    ================================================================ */
+ 
++async function openTelebirrModal() {
++    const modal = document.getElementById('telebirrModal');
++
++    if (!modal) {
++        showMessage('Telebirr settings window is not available.', 'error');
++        return;
++    }
++
++    showAdminLoading('Loading Telebirr settings...');
++
++    try {
++        await loadTelebirrSettings();
++
++        // Load and display the restaurant's saved branches.
++        await loadRestaurantProfile();
++
++        if (
++            !Array.isArray(restaurantProfile.addresses) ||
++            restaurantProfile.addresses.length === 0
++        ) {
++            restaurantProfile.addresses = [{
++                name: 'Atlas',
++                url: ''
++            }];
++        }
++
++        renderProfileLocations(-1, 'telebirr');
++
++        modal.classList.add('active');
++        modal.style.display = 'flex';
++        modal.setAttribute('aria-hidden', 'false');
++    } catch (error) {
++        console.error('Open Telebirr settings error:', error);
++        showMessage(error.message || 'Unable to open Telebirr settings.', 'error');
++    } finally {
++        hideAdminLoading(150);
++    }
++}
++function closeTelebirrModal() {
++    const modal = document.getElementById('telebirrModal');
++    if (!modal) return;
++
++    modal.classList.remove('active');
++    modal.style.display = 'none';
++    modal.setAttribute('aria-hidden', 'true');
++}
+ function closeProfileModal() {
+     const modal =
+         document.getElementById(
+@@ -3089,11 +3172,18 @@ function addPhoneRow() {
+    RENDER LOCATIONS
+    ================================================================ */
+ 
+-function renderProfileLocations() {
+-    const list =
+-        document.getElementById(
+-            'locationList'
+-        );
++function renderProfileLocations(openIndex = -1, targetModal = '') {
++    const telebirrModal = document.getElementById('telebirrModal');
++    const resolvedTarget = targetModal ||
++        (telebirrModal && telebirrModal.classList.contains('active')
++            ? 'telebirr'
++            : 'profile');
++
++    const list = document.getElementById(
++        resolvedTarget === 'profile'
++            ? 'profileLocationList'
++            : 'locationList'
++    );
+ 
+     if (!list) {
+         return;
+@@ -3101,120 +3191,118 @@ function renderProfileLocations() {
+ 
+     list.innerHTML = '';
+ 
+-    if (
+-        !Array.isArray(
+-            restaurantProfile.addresses
+-        ) ||
+-        restaurantProfile.addresses.length === 0
+-    ) {
+-        const empty =
+-            document.createElement('div');
+-
+-        empty.className =
+-            'profile-empty';
+-
+-        empty.textContent =
+-            'No locations added yet.';
++    if (!Array.isArray(restaurantProfile.addresses)) {
++        restaurantProfile.addresses = [];
++    }
+ 
++    if (restaurantProfile.addresses.length === 0) {
++        const empty = document.createElement('div');
++        empty.className = 'profile-empty';
++        empty.textContent = 'No branches yet. Use + Add Location to create one.';
+         list.appendChild(empty);
+-
+         return;
+     }
+ 
+-    restaurantProfile.addresses.forEach(
+-        (location, index) => {
+-            const row =
+-                document.createElement('div');
+-
+-            row.className =
+-                'profile-entry profile-location-entry';
+-
+-            const fields =
+-                document.createElement('div');
+-
+-            fields.className =
+-                'profile-entry-fields';
+-
+-            const nameInput =
+-                document.createElement('input');
+-
+-            nameInput.type = 'text';
+-
+-            nameInput.className =
+-                'profile-location-name';
+-
+-            nameInput.placeholder =
+-                'Location name';
+-
+-            nameInput.value =
+-                location?.name || '';
+-
+-            nameInput.dataset.index =
+-                String(index);
+-
+-            const urlInput =
+-                document.createElement('input');
+-
+-            urlInput.type = 'url';
+-
+-            urlInput.className =
+-                'profile-location-url';
++    restaurantProfile.addresses.forEach((branch, index) => {
++        const row = document.createElement('div');
++        row.className = 'profile-entry profile-location-entry profile-branch-entry';
++
++        const summary = document.createElement('div');
++        summary.className = 'profile-branch-summary';
++
++        const branchName = document.createElement('strong');
++        branchName.className = 'profile-branch-name';
++        branchName.textContent = branch?.name?.trim() || 'New branch';
++
++        const detailsButton = document.createElement('button');
++        detailsButton.type = 'button';
++        detailsButton.className = 'profile-branch-details-btn';
++        detailsButton.textContent = index === openIndex ? 'Hide Details' : 'Details';
++        detailsButton.setAttribute('aria-expanded', String(index === openIndex));
++
++        const fields = document.createElement('div');
++        fields.className = 'profile-entry-fields profile-branch-details';
++        fields.hidden = index !== openIndex;
++
++        const nameInput = document.createElement('input');
++        nameInput.type = 'text';
++        nameInput.className = 'profile-location-name';
++        nameInput.placeholder = 'Branch name';
++        nameInput.value = branch?.name || '';
++        nameInput.dataset.index = String(index);
++        nameInput.maxLength = 120;
++        nameInput.setAttribute('aria-label', 'Branch name');
++
++        const urlInput = document.createElement('input');
++        urlInput.type = 'url';
++        urlInput.className = 'profile-location-url';
++        urlInput.placeholder = 'Google Maps URL';
++        urlInput.value = branch?.url || '';
++        urlInput.dataset.index = String(index);
++        urlInput.setAttribute('aria-label', 'Branch Google Maps URL');
++
++        nameInput.addEventListener('input', () => {
++            branchName.textContent = nameInput.value.trim() || 'New branch';
++        });
+ 
+-            urlInput.placeholder =
+-                'Google Maps URL';
++        detailsButton.addEventListener('click', () => {
++            const shouldOpen = fields.hidden;
+ 
+-            urlInput.value =
+-                location?.url || '';
++            list.querySelectorAll('.profile-branch-details').forEach(element => {
++                element.hidden = true;
++            });
+ 
+-            urlInput.dataset.index =
+-                String(index);
++            list.querySelectorAll('.profile-branch-details-btn').forEach(button => {
++                button.textContent = 'Details';
++                button.setAttribute('aria-expanded', 'false');
++            });
+ 
+-            fields.appendChild(nameInput);
+-            fields.appendChild(urlInput);
++            if (shouldOpen) {
++                fields.hidden = false;
++                detailsButton.textContent = 'Hide Details';
++                detailsButton.setAttribute('aria-expanded', 'true');
++                nameInput.focus();
++            }
++        });
+ 
+-            const deleteButton =
+-                document.createElement('button');
++        fields.appendChild(nameInput);
++        fields.appendChild(urlInput);
++        summary.appendChild(branchName);
++        summary.appendChild(detailsButton);
+ 
+-            deleteButton.type =
+-                'button';
++        const deleteButton = document.createElement('button');
++        deleteButton.type = 'button';
++        deleteButton.className = 'profile-delete-btn';
++        deleteButton.textContent = 'Delete';
++        deleteButton.setAttribute('aria-label', 'Delete branch ' + (branch?.name || ''));
+ 
+-            deleteButton.className =
+-                'profile-delete-btn';
++        deleteButton.addEventListener('click', () => {
++            const branchLabel = branch?.name?.trim() || 'this branch';
+ 
+-            deleteButton.textContent =
+-                'Delete';
++            if (!window.confirm('Delete ' + branchLabel + '?')) {
++                return;
++            }
+ 
+-            deleteButton.addEventListener(
+-                'click',
+-                () => {
+-                    restaurantProfile.addresses.splice(
+-                        index,
+-                        1
+-                    );
++            restaurantProfile.addresses.splice(index, 1);
++            renderProfileLocations(-1, resolvedTarget);
++        });
+ 
+-                    renderProfileLocations();
+-                }
+-            );
++        row.appendChild(summary);
++        row.appendChild(fields);
++        row.appendChild(deleteButton);
++        list.appendChild(row);
++    });
++}
+ 
+-            row.appendChild(fields);
+-            row.appendChild(deleteButton);
+ 
+-            list.appendChild(row);
+-        }
+-    );
+-}
+ 
+ 
+ /* ================================================================
+-   ADD LOCATION
++   ADD BRANCH
+    ================================================================ */
+ 
+-function addLocationRow() {
+-    if (
+-        !Array.isArray(
+-            restaurantProfile.addresses
+-        )
+-    ) {
++function addLocationRow(targetModal = '') {
++    if (!Array.isArray(restaurantProfile.addresses)) {
+         restaurantProfile.addresses = [];
+     }
+ 
+@@ -3223,21 +3311,14 @@ function addLocationRow() {
+         url: ''
+     });
+ 
+-    renderProfileLocations();
++    const target = targetModal ||
++        (document.getElementById('telebirrModal')?.classList.contains('active')
++            ? 'telebirr'
++            : 'profile');
+ 
+-    const inputs =
+-        document.querySelectorAll(
+-            '.profile-location-name'
+-        );
+-
+-    if (inputs.length) {
+-        inputs[
+-            inputs.length - 1
+-        ].focus();
+-    }
++    renderProfileLocations(restaurantProfile.addresses.length - 1, target);
+ }
+ 
+-
+ /* ================================================================
+    SAVE RESTAURANT PROFILE
+    ================================================================ */
+@@ -3259,22 +3340,31 @@ async function saveRestaurantProfile() {
+         return;
+     }
+ 
+-    const phoneInputs =
+-        document.querySelectorAll(
+-            '.profile-phone-input'
+-        );
++    const telebirrModal = document.getElementById('telebirrModal');
++    const isTelebirrModal = Boolean(
++        telebirrModal && telebirrModal.classList.contains('active')
++    );
+ 
+-    const locationNames =
+-        document.querySelectorAll(
+-            '.profile-location-name'
+-        );
++    const profileModal = document.getElementById('profileModal');
++    const activeEditor = isTelebirrModal ? telebirrModal : profileModal;
+ 
+-    const locationUrls =
+-        document.querySelectorAll(
+-            '.profile-location-url'
+-        );
++    const phoneInputs = isTelebirrModal
++        ? []
++        : Array.from(activeEditor?.querySelectorAll('.profile-phone-input') || []);
++
++    const locationNames = Array.from(
++        activeEditor?.querySelectorAll('.profile-location-name') || []
++    );
+ 
+-    const phoneNumbers = [];
++    const locationUrls = Array.from(
++        activeEditor?.querySelectorAll('.profile-location-url') || []
++    );
++
++    const phoneNumbers = isTelebirrModal
++        ? (Array.isArray(restaurantProfile.phone_numbers)
++            ? restaurantProfile.phone_numbers.slice()
++            : [])
++        : [];
+ 
+     phoneInputs.forEach(input => {
+         const phone =
+@@ -3352,10 +3442,9 @@ async function saveRestaurantProfile() {
+         'Saving profile...'
+     );
+ 
+-    const saveButton =
+-        document.getElementById(
+-            'profileSaveBtn'
+-        );
++    const saveButton = document.getElementById(
++        isTelebirrModal ? 'telebirrProfileSaveBtn' : 'profileSaveBtn'
++    );
+ 
+     if (saveButton) {
+         saveButton.disabled = true;
+@@ -3449,7 +3538,11 @@ async function saveRestaurantProfile() {
+         );
+ 
+         setTimeout(() => {
+-            closeProfileModal();
++            if (isTelebirrModal) {
++                closeTelebirrModal();
++            } else {
++                closeProfileModal();
++            }
+         }, 700);
+ 
+     } catch (error) {
+@@ -4022,7 +4115,7 @@ function renderCurrentDaySpecialList() {
+                                     ${escapeHtmlForAdmin(
+                                         special.category
+                                     )}
+-                                    ΓÇó
++                                    ├óΓé¼┬ó
+                                     ${escapeHtmlForAdmin(
+                                         item.price ?? 0
+                                     )}
+@@ -4873,9 +4966,10 @@ document.addEventListener(
+             );
+ 
+         const addLocationBtn =
+-            document.getElementById(
+-                'addLocationBtn'
+-            );
++            document.getElementById('addLocationBtn');
++
++        const profileAddLocationBtn =
++            document.getElementById('profileAddLocationBtn');
+ 
+         const profileSaveBtn =
+             document.getElementById(
+@@ -4967,10 +5061,11 @@ document.addEventListener(
+         }
+ 
+         if (addLocationBtn) {
+-            addLocationBtn.addEventListener(
+-                'click',
+-                addLocationRow
+-            );
++            addLocationBtn.addEventListener('click', () => addLocationRow('telebirr'));
++        }
++
++        if (profileAddLocationBtn) {
++            profileAddLocationBtn.addEventListener('click', () => addLocationRow('profile'));
+         }
+ 
+         if (profileSaveBtn) {
+@@ -5110,6 +5205,39 @@ document.addEventListener(
+                 openDaySpecialModal
+             );
+         }
++        const telebirrSettingsBtn = document.getElementById('telebirrSettingsBtn');
++        const telebirrCloseBtn = document.getElementById('telebirrCloseBtn');
++        const telebirrCancelBtn = document.getElementById('telebirrCancelBtn');
++        const telebirrModal = document.getElementById('telebirrModal');
++
++        if (telebirrSettingsBtn) {
++            telebirrSettingsBtn.addEventListener('click', openTelebirrModal);
++        }
++
++        if (telebirrCloseBtn) {
++            telebirrCloseBtn.addEventListener('click', closeTelebirrModal);
++        }
++
++        if (telebirrCancelBtn) {
++            telebirrCancelBtn.addEventListener('click', closeTelebirrModal);
++        }
++
++        const telebirrProfileSaveBtn =
++            document.getElementById('telebirrProfileSaveBtn');
++
++        if (telebirrProfileSaveBtn) {
++            telebirrProfileSaveBtn.addEventListener(
++                'click',
++                saveRestaurantProfile
++            );
++        }
++        if (telebirrModal) {
++            telebirrModal.addEventListener('click', event => {
++                if (event.target === telebirrModal) {
++                    closeTelebirrModal();
++                }
++            });
++        }
+ 
+ 
+         /* --------------------------------------------------------
+diff --git a/scripts/saveAdd.js b/scripts/saveAdd.js
+index 699428f..11794c0 100644
+--- a/scripts/saveAdd.js
++++ b/scripts/saveAdd.js
+@@ -1,4 +1,4 @@
+-let cart = [];
++∩╗┐let cart = [];
+ let editingCartNoteName = null;
+ let recentlyAddedCartItemName = null;
+ 
+@@ -74,7 +74,7 @@ function localizeCustomerDigits(value) {
+         return String(value);
+     }
+ 
+-    const arabicDigits = '├Ö┬á├Ö┬í├Ö┬ó├Ö┬ú├Ö┬ñ├Ö┬Ñ├Ö┬ª├Ö┬º├Ö┬¿├Ö┬⌐';
++    const arabicDigits = '├âΓäó├é┬á├âΓäó├é┬í├âΓäó├é┬ó├âΓäó├é┬ú├âΓäó├é┬ñ├âΓäó├é┬Ñ├âΓäó├é┬ª├âΓäó├é┬º├âΓäó├é┬¿├âΓäó├é┬⌐';
+ 
+     return String(value).replace(
+         /[0-9]/g,
+@@ -112,13 +112,13 @@ function protectCustomerNumbers(root = document.body) {
+             document.createDocumentFragment();
+ 
+         node.nodeValue
+-            .split(/(\d+(?:[,.├Ö┬¼├Ö┬½]\d+)*)/g)
++            .split(/(\d+(?:[,.├âΓäó├é┬¼├âΓäó├é┬½]\d+)*)/g)
+             .forEach(part => {
+                 if (!part) {
+                     return;
+                 }
+ 
+-                if (/^\d+(?:[,.├Ö┬¼├Ö┬½]\d+)*$/.test(part)) {
++                if (/^\d+(?:[,.├âΓäó├é┬¼├âΓäó├é┬½]\d+)*$/.test(part)) {
+                     const number =
+                         document.createElement('span');
+ 
+@@ -910,7 +910,7 @@ function getCustomerMenuErrorDetails(error) {
+         return {
+             title: 'Restaurant slug missing',
+             message:
+-                'This menu link does not identify a restaurant. Open the menu using the restaurantΓÇÖs registered menu link.'
++                'This menu link does not identify a restaurant. Open the menu using the restaurant├óΓé¼Γäós registered menu link.'
+         };
+     }
+ 
+@@ -1280,7 +1280,7 @@ function showCustomerMenuExpirationStatus(data) {
+ 
+     const status = document.createElement('strong');
+     status.className = 'menu-expiration-days';
+-    status.textContent = 'Expired ┬╖ 0 days remaining';
++    status.textContent = 'Expired ├é┬╖ 0 days remaining';
+ 
+     const message = document.createElement('p');
+     message.className = 'menu-expiration-explanation';
+@@ -2015,7 +2015,7 @@ function renderRestaurantProfile() {
+ 
+         link.innerHTML = `
+             <span class="contact-icon">
+-                ≡ƒô₧
++                ├░┼╕ΓÇ£┼╛
+             </span>
+ 
+             <span class="contact-text">
+@@ -2101,7 +2101,7 @@ function renderRestaurantProfile() {
+ 
+         link.innerHTML = `
+             <span class="contact-icon">
+-                ≡ƒôì
++                ├░┼╕ΓÇ£┬ì
+             </span>
+ 
+             <span class="contact-text">
+@@ -2973,7 +2973,7 @@ function openCustomerDaySpecial() {
+ 
+ 
+                     addButton.textContent =
+-                        '├ó┼ôΓÇ£ Added to Cart';
++                        '├â┬ó├àΓÇ£├óΓé¼┼ô Added to Cart';
+ 
+                     addButton.disabled =
+                         true;
+@@ -3322,7 +3322,7 @@ function addToCart(
+ 
+ 
+         button.textContent =
+-            '├ó┼ôΓÇ£ Added';
++            '├â┬ó├àΓÇ£├óΓé¼┼ô Added';
+ 
+ 
+         button.disabled =
+@@ -4277,7 +4277,7 @@ function renderOrderFormSummary() {
+                         </div>
+                         <div class="order-form-item-details">
+                             Qty: ${formatCustomerNumber(quantity)}
+-                            ┬╖ ${formatCustomerCurrency(price)} each
++                            ├é┬╖ ${formatCustomerCurrency(price)} each
+                         </div>
+                         ${note ? `<p class="order-form-item-note">Note: ${escapeHtml(note)}</p>` : ''}
+                     </article>
+@@ -4465,6 +4465,8 @@ function closePaymentModal() {
+             'show'
+         );
+     }
++
++    openOrderFormModal();
+ }
+ 
+ 
+@@ -4510,7 +4512,7 @@ async function loadCustomerTelebirrSetting() {
+         if (telebirrOption) telebirrOption.hidden = !enabled;
+     } catch (error) {
+         console.error(
+-            '[payment-settings] Unable to load caf├⌐ setting:',
++            '[payment-settings] Unable to load caf├â┬⌐ setting:',
+             error
+         );
+     }
+@@ -4644,12 +4646,6 @@ async function startTelebirrPayment(
+     event.preventDefault();
+ 
+ 
+-    const accountNumber =
+-        document.getElementById(
+-            'telebirrAccount'
+-        )?.value.trim();
+-
+-
+     const total =
+         cart.reduce(
+             (sum, item) =>
+@@ -4668,21 +4664,6 @@ async function startTelebirrPayment(
+         );
+ 
+ 
+-    if (
+-        !/^0\d{9}$/.test(
+-            accountNumber
+-        )
+-    ) {
+-
+-        showToast(
+-            'Enter a valid 10-digit Telebirr account number.',
+-            'error'
+-        );
+-
+-        return;
+-    }
+-
+-
+     if (!total) {
+ 
+         showToast(
+@@ -4723,9 +4704,9 @@ async function startTelebirrPayment(
+ 
+                     body:
+                         JSON.stringify({
+-                            accountNumber,
+                             amount: total,
+-                            items: cart
++                            items: cart,
++                            slug: CAFE_SLUG
+                         })
+                 }
+             );
+@@ -4955,11 +4936,11 @@ window.addEventListener(
+  * Every 15 seconds:
+  *
+  * Admin changes menu
+- *        ├óΓÇáΓÇÖ
++ *        ├â┬ó├óΓé¼┬á├óΓé¼Γäó
+  * Server saves it
+- *        ├óΓÇáΓÇÖ
++ *        ├â┬ó├óΓé¼┬á├óΓé¼Γäó
+  * Customer automatically requests latest data
+- *        ├óΓÇáΓÇÖ
++ *        ├â┬ó├óΓé¼┬á├óΓé¼Γäó
+  * Menu/profile/day-special updates
+  *
+  * The cart is NOT touched.
+diff --git a/server.js b/server.js
+index da07191..3e71fe2 100644
+--- a/server.js
++++ b/server.js
+@@ -5,6 +5,52 @@ const fs = require('fs');
+ const path = require('path');
+ const { Pool } = require('pg');
+ const jwt = require('jsonwebtoken');
++function encryptTelebirrSecret(value) {
++  if (typeof value !== 'string' || !value.trim()) {
++    throw new Error('A non-empty secret is required for encryption.');
++  }
++
++  const configuredKey =
++    process.env.TELEBIRR_SETTINGS_ENCRYPTION_KEY || '';
++
++  if (!/^[a-f0-9]{64}$/i.test(configuredKey)) {
++    throw new Error(
++      'TELEBIRR_SETTINGS_ENCRYPTION_KEY must be a 32-byte hex key.'
++    );
++  }
++
++  const key = Buffer.from(configuredKey, 'hex');
++  const iv = crypto.randomBytes(12);
++  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
++  const encrypted = Buffer.concat([
++    cipher.update(value, 'utf8'),
++    cipher.final()
++  ]);
++  const tag = cipher.getAuthTag();
++
++  return [
++    'v1',
++    iv.toString('hex'),
++    tag.toString('hex'),
++    encrypted.toString('hex')
++  ].join(':');
++}
++
++function isValidTelebirrUrl(value) {
++  if (typeof value !== 'string' || !value.trim()) return true;
++
++  try {
++    const parsed = new URL(value.trim());
++    return parsed.protocol === 'https:' ||
++      (
++        parsed.protocol === 'http:' &&
++        ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname)
++      );
++  } catch {
++    return false;
++  }
++}
++const crypto = require('crypto');
+ 
+ const app = express();
+ 
+@@ -345,7 +391,13 @@ async function ensureDatabaseStructure() {
+     await pool.query(`
+       ALTER TABLE restaurant_payment_settings
+       ADD COLUMN IF NOT EXISTS order_now_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+-      ADD COLUMN IF NOT EXISTS super_admin_order_now_enabled BOOLEAN NOT NULL DEFAULT TRUE
++      ADD COLUMN IF NOT EXISTS super_admin_order_now_enabled BOOLEAN NOT NULL DEFAULT TRUE,
++      ADD COLUMN IF NOT EXISTS fabric_app_id TEXT NOT NULL DEFAULT '',
++      ADD COLUMN IF NOT EXISTS api_base_url TEXT NOT NULL DEFAULT '',
++      ADD COLUMN IF NOT EXISTS notification_url TEXT NOT NULL DEFAULT '',
++      ADD COLUMN IF NOT EXISTS return_url TEXT NOT NULL DEFAULT '',
++      ADD COLUMN IF NOT EXISTS app_secret_encrypted TEXT NOT NULL DEFAULT '',
++      ADD COLUMN IF NOT EXISTS private_key_encrypted TEXT NOT NULL DEFAULT ''
+     `);
+ 
+     await pool.query(`
+@@ -1600,9 +1652,20 @@ app.get(
+         });
+       }
+ 
+-      const settingsResult = await pool.query(`
+-        SELECT telebirr_enabled, order_now_enabled, merchant_name, merchant_code,
+-               merchant_app_id, updated_at
++      const result = await pool.query(`
++        SELECT
++          telebirr_enabled,
++          order_now_enabled,
++          merchant_name,
++          merchant_code,
++          merchant_app_id,
++          fabric_app_id,
++          api_base_url,
++          notification_url,
++          return_url,
++          (COALESCE(app_secret_encrypted, '') <> '') AS app_secret_configured,
++          (COALESCE(private_key_encrypted, '') <> '') AS private_key_configured,
++          updated_at
+         FROM restaurant_payment_settings
+         WHERE restaurant_id = $1
+         LIMIT 1
+@@ -1615,16 +1678,22 @@ app.get(
+           name: restaurant.name,
+           slug: restaurant.slug
+         },
+-        settings: settingsResult.rows[0] || {
++        settings: result.rows[0] || {
+           telebirr_enabled: false,
+           order_now_enabled: true,
+           merchant_name: '',
+           merchant_code: '',
+-          merchant_app_id: ''
++          merchant_app_id: '',
++          fabric_app_id: '',
++          api_base_url: '',
++          notification_url: '',
++          return_url: '',
++          app_secret_configured: false,
++          private_key_configured: false
+         }
+       });
+     } catch (error) {
+-      console.error('[payment-settings:get] Error:', error);
++      console.error('[payment-settings:get] Error:', error.message);
+       return res.status(500).json({
+         ok: false,
+         message: 'Unable to load payment settings.'
+@@ -1644,9 +1713,58 @@ app.put(
+         order_now_enabled = true,
+         merchant_name = '',
+         merchant_code = '',
+-        merchant_app_id = ''
++        merchant_app_id = '',
++        fabric_app_id = '',
++        app_secret = '',
++        private_key = '',
++        api_base_url = '',
++        notification_url = '',
++        return_url = ''
+       } = req.body || {};
+ 
++      const stringFields = [
++        merchant_name,
++        merchant_code,
++        merchant_app_id,
++        fabric_app_id,
++        app_secret,
++        private_key,
++        api_base_url,
++        notification_url,
++        return_url
++      ];
++
++      if (
++        typeof telebirr_enabled !== 'boolean' ||
++        typeof order_now_enabled !== 'boolean' ||
++        stringFields.some(value => typeof value !== 'string') ||
++        merchant_name.length > 200 ||
++        merchant_code.length > 200 ||
++        merchant_app_id.length > 200 ||
++        fabric_app_id.length > 200 ||
++        app_secret.length > 10000 ||
++        private_key.length > 20000 ||
++        api_base_url.length > 2048 ||
++        notification_url.length > 2048 ||
++        return_url.length > 2048
++      ) {
++        return res.status(400).json({
++          ok: false,
++          message: 'Invalid payment settings.'
++        });
++      }
++
++      if (
++        !isValidTelebirrUrl(api_base_url) ||
++        !isValidTelebirrUrl(notification_url) ||
++        !isValidTelebirrUrl(return_url)
++      ) {
++        return res.status(400).json({
++          ok: false,
++          message: 'URLs must use HTTPS, except localhost development URLs.'
++        });
++      }
++
+       const restaurantResult = await pool.query(`
+         SELECT id, name, slug, status
+         FROM restaurants
+@@ -1683,28 +1801,32 @@ app.put(
+         });
+       }
+ 
+-      if (
+-        typeof telebirr_enabled !== 'boolean' ||
+-        typeof order_now_enabled !== 'boolean' ||
+-        typeof merchant_name !== 'string' ||
+-        typeof merchant_code !== 'string' ||
+-        typeof merchant_app_id !== 'string' ||
+-        merchant_name.length > 200 ||
+-        merchant_code.length > 200 ||
+-        merchant_app_id.length > 200
+-      ) {
+-        return res.status(400).json({
+-          ok: false,
+-          message: 'Invalid payment settings.'
+-        });
+-      }
++      // Empty secret fields preserve the existing encrypted values.
++      const encryptedAppSecret = app_secret.trim()
++        ? encryptTelebirrSecret(app_secret)
++        : '';
++
++      const encryptedPrivateKey = private_key.trim()
++        ? encryptTelebirrSecret(private_key)
++        : '';
+ 
+       await pool.query(`
+         INSERT INTO restaurant_payment_settings (
+-          restaurant_id, telebirr_enabled, order_now_enabled, merchant_name,
+-          merchant_code, merchant_app_id, updated_at
++          restaurant_id,
++          telebirr_enabled,
++          order_now_enabled,
++          merchant_name,
++          merchant_code,
++          merchant_app_id,
++          fabric_app_id,
++          api_base_url,
++          notification_url,
++          return_url,
++          app_secret_encrypted,
++          private_key_encrypted,
++          updated_at
+         )
+-        VALUES ($1, $2, $3, $4, $5, $6, NOW())
++        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+         ON CONFLICT (restaurant_id)
+         DO UPDATE SET
+           telebirr_enabled = EXCLUDED.telebirr_enabled,
+@@ -1712,6 +1834,18 @@ app.put(
+           merchant_name = EXCLUDED.merchant_name,
+           merchant_code = EXCLUDED.merchant_code,
+           merchant_app_id = EXCLUDED.merchant_app_id,
++          fabric_app_id = EXCLUDED.fabric_app_id,
++          api_base_url = EXCLUDED.api_base_url,
++          notification_url = EXCLUDED.notification_url,
++          return_url = EXCLUDED.return_url,
++          app_secret_encrypted = COALESCE(
++            NULLIF(EXCLUDED.app_secret_encrypted, ''),
++            restaurant_payment_settings.app_secret_encrypted
++          ),
++          private_key_encrypted = COALESCE(
++            NULLIF(EXCLUDED.private_key_encrypted, ''),
++            restaurant_payment_settings.private_key_encrypted
++          ),
+           updated_at = NOW()
+       `, [
+         restaurant.id,
+@@ -1719,7 +1853,13 @@ app.put(
+         order_now_enabled,
+         merchant_name.trim(),
+         merchant_code.trim(),
+-        merchant_app_id.trim()
++        merchant_app_id.trim(),
++        fabric_app_id.trim(),
++        api_base_url.trim(),
++        notification_url.trim(),
++        return_url.trim(),
++        encryptedAppSecret,
++        encryptedPrivateKey
+       ]);
+ 
+       return res.json({
+@@ -1727,7 +1867,7 @@ app.put(
+         message: 'Payment settings saved.'
+       });
+     } catch (error) {
+-      console.error('[payment-settings:update] Error:', error);
++      console.error('[payment-settings:update] Error:', error.message);
+       return res.status(500).json({
+         ok: false,
+         message: 'Unable to save payment settings.'
+diff --git a/stylesheets/admin-panel.css b/stylesheets/admin-panel.css
+index 26b287b..4bf6318 100644
+--- a/stylesheets/admin-panel.css
++++ b/stylesheets/admin-panel.css
+@@ -1,4 +1,4 @@
+-∩╗┐/* ================================================================
++/* ================================================================
+    ADMIN PANEL
+    PROFESSIONAL RESTAURANT ADMIN DASHBOARD
+    ================================================================ */
+@@ -3678,3 +3678,85 @@ body.admin-loading-active {
+     border-top-right-radius: 15px;
+ }
+ 
++
++/* Standalone Telebirr settings modal */
++#telebirrModal {
++    display: none;
++}
++
++#telebirrModal.active,
++#telebirrModal.show {
++    display: flex;
++}
++
++/* BRANCH MANAGEMENT UI */
++.profile-branch-entry {
++    display: grid;
++    grid-template-columns: minmax(0, 1fr) auto auto;
++    align-items: center;
++    gap: 10px;
++    width: 100%;
++}
++
++.profile-branch-summary {
++    display: contents;
++}
++
++.profile-branch-name {
++    display: block;
++    width: 100%;
++    min-width: 0;
++    overflow-wrap: anywhere;
++    white-space: normal;
++    color: inherit;
++    line-height: 1.4;
++}
++
++.profile-branch-details-btn {
++    min-height: 36px;
++    padding: 7px 14px;
++    border: 1px solid #a96327;
++    border-radius: 9px;
++    background: #fff4e8;
++    color: #4a2f22;
++    font: inherit;
++    font-weight: 600;
++    cursor: pointer;
++}
++
++.profile-branch-details-btn:hover {
++    background: #f4eadf;
++}
++
++.profile-branch-details[hidden] {
++    display: none !important;
++}
++
++.profile-branch-details:not([hidden]) {
++    display: grid;
++    grid-column: 1 / -1;
++    width: 100%;
++    gap: 8px;
++}
++
++.profile-branch-entry > .profile-delete-btn {
++    justify-self: end;
++    align-self: center;
++    white-space: nowrap;
++}
++
++@media (max-width: 480px) {
++    .profile-branch-entry {
++    display: grid;
++    grid-template-columns: minmax(0, 1fr) auto auto;
++    align-items: center;
++    gap: 10px;
++    width: 100%;
++}
++
++    .profile-branch-entry .profile-branch-details-btn,
++    .profile-branch-entry .profile-delete-btn {
++        padding-left: 8px;
++        padding-right: 8px;
++    }
++}
+\ No newline at end of file

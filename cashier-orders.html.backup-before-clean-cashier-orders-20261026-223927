@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CaffeMenu | Cashier Orders</title>
+<style>
+:root{color-scheme:dark;--bg:#17120f;--panel:#241b16;--gold:#d8ad62;--cream:#f8f0df;--muted:#b9aa98;--line:#49372b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--cream)}
+header{position:sticky;top:0;background:#201711;border-bottom:1px solid var(--line);padding:16px max(18px,calc((100% - 1100px)/2));display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:2}
+h1{font-size:21px;margin:0}small,.muted{color:var(--muted)}button{border:1px solid var(--line);border-radius:9px;padding:10px 13px;background:#302116;color:var(--cream);font-weight:bold;cursor:pointer}button.primary{background:var(--gold);color:#24170c;border-color:var(--gold)}
+main{max-width:1100px;margin:auto;padding:24px 18px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+#message{color:var(--gold);min-height:22px}.orders{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}
+.order{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:17px;min-width:0}.order-top{display:flex;justify-content:space-between;gap:12px;align-items:start}.order h2{font-size:17px;margin:0 0 6px}.status{font-size:12px;border:1px solid #80643b;border-radius:30px;padding:5px 8px;color:var(--gold);white-space:nowrap}
+.meta{font-size:13px;color:var(--muted);line-height:1.6;margin:12px 0}.items{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}.item{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:14px}.total{display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-weight:bold;color:var(--gold)}.empty{border:1px dashed var(--line);border-radius:14px;padding:30px;text-align:center;color:var(--muted)}
+@media(max-width:520px){header{align-items:flex-start}h1{font-size:18px}.header-buttons{display:flex;gap:6px;flex-direction:column}}
+
+/* Full-width layout for admin and cashier order displays */
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+}
+
+body {
+    overflow-x: hidden;
+}
+
+header {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    box-sizing: border-box;
+    padding-left: clamp(16px, 2vw, 32px);
+    padding-right: clamp(16px, 2vw, 32px);
+}
+
+main > header {
+    width: calc(100% + 2 * clamp(16px, 2vw, 32px));
+    margin-left: calc(-1 * clamp(16px, 2vw, 32px));
+}
+
+main {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: clamp(16px, 2vw, 32px);
+}
+
+.orders {
+    width: 100%;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, 320px), 1fr)
+    );
+}
+
+/* Order status filters */
+.order-status-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    width: 100%;
+    padding: 16px clamp(16px, 2vw, 32px);
+    box-sizing: border-box;
+}
+
+.order-filter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 16px 12px;
+    border: 1px solid var(--line, #49372b);
+    border-radius: 12px;
+    color: var(--cream, #f8f0df);
+    background: var(--panel, #241b16);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color .2s, transform .2s;
+}
+
+.order-filter:hover {
+    transform: translateY(-1px);
+}
+
+.order-filter[aria-pressed="true"] {
+    background: #f4c96b !important;
+    color: #26180d !important;
+    border: 2px solid #ffe3a0 !important;
+    outline: 3px solid #d8ad62;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(244, 201, 107, 0.22),
+                0 6px 18px rgba(0, 0, 0, 0.35);
+    font-weight: 800;
+    transform: translateY(-2px);
+    opacity: 1;
+    filter: none;
+}
+
+.order-filter[aria-pressed="false"] {
+    opacity: 0.72;
+    filter: saturate(0.7);
+    box-shadow: none;
+}
+
+.pending-filter { border-bottom: 3px solid #4d9b68; }
+.preparing-filter { border-bottom: 3px solid #c18a3b; }
+.completed-filter { border-bottom: 3px solid #568bc0; }
+
+.order-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    min-height: 30px;
+    padding: 0 7px;
+    box-sizing: border-box;
+    border-radius: 50px;
+    color: #17120f;
+    background: var(--gold, #d8ad62);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+@media (max-width: 520px) {
+    .order-status-filters {
+        gap: 7px;
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+
+    .order-filter {
+        flex-direction: column;
+        gap: 7px;
+        padding: 12px 4px;
+        font-size: 12px;
+    }
+}
+.status-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #76502f;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.status-action:hover { filter: brightness(1.08); }
+.status-action:disabled { opacity: .6; cursor: wait; }
+.order-actions { margin-top: 8px; }
+</style>
+</head>
+<body>
+<header><div><h1 id="restaurantName">Cashier Orders</h1><small>Manage order status</small></div><div class="header-buttons"><button id="refreshBtn" class="primary">Refresh</button> <button id="logoutBtn">Sign Out</button></div></header>
+<nav class="order-status-filters" aria-label="Filter orders">
+  <button type="button" class="order-filter pending-filter" data-filter="pending" aria-pressed="false">
+    Pending <span class="order-count" data-count="pending">0</span>
+  </button>
+  <button type="button" class="order-filter preparing-filter" data-filter="preparing" aria-pressed="false">
+    Preparing <span class="order-count" data-count="preparing">0</span>
+  </button>
+  <button type="button" class="order-filter ready-filter" data-filter="ready" aria-pressed="false">
+    Ready <span class="order-count" data-count="ready">0</span>
+  </button>
+  <button type="button" class="order-filter completed-filter" data-filter="completed" aria-pressed="false">
+    Completed <span class="order-count" data-count="completed">0</span>
+  </button>
+</nav>
+
+<main><div class="toolbar"><div><strong>Recent orders</strong><div class="muted">Showing the latest 100 orders for this restaurant.</div></div><small id="lastUpdated"></small></div><p id="message" role="status"></p><section id="orders" class="orders"></section></main>
+<script>
+(function(){
+ const slug=(new URLSearchParams(location.search).get('restaurant')||'').trim();
+ const message=document.getElementById('message'),ordersNode=document.getElementById('orders');
+ if(!slug){message.textContent='Restaurant not identified.';return;}
+ const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=String(txt);return n;};
+ const money=v=>new Intl.NumberFormat(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v)||0);
+ function itemText(item){if(typeof item==='string')return item;if(!item||typeof item!=='object')return 'Item';return item.name||item.item_name||item.title||'Menu item';}
+ async function load(){
+   message.textContent='Refreshing ordersÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦';
+   try{
+     const r=await fetch('/api/cashier/orders/'+encodeURIComponent(slug),{credentials:'same-origin',cache:'no-store'});
+     const d=await r.json();
+     if(r.status===401){location.href='/'+encodeURIComponent(slug)+'/cashier-login';return;}
+     if(!r.ok)throw new Error(d.message||'Unable to load orders.');
+     document.getElementById('restaurantName').textContent=(d.restaurant&&d.restaurant.name)||slug;
+     const statusOrder={pending:0,preparing:1,ready:2,completed:3};
+     const list=(Array.isArray(d.orders)?[...d.orders]:[]).sort((a,b)=>{
+       const statusA=String(a.status||'pending').toLowerCase();
+       const statusB=String(b.status||'pending').toLowerCase();
+       const groupDifference=(statusOrder[statusA]??4)-(statusOrder[statusB]??4);
+       if(groupDifference)return groupDifference;
+
+       const timestamp=order=>{
+         const status=String(order.status||'pending').toLowerCase();
+         const value=status==='preparing'?(order.preparing_at||order.created_at):
+           status==='ready'?(order.ready_at||order.preparing_at||order.created_at):
+           status==='completed'?(order.completed_at||order.ready_at||order.created_at):
+           order.created_at;
+         return Date.parse(value||'')||0;
+       };
+
+       const timeA=timestamp(a),timeB=timestamp(b);
+       return statusA==='completed'
+         ? timeB-timeA||(Number(b.id)||0)-(Number(a.id)||0)
+         : timeA-timeB||(Number(a.id)||0)-(Number(b.id)||0);
+     });
+     ordersNode.replaceChildren();
+     if(!list.length){ordersNode.append(el('div','empty','No customer orders yet.'));message.textContent='';}
+     else{
+       list.forEach(order=>{
+         const card=el('article','order'),top=el('div','order-top'),heading=el('div','');
+         heading.append(el('h2','',`Order #${order.display_number ?? order.id}`));
+         heading.append(el('div','muted',order.created_at?new Date(order.created_at).toLocaleString():'Date unavailable'));
+         top.append(heading,el('span','status',order.status||'pending'));card.append(top);
+         const details=el('div','meta');
+         details.append(el('div','',`Customer: ${order.customer_name||'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}`));
+         details.append(el('div','',`Phone: ${order.customer_phone||'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}`));
+         details.append(el('div','',`Branch: ${order.branch_name||'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}`));
+         details.append(el('div','',`Type: ${order.order_type||'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}${order.table_number?' Ãƒâ€šÃ‚Â· Table '+order.table_number:''}`));
+         if(order.customer_address)details.append(el('div','',`Address: ${order.customer_address}`));
+         card.append(details);
+         const itemWrap=el('div','items'),items=Array.isArray(order.items)?order.items:[];
+         if(items.length){items.forEach(item=>{
+           const qty=Number(item&& (item.quantity??item.qty))||1;
+           const price=Number(item&& (item.price??item.unit_price))||0;
+           itemWrap.append(el('div','item',`${itemText(item)} ÃƒÆ’Ã¢â‚¬â€ ${qty}`));
+           const last=itemWrap.lastElementChild;
+           if(last)last.append(el('span','',money(price*qty)));
+         });}else itemWrap.append(el('div','muted','No item details available.'));
+         card.append(itemWrap);
+         const total=el('div','total');total.append(el('span','','Total'),el('span','',money(order.total)));card.append(total);
+         const actions={
+           pending:['preparing','Start Preparing'],
+           preparing:['ready','Mark Ready'],
+           ready:['completed','Complete Order']
+         };
+         const action=actions[String(order.status||'pending').trim().toLowerCase()];
+         if(action){
+           const button=el('button','status-action',action[1]);
+           button.type='button';
+           button.dataset.orderStatusAction=action[0];
+           button.dataset.orderId=String(order.id);
+           card.append(button);
+         }
+         ordersNode.append(card);
+       });
+       message.textContent=`${list.length} order${list.length===1?'':'s'} loaded.`;
+     }
+     document.getElementById('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString();
+   }catch(e){message.textContent=e.message;}
+ }
+ ordersNode.addEventListener('click',async event=>{
+   const button=event.target.closest('button[data-order-status-action]');
+   if(!button||!ordersNode.contains(button))return;
+
+   button.disabled=true;
+   message.textContent='Updating order status...';
+
+   try{
+     const r=await fetch(
+       '/api/cashier/orders/'+encodeURIComponent(slug)+'/'+encodeURIComponent(button.dataset.orderId)+'/status',
+       {
+         method:'PATCH',
+         credentials:'same-origin',
+         cache:'no-store',
+         headers:{'Content-Type':'application/json'},
+         body:JSON.stringify({status:button.dataset.orderStatusAction})
+       }
+     );
+
+     const d=await r.json();
+     if(r.status===401){
+       location.href='/'+encodeURIComponent(slug)+'/cashier-login';
+       return;
+     }
+     if(!r.ok)throw new Error(d.message||'Unable to update order status.');
+
+     await load();
+     message.textContent=d.message||'Order status updated.';
+   }catch(e){
+     message.textContent=e.message||'Unable to update order status.';
+     button.disabled=false;
+   }
+ });
+ document.getElementById('refreshBtn').addEventListener('click',load);
+ document.getElementById('logoutBtn').addEventListener('click',async()=>{
+   try{await fetch('/api/cashier/logout',{method:'POST',credentials:'same-origin',cache:'no-store'});}finally{location.href='/'+encodeURIComponent(slug)+'/cashier-login';}
+ });
+ load();
+})();
+</script><script>
+(function () {
+  const filters = document.querySelectorAll(".order-filter");
+  const orders = document.getElementById("orders");
+  if (!orders || !filters.length) return;
+
+  const filterStorageKey = "caffemenu-order-filter:" + location.pathname;
+  let activeFilter = "pending";
+
+  try {
+    const savedFilter = localStorage.getItem(filterStorageKey);
+    if (["all", "pending", "preparing", "ready", "completed"].includes(savedFilter)) {
+      activeFilter = savedFilter;
+    }
+  } catch (_) {}
+
+  function statusGroup(card) {
+    const statusNode = card.querySelector(".status");
+    const status = (statusNode ? statusNode.textContent : "")
+      .trim().toLowerCase().replace(/[\s-]+/g, "_");
+
+    if (status === "pending") {
+      return "pending";
+    }
+
+    if (["preparing", "in_progress", "processing", "cooking"].includes(status)) {
+      return "preparing";
+    }
+
+    if (["ready", "prepared"].includes(status)) {
+      return "ready";
+    }
+
+    if (["completed", "complete", "delivered", "served", "done"].includes(status)) {
+      return "completed";
+    }
+
+    return "other";
+  }
+
+  function updateFilters() {
+    const cards = Array.from(orders.querySelectorAll(".order"));
+
+    const counts = { pending: 0, preparing: 0, ready: 0, completed: 0 };
+
+    cards.forEach(card => {
+      const group = statusGroup(card);
+      if (Object.prototype.hasOwnProperty.call(counts, group)) {
+        counts[group]++;
+      }
+
+      card.hidden = activeFilter !== "all" && group !== activeFilter;
+    });
+
+    filters.forEach(button => {
+      const group = button.dataset.filter;
+      const count = button.querySelector("[data-count]");
+      if (count) count.textContent = String(counts[group] || 0);
+      button.setAttribute("aria-pressed", String(activeFilter === group));
+    });
+  }
+
+  filters.forEach(button => {
+    button.addEventListener("click", function () {
+      activeFilter = button.dataset.filter;
+      try {
+        localStorage.setItem(filterStorageKey, activeFilter);
+      } catch (_) {}
+      updateFilters();
+    });
+  });
+
+  new MutationObserver(updateFilters).observe(orders, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
+
+  updateFilters();
+})();
+</script>
+</body></html>
+

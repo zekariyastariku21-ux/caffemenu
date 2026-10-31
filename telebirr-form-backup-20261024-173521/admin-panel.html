@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Restaurant Admin Panel</title>
+
+    <link rel="stylesheet" href="stylesheets/admin-panel.css">
+    <link rel="stylesheet" href="stylesheets/menu-expiration.css?v=20261013a">
+</head>
+
+<body>
+
+<div id="pageLoading">
+    Checking login...
+</div>
+
+<div class="dashboard-page">
+
+    <div class="admin-panel-box">
+
+        <header class="admin-header">
+
+            <div class="restaurant-name">
+                <span id="restaurantName">
+                    Restaurant Admin Panel
+                </span>
+            </div>
+
+            <div class="admin-actions">
+
+                <button
+                    type="button"
+                    id="adminRefreshBtn"
+                    class="refresh-btn"
+                >
+                    Refresh
+                </button>
+
+                <button
+                    type="button"
+                    id="profileBtn"
+                    class="profile-btn"
+                >
+                    Profile
+                </button>
+
+                <button
+                    type="button"
+                    id="daySpecialBtn"
+                    class="day-special-btn"
+                >
+                    âœ¨ Day Special âœ¨
+                </button>
+
+                <button
+                    type="button"
+                    id="logoutBtn"
+                    class="logout-btn"
+                >
+                    Logout
+                </button>
+
+            </div>
+
+        </header>
+
+        <div id="menuExpirationCountdown"
+             class="menu-expiration-countdown"
+             role="status"
+             hidden></div>
+
+        <!-- MENU MANAGEMENT TABS -->
+
+        <div class="admin-management-tabs">
+
+            <button type="button" class="admin-management-tab active" onclick="openAdminManagementTab(0)">
+                Add Category
+            </button>
+
+            <button type="button" class="admin-management-tab" onclick="openAdminManagementTab(1)">
+                Manage Categories
+            </button>
+
+            <button type="button" class="admin-management-tab" onclick="openAdminManagementTab(2)">
+                Add Item
+            </button>
+
+            <button type="button" class="admin-management-tab" onclick="openAdminManagementTab(3)">
+                Update / Delete Item
+            </button>
+
+        </div>
+
+        <script>
+        function openAdminManagementTab(index) {
+
+            const sections = Array.from(document.querySelectorAll(
+                '.admin-management-tabs ~ .section'
+            )).slice(0, 4);
+
+            const tabs = document.querySelectorAll(
+                '.admin-management-tab'
+            );
+
+            sections.forEach((section, i) => {
+                section.style.display = i === index ? 'block' : 'none';
+            });
+
+            tabs.forEach((tab, i) => {
+                tab.classList.toggle('active', i === index);
+            });
+
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            openAdminManagementTab(0);
+        });
+        </script>
+
+        <!-- ADD CATEGORY -->
+
+        <div class="section">
+
+            <h3>
+                Add Category
+            </h3>
+
+            <div class="form-row">
+
+                <input
+                    id="newCategoryName"
+                    placeholder="Category name"
+                >
+
+                <button
+                    type="button"
+                    class="admin-btn"
+                    onclick="addCategoryFromUI()"
+                >
+                    Add Category
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- MANAGE CATEGORIES -->
+
+        <div class="section">
+
+            <h3>
+                Manage Categories
+            </h3>
+
+            <div class="form-row">
+
+                <select
+                    id="existingCategorySelect"
+                    onchange="populateSelectedCategory()"
+                >
+
+                    <option value="">
+                        Select category
+                    </option>
+
+                </select>
+
+                <input
+                    type="text"
+                    id="editCategoryName"
+                    placeholder="New category name"
+                >
+
+                <button
+                    type="button"
+                    class="admin-btn"
+                    onclick="updateSelectedCategory()"
+                >
+                    Update Category Name
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- ADD ITEM -->
+
+        <div class="section">
+
+            <h3>
+                Add Item
+            </h3>
+
+            <div class="form-row">
+
+                <input
+                    id="newItemName"
+                    placeholder="Item name"
+                >
+
+                <input
+                    id="newItemPrice"
+                    placeholder="Price"
+                    type="number"
+                    step="0.01"
+                >
+
+                <input
+                    id="newItemImage"
+                    type="file"
+                    accept="image/*"
+                >
+
+                <input
+                    id="newItemIngredient"
+                    placeholder="Ingredient"
+                >
+
+                <label class="checkbox-label">
+
+                    <input
+                        id="newItemAvailable"
+                        type="checkbox"
+                        checked
+                    >
+
+                    Available
+
+                </label>
+
+                <select id="newItemCategory">
+
+                    <option value="">
+                        Select category
+                    </option>
+
+                </select>
+
+            </div>
+
+            <button
+                type="button"
+                class="admin-btn"
+                onclick="addItemFromUI()"
+            >
+                Add Item
+            </button>
+
+        </div>
+
+
+        <!-- UPDATE / DELETE ITEM -->
+
+        <div class="section">
+
+            <h3>
+                Update / Delete Item
+            </h3>
+
+            <div class="item-selection-box">
+
+                <div class="selection-field">
+
+                    <label for="existingItemCategorySelect">
+                        1. Choose Category
+                    </label>
+
+                    <select
+                        id="existingItemCategorySelect"
+                        onchange="updateExistingItemsByCategory()"
+                    >
+
+                        <option value="">
+                            Select category
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="selection-field">
+
+                    <label for="existingItemSelect">
+                        2. Choose Item
+                    </label>
+
+                    <select
+                        id="existingItemSelect"
+                        onchange="populateSelectedItemFields()"
+                        disabled
+                    >
+
+                        <option value="">
+                            Select category first
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+
+            <div class="form-row edit-fields">
+
+                <input
+                    id="editItemName"
+                    placeholder="Item name"
+                >
+
+                <input
+                    id="editItemPrice"
+                    placeholder="Price"
+                    type="number"
+                    step="0.01"
+                >
+
+                <input
+                    id="editItemIngredient"
+                    placeholder="Ingredient"
+                >
+
+                <!-- UPDATE ITEM IMAGE -->
+
+                <div class="edit-image-field">
+
+                    <label for="editItemImage">
+                        Item Image
+                    </label>
+
+                    <input
+                        id="editItemImage"
+                        type="file"
+                        accept="image/*"
+                    >
+
+                    <div
+                        id="editItemImagePreview"
+                        class="edit-item-image-preview"
+                    >
+
+                        <div
+                            id="editItemImagePlaceholder"
+                            class="edit-item-image-placeholder"
+                        >
+                            ðŸ–¼ï¸
+                            <span>
+                                Current image
+                            </span>
+                        </div>
+
+                        <img
+                            id="editItemImagePreviewImg"
+                            src=""
+                            alt="Item image preview"
+                            style="display:none;"
+                        >
+
+                    </div>
+
+                    <small class="edit-image-help">
+                        Leave empty to keep the current image.
+                    </small>
+
+                </div>
+
+
+                <select id="editItemCategory">
+
+                    <option value="">
+                        Select category
+                    </option>
+
+                </select>
+
+                <label class="checkbox-label">
+
+                    <input
+                        id="editItemAvailable"
+                        type="checkbox"
+                    >
+
+                    Available
+
+                </label>
+
+            </div>
+
+
+            <div class="button-row">
+
+                <button
+                    type="button"
+                    class="admin-btn"
+                    onclick="updateSelectedItem()"
+                >
+                    Update Item
+                </button>
+
+                <button
+                    type="button"
+                    class="admin-btn danger-btn"
+                    onclick="deleteSelectedItem()"
+                >
+                    Delete Item
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- SAVE MENU -->
+
+        <div class="section save-section">
+
+            <button
+                type="button"
+                class="admin-btn save-menu-btn"
+                onclick="saveMenuToServer()"
+            >
+                Save Menu
+            </button>
+
+        </div>
+
+
+        <div id="message"></div>
+
+
+        <!-- CURRENT MENU -->
+
+        <div class="section">
+
+            <h3>
+                Current Menu
+            </h3>
+
+            <p class="admin-menu-reorder-help">
+                Use the arrows to reorder categories and items, then select Save Menu to apply your changes.
+            </p>
+
+            <div
+                id="menuList"
+                class="menu-list"
+            >
+                Loading menu...
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     PROFILE MODAL
+========================================================= -->
+
+<div
+    id="profileModal"
+    class="profile-modal-overlay"
+>
+
+    <div
+        class="profile-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profileModalTitle"
+    >
+
+        <div class="profile-modal-header">
+
+            <div class="profile-modal-title-area">
+
+                <div class="profile-title-icon">
+                    ðŸ‘¤
+                </div>
+
+                <div>
+
+                    <h2 id="profileModalTitle">
+                        CafÃ© Profile
+                    </h2>
+
+                    <p id="profileRestaurantName">
+                        Restaurant information
+                    </p>
+
+                </div>
+
+            </div>
+
+            <button
+                type="button"
+                id="profileCloseBtn"
+                class="profile-close-btn"
+                aria-label="Close profile"
+            >
+                Ã—
+            </button>
+
+        </div>
+
+
+        <div class="profile-modal-body">
+
+            <!-- LOGO -->
+
+            <div class="profile-section profile-logo-section">
+
+                <div class="profile-section-header">
+
+                    <div>
+
+                        <div class="profile-section-title">
+                            ðŸ–¼ï¸ Restaurant Logo
+                        </div>
+
+                        <div class="profile-section-description">
+                            Add a logo that customers will see on your cafÃ© menu.
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="profile-logo-area">
+
+                    <div
+                        id="profileLogoPreview"
+                        class="profile-logo-preview"
+                    >
+
+                        <img
+                            id="profileLogoImage"
+                            src=""
+                            alt="Restaurant Logo"
+                            style="display: none;"
+                        >
+
+                        <div
+                            id="profileLogoPlaceholder"
+                            class="profile-logo-placeholder"
+                        >
+
+                            <span class="profile-logo-placeholder-icon">
+                                ðŸ¬
+                            </span>
+
+                            <span class="profile-logo-placeholder-text">
+                                No Logo
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="profile-logo-actions">
+
+                        <label
+                            for="profileLogoInput"
+                            class="profile-logo-upload-btn"
+                        >
+                            ðŸ“· Choose Logo
+                        </label>
+
+                        <input
+                            type="file"
+                            id="profileLogoInput"
+                            class="profile-logo-input"
+                            accept="image/*"
+                            hidden
+                        >
+
+                        <button
+                            type="button"
+                            id="profileLogoRemoveBtn"
+                            class="profile-logo-remove-btn"
+                        >
+                            ðŸ—‘ï¸ Remove Logo
+                        </button>
+
+                        <p class="profile-logo-help">
+                            JPG, PNG or WebP. Recommended square image.
+                            Maximum size: 5 MB.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- PHONE NUMBERS -->
+
+            <div class="profile-section">
+
+                <div class="profile-section-header">
+
+                    <div>
+
+                        <div class="profile-section-title">
+                            ðŸ“ž Phone Numbers
+                        </div>
+
+                        <div class="profile-section-description">
+                            Customers can tap a number to call your cafÃ©.
+                        </div>
+
+                    </div>
+
+                    <button
+                        type="button"
+                        id="addPhoneBtn"
+                        class="profile-add-btn"
+                    >
+                        + Add Phone
+                    </button>
+
+                </div>
+
+                <div
+                    id="phoneList"
+                    class="profile-list"
+                ></div>
+
+            </div>
+
+
+            <!-- TELEBIRR SETTINGS -->
+
+            <div class="profile-section" id="telebirrSettingsSection">
+
+                <div class="profile-section-header">
+                    <div>
+                        <div class="profile-section-title">
+                            Telebirr Payment Settings
+                        </div>
+                        <div class="profile-section-description">
+                            Configure the merchant details for this cafÃ©.
+                            Saving these settings does not activate live checkout.
+                        </div>
+                    </div>
+                </div>
+
+                <form id="telebirrSettingsForm">
+                    <label for="orderNowEnabled">
+                        <input
+                            type="checkbox"
+                            id="orderNowEnabled"
+                            name="order_now_enabled"
+                            checked
+                        >
+                        Enable Order Now for this cafÃ©
+                    </label>
+
+
+
+                    <div class="profile-field">
+                        <label for="telebirrEnabled">
+                            <input type="checkbox" id="telebirrEnabled" name="telebirr_enabled">
+                            Enable Telebirr for this cafe
+                        </label>
+                    </div>
+                    <div class="profile-field">
+                        <label for="telebirrMerchantName">
+                            Merchant Name
+                        </label>
+                        <input
+                            type="text"
+                            id="telebirrMerchantName"
+                            name="merchant_name"
+                            maxlength="200"
+                            autocomplete="organization"
+                        >
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrMerchantCode">
+                            Merchant Code
+                        </label>
+                        <input
+                            type="text"
+                            id="telebirrMerchantCode"
+                            name="merchant_code"
+                            maxlength="200"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrMerchantAppId">
+                            Merchant App ID
+                        </label>
+                        <input
+                            type="text"
+                            id="telebirrMerchantAppId"
+                            name="merchant_app_id"
+                            maxlength="200"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrFabricAppId">Fabric App ID</label>
+                        <input type="text" id="telebirrFabricAppId"
+                               name="fabric_app_id" autocomplete="off">
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrAppSecret">App Secret</label>
+                        <input type="password" id="telebirrAppSecret"
+                               name="app_secret" autocomplete="new-password"
+                               placeholder="Enter secret">
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrPrivateKey">Private Key</label>
+                        <textarea id="telebirrPrivateKey"
+                                  name="private_key" rows="5"
+                                  autocomplete="off"
+                                  placeholder="Paste the PEM private key"></textarea>
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrApiBaseUrl">API Base URL</label>
+                        <input type="url" id="telebirrApiBaseUrl"
+                               name="api_base_url"
+                               placeholder="https://..." autocomplete="url">
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrNotificationUrl">Payment Notification URL</label>
+                        <input type="url" id="telebirrNotificationUrl"
+                               name="notification_url"
+                               placeholder="https://your-domain/..." autocomplete="url">
+                    </div>
+
+                    <div class="profile-field">
+                        <label for="telebirrReturnUrl">Return URL</label>
+                        <input type="url" id="telebirrReturnUrl"
+                               name="return_url"
+                               placeholder="https://your-domain/..." autocomplete="url">
+                    </div>
+
+                    <button type="submit" class="profile-save-btn">
+                        Save Telebirr Settings
+                    </button>
+
+                    <p
+                        id="telebirrSettingsMessage"
+                        role="status"
+                        aria-live="polite"
+                    ></p>
+                </form>
+
+            </div>
+            <!-- LOCATIONS -->
+
+            <div class="profile-section">
+
+                <div class="profile-section-header">
+
+                    <div>
+
+                        <div class="profile-section-title">
+                            ðŸ“ Locations
+                        </div>
+
+                        <div class="profile-section-description">
+                            Add a branch name and its map link.
+                        </div>
+
+                    </div>
+
+                    <button
+                        type="button"
+                        id="addLocationBtn"
+                        class="profile-add-btn"
+                    >
+                        + Add Location
+                    </button>
+
+                </div>
+
+                <div
+                    id="locationList"
+                    class="profile-list"
+                ></div>
+
+            </div>
+
+        </div>
+
+
+        <div class="profile-modal-footer">
+
+            <button
+                type="button"
+                id="profileCancelBtn"
+                class="profile-cancel-btn"
+            >
+                Cancel
+            </button>
+
+            <button
+                type="button"
+                id="profileSaveBtn"
+                class="profile-save-btn"
+            >
+                Save Profile
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ============================================================
+     CENTER SCREEN ADMIN STATUS POPUP
+     ============================================================ -->
+
+<div
+    id="adminStatusPopup"
+    class="admin-status-popup"
+    role="status"
+    aria-live="polite"
+    aria-atomic="true"
+>
+    <div class="admin-status-popup-content">
+
+        <div
+            id="adminStatusIcon"
+            class="admin-status-icon"
+        >
+            âœ“
+        </div>
+
+        <div
+            id="adminStatusMessage"
+            class="admin-status-message"
+        >
+            Saved successfully
+        </div>
+
+    </div>
+</div>
+
+<script>
+    if (
+        sessionStorage.getItem('dashboardAccess') !==
+        'cafe_admin'
+    ) {
+        window.location.replace('/admin.html');
+    }
+</script>
+<script src="/scripts/menu-expiration.js?v=20261013a"></script>
+<script src="/scripts/admin.js?v=20261013a"></script>
+
+</body>
+
+</html>

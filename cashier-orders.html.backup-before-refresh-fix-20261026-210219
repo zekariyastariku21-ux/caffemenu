@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CaffeMenu | Cashier Orders</title>
+<style>
+:root{color-scheme:dark;--bg:#17120f;--panel:#241b16;--gold:#d8ad62;--cream:#f8f0df;--muted:#b9aa98;--line:#49372b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--cream)}
+header{position:sticky;top:0;background:#201711;border-bottom:1px solid var(--line);padding:16px max(18px,calc((100% - 1100px)/2));display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:2}
+h1{font-size:21px;margin:0}small,.muted{color:var(--muted)}button{border:1px solid var(--line);border-radius:9px;padding:10px 13px;background:#302116;color:var(--cream);font-weight:bold;cursor:pointer}button.primary{background:var(--gold);color:#24170c;border-color:var(--gold)}
+main{max-width:1100px;margin:auto;padding:24px 18px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+#message{color:var(--gold);min-height:22px}.orders{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}
+.order{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:17px;min-width:0}.order-top{display:flex;justify-content:space-between;gap:12px;align-items:start}.order h2{font-size:17px;margin:0 0 6px}.status{font-size:12px;border:1px solid #80643b;border-radius:30px;padding:5px 8px;color:var(--gold);white-space:nowrap}
+.meta{font-size:13px;color:var(--muted);line-height:1.6;margin:12px 0}.items{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}.item{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:14px}.total{display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-weight:bold;color:var(--gold)}.empty{border:1px dashed var(--line);border-radius:14px;padding:30px;text-align:center;color:var(--muted)}
+@media(max-width:520px){header{align-items:flex-start}h1{font-size:18px}.header-buttons{display:flex;gap:6px;flex-direction:column}}
+</style>
+</head>
+<body>
+<header><div><h1 id="restaurantName">Cashier Orders</h1><small>Read-only order list</small></div><div class="header-buttons"><button id="refreshBtn" class="primary">Refresh</button> <button id="logoutBtn">Sign Out</button></div></header>
+<main><div class="toolbar"><div><strong>Recent orders</strong><div class="muted">Showing the latest 100 orders for this restaurant.</div></div><small id="lastUpdated"></small></div><p id="message" role="status"></p><section id="orders" class="orders"></section></main>
+<script>
+(function(){
+ const slug=(new URLSearchParams(location.search).get('restaurant')||'').trim();
+ const message=document.getElementById('message'),ordersNode=document.getElementById('orders');
+ if(!slug){message.textContent='Restaurant not identified.';return;}
+ const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=String(txt);return n;};
+ const money=v=>new Intl.NumberFormat(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v)||0);
+ function itemText(item){if(typeof item==='string')return item;if(!item||typeof item!=='object')return 'Item';return item.name||item.item_name||item.title||'Menu item';}
+ async function load(){
+   message.textContent='Loading ordersâ€¦';ordersNode.replaceChildren();
+   try{
+     const r=await fetch('/api/cashier/orders/'+encodeURIComponent(slug),{credentials:'same-origin',cache:'no-store'});
+     const d=await r.json();
+     if(r.status===401){location.href='/cashier-login.html?restaurant='+encodeURIComponent(slug);return;}
+     if(!r.ok)throw new Error(d.message||'Unable to load orders.');
+     document.getElementById('restaurantName').textContent=(d.restaurant&&d.restaurant.name)||slug;
+     const list=Array.isArray(d.orders)?d.orders:[];
+     if(!list.length){ordersNode.append(el('div','empty','No customer orders yet.'));message.textContent='';}
+     else{
+       list.forEach(order=>{
+         const card=el('article','order'),top=el('div','order-top'),heading=el('div','');
+         heading.append(el('h2','',`Order #${order.display_number ?? order.id}`));
+         heading.append(el('div','muted',order.created_at?new Date(order.created_at).toLocaleString():'Date unavailable'));
+         top.append(heading,el('span','status',order.status||'pending'));card.append(top);
+         const details=el('div','meta');
+         details.append(el('div','',`Customer: ${order.customer_name||'â€”'}`));
+         details.append(el('div','',`Phone: ${order.customer_phone||'â€”'}`));
+         details.append(el('div','',`Branch: ${order.branch_name||'â€”'}`));
+         details.append(el('div','',`Type: ${order.order_type||'â€”'}${order.table_number?' Â· Table '+order.table_number:''}`));
+         if(order.customer_address)details.append(el('div','',`Address: ${order.customer_address}`));
+         card.append(details);
+         const itemWrap=el('div','items'),items=Array.isArray(order.items)?order.items:[];
+         if(items.length){items.forEach(item=>{
+           const qty=Number(item&& (item.quantity??item.qty))||1;
+           const price=Number(item&& (item.price??item.unit_price))||0;
+           itemWrap.append(el('div','item',`${itemText(item)} Ã— ${qty}`));
+           const last=itemWrap.lastElementChild;
+           if(last)last.append(el('span','',money(price*qty)));
+         });}else itemWrap.append(el('div','muted','No item details available.'));
+         card.append(itemWrap);
+         const total=el('div','total');total.append(el('span','','Total'),el('span','',money(order.total)));card.append(total);
+         ordersNode.append(card);
+       });
+       message.textContent=`${list.length} order${list.length===1?'':'s'} loaded.`;
+     }
+     document.getElementById('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString();
+   }catch(e){message.textContent=e.message;}
+ }
+ document.getElementById('refreshBtn').addEventListener('click',load);
+ document.getElementById('logoutBtn').addEventListener('click',async()=>{
+   try{await fetch('/api/cashier/logout',{method:'POST',credentials:'same-origin',cache:'no-store'});}finally{location.href='/cashier-login.html?restaurant='+encodeURIComponent(slug);}
+ });
+ load();
+})();
+</script></body></html>
+

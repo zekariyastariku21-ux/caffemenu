@@ -1,0 +1,1209 @@
+﻿
+> scripts\saveAdd.js:1:let cart = [];
+> scripts\saveAdd.js:2:let editingCartNoteName = null;
+> scripts\saveAdd.js:3:let recentlyAddedCartItemName = null;
+  scripts\saveAdd.js:4:
+  scripts\saveAdd.js:5:let currentCategory = 'all';
+  scripts\saveAdd.js:100:
+> scripts\saveAdd.js:101:        if (textNode.parentElement?.closest(
+  scripts\saveAdd.js:102:            'input, textarea, select, script, 
+style, .notranslate, [translate="no"], [class*="goog-te"], 
+.customer-language-control'
+  scripts\saveAdd.js:103:        )) {
+  scripts\saveAdd.js:266:        renderCategoryButtons();
+> scripts\saveAdd.js:267:        renderCart();
+  scripts\saveAdd.js:268:    }
+  scripts\saveAdd.js:269:
+  scripts\saveAdd.js:398:
+> scripts\saveAdd.js:399:    const cartButton =
+  scripts\saveAdd.js:400:        document.querySelector(
+> scripts\saveAdd.js:401:            '.cartbutton'
+  scripts\saveAdd.js:402:        );
+  scripts\saveAdd.js:403:
+> scripts\saveAdd.js:404:    if (cartButton) {
+> scripts\saveAdd.js:405:        cartButton.style.background =
+  scripts\saveAdd.js:406:            appearance
+> scripts\saveAdd.js:407:                ? appearance.cart_button_background 
+|| ''
+  scripts\saveAdd.js:408:                : '';
+  scripts\saveAdd.js:409:
+> scripts\saveAdd.js:410:        cartButton.style.color =
+  scripts\saveAdd.js:411:            appearance
+> scripts\saveAdd.js:412:                ? appearance.cart_button_text || ''
+  scripts\saveAdd.js:413:                : '';
+  scripts\saveAdd.js:414:    }
+  scripts\saveAdd.js:638:const STORAGE_KEY =
+> scripts\saveAdd.js:639:    `simple-cart:${encodeURIComponent(CAFE_SLUG)}`;
+  scripts\saveAdd.js:640:
+  scripts\saveAdd.js:641:let foods = {};
+  scripts\saveAdd.js:688:                if (toast && toast.parentNode) {
+> scripts\saveAdd.js:689:                    toast.remove();
+  scripts\saveAdd.js:690:                }
+  scripts\saveAdd.js:691:            }, 300);
+  scripts\saveAdd.js:840:    if (restaurantName) {
+> scripts\saveAdd.js:841:        restaurantName.classList.remove(
+  scripts\saveAdd.js:842:            'restaurant-loading-name'
+  scripts\saveAdd.js:843:        );
+  scripts\saveAdd.js:844:
+> scripts\saveAdd.js:845:        restaurantName.removeAttribute(
+  scripts\saveAdd.js:846:            'aria-busy'
+  scripts\saveAdd.js:847:        );
+  scripts\saveAdd.js:853:    if (logoElement) {
+> scripts\saveAdd.js:854:        logoElement.classList.remove(
+  scripts\saveAdd.js:855:            'restaurant-loading-logo'
+  scripts\saveAdd.js:856:        );
+  scripts\saveAdd.js:857:
+> scripts\saveAdd.js:858:        logoElement.removeAttribute(
+  scripts\saveAdd.js:859:            'aria-busy'
+  scripts\saveAdd.js:860:        );
+  scripts\saveAdd.js:872:
+> scripts\saveAdd.js:873:        restaurantName.classList.remove(
+  scripts\saveAdd.js:874:            'restaurant-loading-name'
+  scripts\saveAdd.js:875:        );
+  scripts\saveAdd.js:876:
+> scripts\saveAdd.js:877:        restaurantName.removeAttribute(
+  scripts\saveAdd.js:878:            'aria-busy'
+  scripts\saveAdd.js:879:        );
+  scripts\saveAdd.js:885:    if (logoElement) {
+> scripts\saveAdd.js:886:    logoElement.classList.remove(
+  scripts\saveAdd.js:887:        'restaurant-loading-logo'
+  scripts\saveAdd.js:888:    );
+  scripts\saveAdd.js:889:
+> scripts\saveAdd.js:890:    logoElement.removeAttribute(
+  scripts\saveAdd.js:891:        'aria-busy'
+  scripts\saveAdd.js:892:    );
+  scripts\saveAdd.js:1096:            throw new Error(
+> scripts\saveAdd.js:1097:                'Restaurant logo is empty.'
+  scripts\saveAdd.js:1098:            );
+  scripts\saveAdd.js:1099:        }
+  scripts\saveAdd.js:1146:
+> scripts\saveAdd.js:1147:            logoElement.classList.remove(
+  scripts\saveAdd.js:1148:                'restaurant-loading-logo'
+  scripts\saveAdd.js:1149:            );
+  scripts\saveAdd.js:1150:
+> scripts\saveAdd.js:1151:            logoElement.removeAttribute(
+  scripts\saveAdd.js:1152:                'aria-busy'
+  scripts\saveAdd.js:1153:            );
+  scripts\saveAdd.js:1156:
+> scripts\saveAdd.js:1157:        const cartSheet =
+> scripts\saveAdd.js:1158:            document.getElementById('cartSheet');
+  scripts\saveAdd.js:1159:
+> scripts\saveAdd.js:1160:        const cartSheetBackground =
+> scripts\saveAdd.js:1161:            
+document.getElementById('cartSheetBackground');
+  scripts\saveAdd.js:1162:
+> scripts\saveAdd.js:1163:        if (cartSheet && cartSheetBackground) {
+> scripts\saveAdd.js:1164:            cartSheetBackground.fetchPriority = 
+'high';
+> scripts\saveAdd.js:1165:            cartSheetBackground.decoding = 'async';
+  scripts\saveAdd.js:1166:
+> scripts\saveAdd.js:1167:            cartSheetBackground.onload = () => {
+> scripts\saveAdd.js:1168:                cartSheet.classList.add(
+  scripts\saveAdd.js:1169:                    'has-restaurant-background'
+  scripts\saveAdd.js:1170:                );
+  scripts\saveAdd.js:1172:
+> scripts\saveAdd.js:1173:            cartSheetBackground.onerror = () => {
+> scripts\saveAdd.js:1174:                cartSheet.classList.remove(
+  scripts\saveAdd.js:1175:                    'has-restaurant-background'
+  scripts\saveAdd.js:1176:                );
+  scripts\saveAdd.js:1179:            if (
+> scripts\saveAdd.js:1180:                
+cartSheetBackground.getAttribute('src') !== logo
+  scripts\saveAdd.js:1181:            ) {
+> scripts\saveAdd.js:1182:                cartSheetBackground.src = logo;
+  scripts\saveAdd.js:1183:            }
+  scripts\saveAdd.js:1184:
+  scripts\saveAdd.js:1185:            if (
+> scripts\saveAdd.js:1186:                cartSheetBackground.complete &&
+> scripts\saveAdd.js:1187:                cartSheetBackground.naturalWidth > 
+0
+  scripts\saveAdd.js:1188:            ) {
+> scripts\saveAdd.js:1189:                cartSheet.classList.add(
+  scripts\saveAdd.js:1190:                    'has-restaurant-background'
+  scripts\saveAdd.js:1191:                );
+  scripts\saveAdd.js:1233:
+> scripts\saveAdd.js:1234:            logoElement.classList.remove(
+  scripts\saveAdd.js:1235:                'restaurant-loading-logo'
+  scripts\saveAdd.js:1236:            );
+  scripts\saveAdd.js:1237:
+> scripts\saveAdd.js:1238:            logoElement.removeAttribute(
+  scripts\saveAdd.js:1239:                'aria-busy'
+  scripts\saveAdd.js:1240:            );
+  scripts\saveAdd.js:1252:    if (existing) {
+> scripts\saveAdd.js:1253:        existing.remove();
+  scripts\saveAdd.js:1254:    }
+  scripts\saveAdd.js:1255:
+  scripts\saveAdd.js:1485:
+> scripts\saveAdd.js:1486:            restaurantNameElement.removeAttribute(
+  scripts\saveAdd.js:1487:                'aria-busy'
+  scripts\saveAdd.js:1488:            );
+  scripts\saveAdd.js:1489:
+> scripts\saveAdd.js:1490:            restaurantNameElement.classList.remove(
+  scripts\saveAdd.js:1491:                'restaurant-loading-name'
+  scripts\saveAdd.js:1492:            );
+  scripts\saveAdd.js:1685: * - It does NOT show the Loading... screen.
+> scripts\saveAdd.js:1686: * - It does NOT clear the customer's cart.
+  scripts\saveAdd.js:1687: * - It does NOT reset the selected category.
+  scripts\saveAdd.js:1688: * - It does NOT reset the search box.
+  scripts\saveAdd.js:1776:
+> scripts\saveAdd.js:1777:                restaurantName.classList.remove(
+  scripts\saveAdd.js:1778:                    'restaurant-loading-name'
+  scripts\saveAdd.js:1779:                );
+  scripts\saveAdd.js:1780:
+> scripts\saveAdd.js:1781:                restaurantName.removeAttribute(
+  scripts\saveAdd.js:1782:                    'aria-busy'
+  scripts\saveAdd.js:1783:                );
+  scripts\saveAdd.js:1912:
+> scripts\saveAdd.js:1913:    const cartSheet =
+> scripts\saveAdd.js:1914:        document.getElementById('cartSheet');
+  scripts\saveAdd.js:1915:
+> scripts\saveAdd.js:1916:    const cartSheetBackground =
+> scripts\saveAdd.js:1917:        
+document.getElementById('cartSheetBackground');
+  scripts\saveAdd.js:1918:
+> scripts\saveAdd.js:1919:    if (cartSheet && cartSheetBackground) {
+> scripts\saveAdd.js:1920:        cartSheetBackground.fetchPriority = 'high';
+> scripts\saveAdd.js:1921:        cartSheetBackground.decoding = 'async';
+  scripts\saveAdd.js:1922:
+> scripts\saveAdd.js:1923:        const clearCartBackground = () => {
+> scripts\saveAdd.js:1924:            cartSheet.classList.remove(
+  scripts\saveAdd.js:1925:                'has-restaurant-background'
+  scripts\saveAdd.js:1926:            );
+> scripts\saveAdd.js:1927:            
+cartSheetBackground.removeAttribute('src');
+  scripts\saveAdd.js:1928:        };
+  scripts\saveAdd.js:1929:
+> scripts\saveAdd.js:1930:        cartSheetBackground.onload = () => {
+> scripts\saveAdd.js:1931:            cartSheet.classList.add(
+  scripts\saveAdd.js:1932:                'has-restaurant-background'
+  scripts\saveAdd.js:1933:            );
+  scripts\saveAdd.js:1935:
+> scripts\saveAdd.js:1936:        cartSheetBackground.onerror = () => {
+> scripts\saveAdd.js:1937:            clearCartBackground();
+  scripts\saveAdd.js:1938:        };
+  scripts\saveAdd.js:1939:
+  scripts\saveAdd.js:1946:            if (
+> scripts\saveAdd.js:1947:                
+cartSheetBackground.getAttribute('src') !==
+  scripts\saveAdd.js:1948:                backgroundSource
+  scripts\saveAdd.js:1949:            ) {
+> scripts\saveAdd.js:1950:                cartSheetBackground.src = 
+backgroundSource;
+  scripts\saveAdd.js:1951:            }
+  scripts\saveAdd.js:1952:
+  scripts\saveAdd.js:1953:            if (
+> scripts\saveAdd.js:1954:                cartSheetBackground.complete &&
+> scripts\saveAdd.js:1955:                cartSheetBackground.naturalWidth
+  scripts\saveAdd.js:1956:            ) {
+> scripts\saveAdd.js:1957:                cartSheet.classList.add(
+  scripts\saveAdd.js:1958:                    'has-restaurant-background'
+  scripts\saveAdd.js:1959:                );
+  scripts\saveAdd.js:1961:        } else {
+> scripts\saveAdd.js:1962:            clearCartBackground();
+  scripts\saveAdd.js:1963:        }
+  scripts\saveAdd.js:1964:    }
+  scripts\saveAdd.js:2128:        container.innerHTML = `
+> scripts\saveAdd.js:2129:            <div class="menu-contact-empty">
+  scripts\saveAdd.js:2130:                Contact information unavailable
+  scripts\saveAdd.js:2131:            </div>
+  scripts\saveAdd.js:2327:        container.innerHTML = `
+> scripts\saveAdd.js:2328:            <div class="empty-state">
+  scripts\saveAdd.js:2329:                No items match your search.
+  scripts\saveAdd.js:2330:            </div>
+  scripts\saveAdd.js:2478:
+> scripts\saveAdd.js:2479:                    addToCart(
+  scripts\saveAdd.js:2480:                        event,
+  scripts\saveAdd.js:2481:                        button
+  scripts\saveAdd.js:2608:
+> scripts\saveAdd.js:2609:        button.removeAttribute(
+  scripts\saveAdd.js:2610:            'aria-disabled'
+  scripts\saveAdd.js:2611:        );
+  scripts\saveAdd.js:2619:
+> scripts\saveAdd.js:2620:        button.classList.remove(
+  scripts\saveAdd.js:2621:            'has-special'
+  scripts\saveAdd.js:2622:        );
+  scripts\saveAdd.js:2623:
+> scripts\saveAdd.js:2624:        button.removeAttribute(
+  scripts\saveAdd.js:2625:            'title'
+  scripts\saveAdd.js:2626:        );
+  scripts\saveAdd.js:2636:
+> scripts\saveAdd.js:2637:    closeCustomerDaySpecial();
+  scripts\saveAdd.js:2638:
+  scripts\saveAdd.js:2639:    const specials =
+  scripts\saveAdd.js:2659:            <div
+> scripts\saveAdd.js:2660:                
+class="customer-day-special-empty-modal"
+  scripts\saveAdd.js:2661:                role="dialog"
+  scripts\saveAdd.js:2662:                aria-modal="true"
+> scripts\saveAdd.js:2663:                
+aria-labelledby="daySpecialEmptyTitle"
+  scripts\saveAdd.js:2664:            >
+  scripts\saveAdd.js:2665:
+  scripts\saveAdd.js:2667:                    type="button"
+> scripts\saveAdd.js:2668:                    
+class="customer-day-special-close"
+> scripts\saveAdd.js:2669:                    id="customerDaySpecialClose"
+> scripts\saveAdd.js:2670:                    aria-label="Close"
+  scripts\saveAdd.js:2671:                >
+  scripts\saveAdd.js:2672:                    ×
+  scripts\saveAdd.js:2675:
+> scripts\saveAdd.js:2676:                <div 
+class="customer-day-special-empty-icon">
+  scripts\saveAdd.js:2677:                    ✨
+  scripts\saveAdd.js:2678:                </div>
+  scripts\saveAdd.js:2680:
+> scripts\saveAdd.js:2681:                <h2 id="daySpecialEmptyTitle">
+  scripts\saveAdd.js:2682:                    No Day Special
+  scripts\saveAdd.js:2683:                </h2>
+  scripts\saveAdd.js:2693:                    type="button"
+> scripts\saveAdd.js:2694:                    
+class="customer-day-special-close-button"
+> scripts\saveAdd.js:2695:                    
+id="customerDaySpecialCloseButton"
+  scripts\saveAdd.js:2696:                >
+> scripts\saveAdd.js:2697:                    Close
+  scripts\saveAdd.js:2698:                </button>
+  scripts\saveAdd.js:2699:
+  scripts\saveAdd.js:2719:
+> scripts\saveAdd.js:2720:        attachCustomerDaySpecialCloseEvents(
+  scripts\saveAdd.js:2721:            overlay
+  scripts\saveAdd.js:2722:        );
+  scripts\saveAdd.js:2826:                                        >
+> scripts\saveAdd.js:2827:                                            + Add 
+to Cart
+  scripts\saveAdd.js:2828:                                        </button>
+  scripts\saveAdd.js:2829:                                    `
+  scripts\saveAdd.js:2872:                    type="button"
+> scripts\saveAdd.js:2873:                    
+class="customer-day-special-close"
+> scripts\saveAdd.js:2874:                    id="customerDaySpecialClose"
+> scripts\saveAdd.js:2875:                    aria-label="Close"
+  scripts\saveAdd.js:2876:                >
+  scripts\saveAdd.js:2877:                    ×
+  scripts\saveAdd.js:2893:                    type="button"
+> scripts\saveAdd.js:2894:                    
+class="customer-day-special-close-button"
+> scripts\saveAdd.js:2895:                    
+id="customerDaySpecialCloseButton"
+  scripts\saveAdd.js:2896:                >
+  scripts\saveAdd.js:2897:                    Continue Browsing
+  scripts\saveAdd.js:2932:    /* 
+============================================================
+> scripts\saveAdd.js:2933:       CLOSE EVENTS
+  scripts\saveAdd.js:2934:       
+============================================================ */
+  scripts\saveAdd.js:2935:
+> scripts\saveAdd.js:2936:    attachCustomerDaySpecialCloseEvents(
+  scripts\saveAdd.js:2937:        overlay
+  scripts\saveAdd.js:2938:    );
+  scripts\saveAdd.js:2941:    /* 
+============================================================
+> scripts\saveAdd.js:2942:       ADD TO CART
+  scripts\saveAdd.js:2943:       
+============================================================ */
+  scripts\saveAdd.js:2944:
+  scripts\saveAdd.js:2968:
+> scripts\saveAdd.js:2969:                    addToCart(
+  scripts\saveAdd.js:2970:                        event,
+  scripts\saveAdd.js:2971:                        fakeButton
+  scripts\saveAdd.js:2975:                    addButton.textContent =
+> scripts\saveAdd.js:2976:                        'âœ“ Added to Cart';
+  scripts\saveAdd.js:2977:
+  scripts\saveAdd.js:2978:                    addButton.disabled =
+  scripts\saveAdd.js:2990:                            addButton.textContent =
+> scripts\saveAdd.js:2991:                                '+ Add to Cart';
+  scripts\saveAdd.js:2992:
+  scripts\saveAdd.js:2993:                            addButton.disabled =
+  scripts\saveAdd.js:3004:/* 
+==========================================================================
+> scripts\saveAdd.js:3005:   DAY SPECIAL CLOSE EVENTS
+  scripts\saveAdd.js:3006:   
+========================================================================== */
+  scripts\saveAdd.js:3007:
+> scripts\saveAdd.js:3008:function attachCustomerDaySpecialCloseEvents(
+  scripts\saveAdd.js:3009:    overlay
+  scripts\saveAdd.js:3010:) {
+  scripts\saveAdd.js:3011:
+> scripts\saveAdd.js:3012:    const closeButton =
+  scripts\saveAdd.js:3013:        overlay.querySelector(
+> scripts\saveAdd.js:3014:            '#customerDaySpecialClose'
+  scripts\saveAdd.js:3015:        );
+  scripts\saveAdd.js:3016:
+> scripts\saveAdd.js:3017:    const closeBottomButton =
+  scripts\saveAdd.js:3018:        overlay.querySelector(
+> scripts\saveAdd.js:3019:            '#customerDaySpecialCloseButton'
+  scripts\saveAdd.js:3020:        );
+  scripts\saveAdd.js:3021:
+  scripts\saveAdd.js:3022:
+> scripts\saveAdd.js:3023:    if (closeButton) {
+  scripts\saveAdd.js:3024:
+> scripts\saveAdd.js:3025:        closeButton.addEventListener(
+  scripts\saveAdd.js:3026:            'click',
+> scripts\saveAdd.js:3027:            closeCustomerDaySpecial
+  scripts\saveAdd.js:3028:        );
+  scripts\saveAdd.js:3029:    }
+  scripts\saveAdd.js:3031:
+> scripts\saveAdd.js:3032:    if (closeBottomButton) {
+  scripts\saveAdd.js:3033:
+> scripts\saveAdd.js:3034:        closeBottomButton.addEventListener(
+  scripts\saveAdd.js:3035:            'click',
+> scripts\saveAdd.js:3036:            closeCustomerDaySpecial
+  scripts\saveAdd.js:3037:        );
+  scripts\saveAdd.js:3038:    }
+  scripts\saveAdd.js:3050:
+> scripts\saveAdd.js:3051:                closeCustomerDaySpecial();
+  scripts\saveAdd.js:3052:            }
+  scripts\saveAdd.js:3053:        }
+  scripts\saveAdd.js:3057:
+> scripts\saveAdd.js:3058:function closeCustomerDaySpecial() {
+  scripts\saveAdd.js:3059:
+  scripts\saveAdd.js:3060:    const modal =
+  scripts\saveAdd.js:3066:
+> scripts\saveAdd.js:3067:        document.body.classList.remove(
+  scripts\saveAdd.js:3068:            'customer-day-special-open'
+  scripts\saveAdd.js:3069:        );
+  scripts\saveAdd.js:3074:
+> scripts\saveAdd.js:3075:    modal.classList.remove(
+  scripts\saveAdd.js:3076:        'active'
+  scripts\saveAdd.js:3077:    );
+  scripts\saveAdd.js:3078:
+> scripts\saveAdd.js:3079:    document.body.classList.remove(
+  scripts\saveAdd.js:3080:        'customer-day-special-open'
+  scripts\saveAdd.js:3081:    );
+  scripts\saveAdd.js:3090:
+> scripts\saveAdd.js:3091:            modal.remove();
+  scripts\saveAdd.js:3092:        }
+  scripts\saveAdd.js:3093:
+  scripts\saveAdd.js:3098:/* 
+==========================================================================
+> scripts\saveAdd.js:3099:   CART LOCAL STORAGE
+  scripts\saveAdd.js:3100:   
+========================================================================== */
+  scripts\saveAdd.js:3101:
+  scripts\saveAdd.js:3128:                typeof item === 'object' &&
+> scripts\saveAdd.js:3129:                Number(item.quantity) > 0
+  scripts\saveAdd.js:3130:        );
+  scripts\saveAdd.js:3131:
+  scripts\saveAdd.js:3134:        console.warn(
+> scripts\saveAdd.js:3135:            'Could not load cart from local 
+storage:',
+  scripts\saveAdd.js:3136:            error
+  scripts\saveAdd.js:3137:        );
+  scripts\saveAdd.js:3145:
+> scripts\saveAdd.js:3146:    const smallCart =
+> scripts\saveAdd.js:3147:        cart.map(item => ({
+  scripts\saveAdd.js:3148:
+  scripts\saveAdd.js:3149:            id:
+  scripts\saveAdd.js:3165:
+> scripts\saveAdd.js:3166:            quantity:
+> scripts\saveAdd.js:3167:                Number(item.quantity) || 1
+  scripts\saveAdd.js:3168:        }));
+  scripts\saveAdd.js:3169:
+  scripts\saveAdd.js:3172:        STORAGE_KEY,
+> scripts\saveAdd.js:3173:        JSON.stringify(smallCart)
+  scripts\saveAdd.js:3174:    );
+  scripts\saveAdd.js:3175:}
+  scripts\saveAdd.js:3178:/* 
+==========================================================================
+> scripts\saveAdd.js:3179:   CART
+  scripts\saveAdd.js:3180:   
+========================================================================== */
+  scripts\saveAdd.js:3181:
+> scripts\saveAdd.js:3182:function loadCart() {
+  scripts\saveAdd.js:3183:
+> scripts\saveAdd.js:3184:    cart =
+  scripts\saveAdd.js:3185:        loadFromLocalStorage();
+  scripts\saveAdd.js:3186:
+> scripts\saveAdd.js:3187:    renderCart();
+  scripts\saveAdd.js:3188:}
+  scripts\saveAdd.js:3189:
+  scripts\saveAdd.js:3190:
+> scripts\saveAdd.js:3191:function saveCart() {
+  scripts\saveAdd.js:3192:
+  scripts\saveAdd.js:3193:    saveToLocalStorage();
+  scripts\saveAdd.js:3196:
+> scripts\saveAdd.js:3197:function addToCart(
+  scripts\saveAdd.js:3198:    event,
+  scripts\saveAdd.js:3199:    button
+  scripts\saveAdd.js:3251:    const matchingItem =
+> scripts\saveAdd.js:3252:        cart.find(
+  scripts\saveAdd.js:3253:            item =>
+  scripts\saveAdd.js:3254:                item.name ===
+  scripts\saveAdd.js:3260:
+> scripts\saveAdd.js:3261:        matchingItem.quantity =
+  scripts\saveAdd.js:3262:            Number(
+> scripts\saveAdd.js:3263:                matchingItem.quantity || 0
+  scripts\saveAdd.js:3264:            ) + 1;
+  scripts\saveAdd.js:3265:
+  scripts\saveAdd.js:3273:
+> scripts\saveAdd.js:3274:        cart.push({
+  scripts\saveAdd.js:3275:
+  scripts\saveAdd.js:3276:            id:
+  scripts\saveAdd.js:3287:
+> scripts\saveAdd.js:3288:            quantity:
+  scripts\saveAdd.js:3289:                1
+  scripts\saveAdd.js:3290:        });
+  scripts\saveAdd.js:3292:
+> scripts\saveAdd.js:3293:    recentlyAddedCartItemName =
+  scripts\saveAdd.js:3294:        food.name;
+  scripts\saveAdd.js:3295:
+> scripts\saveAdd.js:3296:    saveCart();
+  scripts\saveAdd.js:3297:
+> scripts\saveAdd.js:3298:    renderCart();
+  scripts\saveAdd.js:3299:
+> scripts\saveAdd.js:3300:    const cartSheet =
+> scripts\saveAdd.js:3301:        document.getElementById('cartSheet');
+  scripts\saveAdd.js:3302:
+> scripts\saveAdd.js:3303:    const cartButton =
+> scripts\saveAdd.js:3304:        document.querySelector('.cartbutton');
+  scripts\saveAdd.js:3305:
+> scripts\saveAdd.js:3306:    if (cartSheet && cartButton) {
+> scripts\saveAdd.js:3307:        cartSheet.classList.add('open');
+> scripts\saveAdd.js:3308:        cartSheet.classList.remove('expanded');
+> scripts\saveAdd.js:3309:        cartButton.setAttribute('aria-expanded', 
+'true');
+> scripts\saveAdd.js:3310:        cartSheet
+> scripts\saveAdd.js:3311:            .querySelector('.cart-sheet-handle')
+> scripts\saveAdd.js:3312:            ?.setAttribute('aria-label', 'Expand 
+cart');
+  scripts\saveAdd.js:3313:    }
+  scripts\saveAdd.js:3314:
+  scripts\saveAdd.js:3324:        button.textContent =
+> scripts\saveAdd.js:3325:            'âœ“ Added';
+  scripts\saveAdd.js:3326:
+  scripts\saveAdd.js:3327:
+  scripts\saveAdd.js:3351:/* 
+==========================================================================
+> scripts\saveAdd.js:3352:   RENDER CART
+  scripts\saveAdd.js:3353:   
+========================================================================== */
+  scripts\saveAdd.js:3354:
+> scripts\saveAdd.js:3355:function renderCart() {
+  scripts\saveAdd.js:3356:
+> scripts\saveAdd.js:3357:    const cartBody =
+  scripts\saveAdd.js:3358:        document.getElementById(
+> scripts\saveAdd.js:3359:            'cart-body'
+  scripts\saveAdd.js:3360:        );
+  scripts\saveAdd.js:3361:
+  scripts\saveAdd.js:3362:
+> scripts\saveAdd.js:3363:    if (!cartBody) {
+  scripts\saveAdd.js:3364:        return;
+  scripts\saveAdd.js:3365:    }
+  scripts\saveAdd.js:3366:
+> scripts\saveAdd.js:3367:    const clearCartButton =
+> scripts\saveAdd.js:3368:    document.getElementById('clearCartButton');
+  scripts\saveAdd.js:3369:
+  scripts\saveAdd.js:3370:const orderNowButton =
+  scripts\saveAdd.js:3372:
+> scripts\saveAdd.js:3373:if (clearCartButton) {
+> scripts\saveAdd.js:3374:    clearCartButton.disabled = cart.length === 0;
+  scripts\saveAdd.js:3375:}
+  scripts\saveAdd.js:3376:
+  scripts\saveAdd.js:3377:if (orderNowButton) {
+> scripts\saveAdd.js:3378:    orderNowButton.disabled = cart.length === 0;
+  scripts\saveAdd.js:3379:}
+  scripts\saveAdd.js:3380:
+> scripts\saveAdd.js:3381:    const totalItemCount =
+> scripts\saveAdd.js:3382:        cart.reduce(
+> scripts\saveAdd.js:3383:            (total, item) =>
+> scripts\saveAdd.js:3384:                total + Math.max(0, 
+Number(item.quantity) || 0),
+  scripts\saveAdd.js:3385:            0
+  scripts\saveAdd.js:3386:        );
+  scripts\saveAdd.js:3387:
+> scripts\saveAdd.js:3388:    const cartItemCount =
+> scripts\saveAdd.js:3389:        document.getElementById('cart-item-count');
+  scripts\saveAdd.js:3390:
+> scripts\saveAdd.js:3391:    if (cartItemCount) {
+> scripts\saveAdd.js:3392:        cartItemCount.textContent =
+> scripts\saveAdd.js:3393:            
+`${formatCustomerNumber(totalItemCount)} ${totalItemCount === 1 ? 'item' : 
+'items'}`;
+  scripts\saveAdd.js:3394:    }
+  scripts\saveAdd.js:3395:
+> scripts\saveAdd.js:3396:    const cartButtonCount =
+> scripts\saveAdd.js:3397:        
+document.getElementById('cart-button-count');
+  scripts\saveAdd.js:3398:
+> scripts\saveAdd.js:3399:    if (cartButtonCount) {
+> scripts\saveAdd.js:3400:        cartButtonCount.textContent =
+> scripts\saveAdd.js:3401:            formatCustomerNumber(totalItemCount);
+  scripts\saveAdd.js:3402:    }
+  scripts\saveAdd.js:3403:
+> scripts\saveAdd.js:3404:    const cartButton =
+> scripts\saveAdd.js:3405:        document.querySelector('.cartbutton');
+  scripts\saveAdd.js:3406:
+> scripts\saveAdd.js:3407:    if (cartButton) {
+> scripts\saveAdd.js:3408:        cartButton.setAttribute(
+  scripts\saveAdd.js:3409:            'aria-label',
+> scripts\saveAdd.js:3410:            `Cart, ${totalItemCount} 
+${totalItemCount === 1 ? 'item' : 'items'}`
+  scripts\saveAdd.js:3411:        );
+  scripts\saveAdd.js:3412:    }
+  scripts\saveAdd.js:3413:
+> scripts\saveAdd.js:3414:    const cartSheetElement =
+> scripts\saveAdd.js:3415:        document.getElementById('cartSheet');
+  scripts\saveAdd.js:3416:
+> scripts\saveAdd.js:3417:    cartSheetElement?.classList.toggle(
+  scripts\saveAdd.js:3418:        'has-recently-added',
+> scripts\saveAdd.js:3419:        cart.some(item => item.name === 
+recentlyAddedCartItemName)
+  scripts\saveAdd.js:3420:    );
+  scripts\saveAdd.js:3421:
+  scripts\saveAdd.js:3422:
+> scripts\saveAdd.js:3423:    if (!cart.length) {
+  scripts\saveAdd.js:3424:
+> scripts\saveAdd.js:3425:        cartBody.innerHTML = `
+  scripts\saveAdd.js:3426:            <tr>
+  scripts\saveAdd.js:3427:                <td colspan="3">
+> scripts\saveAdd.js:3428:                    Your cart is empty
+  scripts\saveAdd.js:3429:                </td>
+  scripts\saveAdd.js:3430:            </tr>
+  scripts\saveAdd.js:3439:
+> scripts\saveAdd.js:3440:        cartBody.innerHTML =
+> scripts\saveAdd.js:3441:            cart
+  scripts\saveAdd.js:3442:                .map(item => {
+  scripts\saveAdd.js:3443:
+  scripts\saveAdd.js:3446:
+> scripts\saveAdd.js:3447:                    const quantity =
+> scripts\saveAdd.js:3448:                        Number(item.quantity) || 0;
+  scripts\saveAdd.js:3449:
+  scripts\saveAdd.js:3450:                    const itemName =
+  scripts\saveAdd.js:3456:                    const isEditingNote =
+> scripts\saveAdd.js:3457:                        editingCartNoteName === 
+itemName;
+  scripts\saveAdd.js:3458:
+  scripts\saveAdd.js:3459:                    const menuItem =
+  scripts\saveAdd.js:3471:                        <tr
+> scripts\saveAdd.js:3472:                            
+class="cart-item-row${itemName === recentlyAddedCartItemName ? ' 
+is-recently-added' : ''}"
+> scripts\saveAdd.js:3473:                            
+data-cart-item-name="${escapeAttribute(itemName)}"
+  scripts\saveAdd.js:3474:                        >
+  scripts\saveAdd.js:3475:
+  scripts\saveAdd.js:3476:                            <td>
+> scripts\saveAdd.js:3477:                                <div 
+class="cart-item-layout">
+  scripts\saveAdd.js:3478:                                    <img
+> scripts\saveAdd.js:3479:                                        
+class="cart-item-image"
+  scripts\saveAdd.js:3480:                                        
+src="${escapeAttribute(itemImage)}"
+  scripts\saveAdd.js:3481:                                        
+alt="${escapeAttribute(itemName)}"
+  scripts\saveAdd.js:3484:                                    >
+> scripts\saveAdd.js:3485:                                    <div 
+class="cart-item-details">
+> scripts\saveAdd.js:3486:                                        <div 
+class="cart-item-heading">
+> scripts\saveAdd.js:3487:                                            <span 
+class="cart-item-name">${escapeHtml(itemName)}</span>
+  scripts\saveAdd.js:3488:                                            <button
+  scripts\saveAdd.js:3489:                                                
+type="button"
+> scripts\saveAdd.js:3490:                                                
+class="cart-note-toggle"
+  scripts\saveAdd.js:3491:                                                
+data-action="edit-note"
+  scripts\saveAdd.js:3492:                                                
+data-name="${escapeAttribute(itemName)}"
+  scripts\saveAdd.js:3494:                                                
+title="Add or edit item note"
+> scripts\saveAdd.js:3495:                                            
+>âœŽ</button>
+  scripts\saveAdd.js:3496:                                        </div>
+> scripts\saveAdd.js:3497:                                        <span 
+class="cart-item-unit-price">${formatCustomerCurrency(itemPrice)}</span>
+> scripts\saveAdd.js:3498:                                        ${note ? 
+`<span class="cart-item-note">(${escapeHtml(note)})</span>` : ''}
+  scripts\saveAdd.js:3499:                                        
+${isEditingNote ? `
+> scripts\saveAdd.js:3500:                                            <div 
+class="cart-note-editor">
+  scripts\saveAdd.js:3501:                                                
+<input
+  scripts\saveAdd.js:3502:                                                   
+ type="text"
+> scripts\saveAdd.js:3503:                                                   
+ class="cart-note-input"
+  scripts\saveAdd.js:3504:                                                   
+ value="${escapeAttribute(note)}"
+  scripts\saveAdd.js:3505:                                                   
+ maxlength="200"
+  scripts\saveAdd.js:3508:                                                >
+> scripts\saveAdd.js:3509:                                                
+<div class="cart-note-actions">
+  scripts\saveAdd.js:3510:                                                   
+ <button type="button" data-action="save-note" 
+data-name="${escapeAttribute(itemName)}">Done</button>
+  scripts\saveAdd.js:3511:                                                   
+ <button type="button" data-action="cancel-note" 
+data-name="${escapeAttribute(itemName)}">Cancel</button>
+  scripts\saveAdd.js:3532:
+> scripts\saveAdd.js:3533:                                    <span 
+class="notranslate" translate="no">${formatCustomerNumber(quantity)}</span>
+  scripts\saveAdd.js:3534:
+  scripts\saveAdd.js:3535:
+  scripts\saveAdd.js:3548:
+> scripts\saveAdd.js:3549:                            <td 
+class="cart-item-total">
+  scripts\saveAdd.js:3550:                                
+${formatCustomerCurrency(
+> scripts\saveAdd.js:3551:                                    itemPrice * 
+quantity
+  scripts\saveAdd.js:3552:                                )}
+  scripts\saveAdd.js:3553:                            </td>
+  scripts\saveAdd.js:3560:
+> scripts\saveAdd.js:3561:    
+cartBody.querySelectorAll('button[data-action]').forEach(button => {
+  scripts\saveAdd.js:3562:        button.addEventListener('click', () => {
+  scripts\saveAdd.js:3563:            const action = button.dataset.action;
+  scripts\saveAdd.js:3570:            if (action === 'increase') {
+> scripts\saveAdd.js:3571:                increaseQuantity(name);
+  scripts\saveAdd.js:3572:                return;
+  scripts\saveAdd.js:3573:            }
+  scripts\saveAdd.js:3575:            if (action === 'decrease') {
+> scripts\saveAdd.js:3576:                decreaseQuantity(name);
+  scripts\saveAdd.js:3577:                return;
+  scripts\saveAdd.js:3578:            }
+  scripts\saveAdd.js:3580:            if (action === 'edit-note') {
+> scripts\saveAdd.js:3581:                editingCartNoteName = name;
+> scripts\saveAdd.js:3582:                renderCart();
+> scripts\saveAdd.js:3583:                
+cartBody.querySelector('.cart-note-input')?.focus();
+  scripts\saveAdd.js:3584:                return;
+  scripts\saveAdd.js:3585:            }
+  scripts\saveAdd.js:3588:                const noteInput =
+> scripts\saveAdd.js:3589:                    
+button.closest('tr')?.querySelector('.cart-note-input');
+  scripts\saveAdd.js:3590:
+  scripts\saveAdd.js:3591:                const item =
+> scripts\saveAdd.js:3592:                    cart.find(currentItem => 
+currentItem.name === name);
+  scripts\saveAdd.js:3593:
+  scripts\saveAdd.js:3594:                if (!item || !noteInput) {
+  scripts\saveAdd.js:3598:                item.note = noteInput.value.trim();
+> scripts\saveAdd.js:3599:                editingCartNoteName = null;
+> scripts\saveAdd.js:3600:                saveCart();
+> scripts\saveAdd.js:3601:                renderCart();
+  scripts\saveAdd.js:3602:                return;
+  scripts\saveAdd.js:3603:            }
+  scripts\saveAdd.js:3605:            if (action === 'cancel-note') {
+> scripts\saveAdd.js:3606:                editingCartNoteName = null;
+> scripts\saveAdd.js:3607:                renderCart();
+  scripts\saveAdd.js:3608:            }
+  scripts\saveAdd.js:3609:        });
+  scripts\saveAdd.js:3612:
+> scripts\saveAdd.js:3613:    const total =
+> scripts\saveAdd.js:3614:        cart.reduce(
+  scripts\saveAdd.js:3615:            (sum, item) =>
+  scripts\saveAdd.js:3616:                sum +
+  scripts\saveAdd.js:3618:                    (Number(item.price) || 0) *
+> scripts\saveAdd.js:3619:                    (Number(item.quantity) || 0)
+  scripts\saveAdd.js:3620:                ),
+  scripts\saveAdd.js:3621:            0
+  scripts\saveAdd.js:3624:
+> scripts\saveAdd.js:3625:    const totalElement =
+  scripts\saveAdd.js:3626:        document.getElementById(
+> scripts\saveAdd.js:3627:            'total-price'
+  scripts\saveAdd.js:3628:        );
+  scripts\saveAdd.js:3629:
+  scripts\saveAdd.js:3630:
+> scripts\saveAdd.js:3631:    if (totalElement) {
+  scripts\saveAdd.js:3632:
+> scripts\saveAdd.js:3633:        totalElement.innerHTML =
+> scripts\saveAdd.js:3634:            formatCustomerCurrency(total);
+  scripts\saveAdd.js:3635:    }
+  scripts\saveAdd.js:3636:
+> scripts\saveAdd.js:3637:    const cartSheet =
+> scripts\saveAdd.js:3638:        document.getElementById('cartSheet');
+  scripts\saveAdd.js:3639:
+> scripts\saveAdd.js:3640:    const cartPanel =
+> scripts\saveAdd.js:3641:        cartSheet?.querySelector('.cart');
+  scripts\saveAdd.js:3642:
+> scripts\saveAdd.js:3643:    const cartHandle =
+> scripts\saveAdd.js:3644:        
+cartSheet?.querySelector('.cart-sheet-handle');
+  scripts\saveAdd.js:3645:
+> scripts\saveAdd.js:3646:    if (cartSheet && cartPanel && cartHandle) {
+> scripts\saveAdd.js:3647:        const cartTopbar =
+> scripts\saveAdd.js:3648:            
+cartPanel.querySelector('.cart-topbar');
+  scripts\saveAdd.js:3649:
+  scripts\saveAdd.js:3650:        const focusedRow =
+  scripts\saveAdd.js:3651:            Array.from(
+> scripts\saveAdd.js:3652:                
+cartBody.querySelectorAll('tr[data-cart-item-name]')
+  scripts\saveAdd.js:3653:            ).find(
+  scripts\saveAdd.js:3654:                row =>
+> scripts\saveAdd.js:3655:                    row.dataset.cartItemName === 
+recentlyAddedCartItemName
+> scripts\saveAdd.js:3656:            ) || 
+cartBody.querySelector('tr[data-cart-item-name]');
+  scripts\saveAdd.js:3657:
+> scripts\saveAdd.js:3658:        const cartStyles =
+> scripts\saveAdd.js:3659:            getComputedStyle(cartPanel);
+  scripts\saveAdd.js:3660:
+  scripts\saveAdd.js:3661:        const contentHeight =
+> scripts\saveAdd.js:3662:            (cartTopbar?.offsetHeight || 0) +
+  scripts\saveAdd.js:3663:            (focusedRow?.offsetHeight || 0) +
+  scripts\saveAdd.js:3664:            (focusedRow ? 20 : 0) +
+> scripts\saveAdd.js:3665:            cartHandle.offsetHeight +
+> scripts\saveAdd.js:3666:            
+(Number.parseFloat(cartStyles.paddingTop) || 0) +
+> scripts\saveAdd.js:3667:            
+(Number.parseFloat(cartStyles.paddingBottom) || 0);
+  scripts\saveAdd.js:3668:
+> scripts\saveAdd.js:3669:        cartSheet.style.setProperty(
+> scripts\saveAdd.js:3670:            '--cart-sheet-peek',
+  scripts\saveAdd.js:3671:            `${Math.min(contentHeight, 
+window.innerHeight * 0.8)}px`
+  scripts\saveAdd.js:3672:        );
+  scripts\saveAdd.js:3687:/* 
+==========================================================================
+> scripts\saveAdd.js:3688:   CART TEXT ESCAPING
+  scripts\saveAdd.js:3689:   
+========================================================================== */
+  scripts\saveAdd.js:3690:
+  scripts\saveAdd.js:3701:/* 
+==========================================================================
+> scripts\saveAdd.js:3702:   QUANTITY
+  scripts\saveAdd.js:3703:   
+========================================================================== */
+  scripts\saveAdd.js:3704:
+> scripts\saveAdd.js:3705:function increaseQuantity(name) {
+  scripts\saveAdd.js:3706:
+  scripts\saveAdd.js:3707:    const item =
+> scripts\saveAdd.js:3708:        cart.find(
+  scripts\saveAdd.js:3709:            currentItem =>
+  scripts\saveAdd.js:3710:                currentItem.name === name
+  scripts\saveAdd.js:3718:
+> scripts\saveAdd.js:3719:    item.quantity =
+> scripts\saveAdd.js:3720:        Number(item.quantity || 0) + 1;
+  scripts\saveAdd.js:3721:
+  scripts\saveAdd.js:3722:
+> scripts\saveAdd.js:3723:    saveCart();
+  scripts\saveAdd.js:3724:
+> scripts\saveAdd.js:3725:    renderCart();
+  scripts\saveAdd.js:3726:}
+  scripts\saveAdd.js:3727:
+  scripts\saveAdd.js:3728:
+> scripts\saveAdd.js:3729:function decreaseQuantity(name) {
+  scripts\saveAdd.js:3730:
+  scripts\saveAdd.js:3731:    const item =
+> scripts\saveAdd.js:3732:        cart.find(
+  scripts\saveAdd.js:3733:            currentItem =>
+  scripts\saveAdd.js:3734:                currentItem.name === name
+  scripts\saveAdd.js:3742:
+> scripts\saveAdd.js:3743:    item.quantity =
+> scripts\saveAdd.js:3744:        Number(item.quantity || 0) - 1;
+  scripts\saveAdd.js:3745:
+  scripts\saveAdd.js:3746:
+  scripts\saveAdd.js:3747:    if (
+> scripts\saveAdd.js:3748:        item.quantity <= 0
+  scripts\saveAdd.js:3749:    ) {
+  scripts\saveAdd.js:3750:
+> scripts\saveAdd.js:3751:        cart =
+> scripts\saveAdd.js:3752:            cart.filter(
+  scripts\saveAdd.js:3753:                currentItem =>
+  scripts\saveAdd.js:3754:                    currentItem.name !== name
+  scripts\saveAdd.js:3758:
+> scripts\saveAdd.js:3759:    saveCart();
+  scripts\saveAdd.js:3760:
+> scripts\saveAdd.js:3761:    renderCart();
+  scripts\saveAdd.js:3762:}
+  scripts\saveAdd.js:3763:
+> scripts\saveAdd.js:3764:function clearCart() {
+> scripts\saveAdd.js:3765:    if (!cart.length) {
+  scripts\saveAdd.js:3766:        return;
+  scripts\saveAdd.js:3767:    }
+  scripts\saveAdd.js:3768:
+> scripts\saveAdd.js:3769:    cart = [];
+> scripts\saveAdd.js:3770:    editingCartNoteName = null;
+> scripts\saveAdd.js:3771:    recentlyAddedCartItemName = null;
+> scripts\saveAdd.js:3772:    saveCart();
+> scripts\saveAdd.js:3773:    renderCart();
+  scripts\saveAdd.js:3774:}
+  scripts\saveAdd.js:3775:
+  scripts\saveAdd.js:3777:/* 
+==========================================================================
+> scripts\saveAdd.js:3778:   CART BUTTON
+  scripts\saveAdd.js:3779:   
+========================================================================== */
+  scripts\saveAdd.js:3780:
+> scripts\saveAdd.js:3781:function setupCartButton() {
+  scripts\saveAdd.js:3782:
+> scripts\saveAdd.js:3783:    const cartButton =
+  scripts\saveAdd.js:3784:        document.querySelector(
+> scripts\saveAdd.js:3785:            '.cartbutton'
+  scripts\saveAdd.js:3786:        );
+  scripts\saveAdd.js:3787:
+  scripts\saveAdd.js:3792:
+> scripts\saveAdd.js:3793:    const cartClose =
+  scripts\saveAdd.js:3794:        document.querySelector(
+> scripts\saveAdd.js:3795:            '.cart-close'
+  scripts\saveAdd.js:3796:        );
+  scripts\saveAdd.js:3797:
+> scripts\saveAdd.js:3798:    const cartHandle =
+  scripts\saveAdd.js:3799:        document.querySelector(
+> scripts\saveAdd.js:3800:            '.cart-sheet-handle'
+  scripts\saveAdd.js:3801:        );
+  scripts\saveAdd.js:3802:
+> scripts\saveAdd.js:3803:    const clearCartButton =
+> scripts\saveAdd.js:3804:        document.getElementById('clearCartButton');
+  scripts\saveAdd.js:3805:
+  scripts\saveAdd.js:3806:
+  scripts\saveAdd.js:3807:    if (
+> scripts\saveAdd.js:3808:        !cartButton ||
+  scripts\saveAdd.js:3809:        !container2
+  scripts\saveAdd.js:3810:    ) {
+  scripts\saveAdd.js:3815:    if (
+> scripts\saveAdd.js:3816:        cartButton.dataset.cartReady === 'true'
+  scripts\saveAdd.js:3817:    ) {
+  scripts\saveAdd.js:3818:        return;
+  scripts\saveAdd.js:3821:
+> scripts\saveAdd.js:3822:    cartButton.dataset.cartReady =
+  scripts\saveAdd.js:3823:        'true';
+  scripts\saveAdd.js:3824:
+> scripts\saveAdd.js:3825:    clearCartButton?.addEventListener(
+  scripts\saveAdd.js:3826:        'click',
+> scripts\saveAdd.js:3827:        clearCart
+  scripts\saveAdd.js:3828:    );
+  scripts\saveAdd.js:3829:    
+document.getElementById('orderNowButton')?.addEventListener('click', () => {
+> scripts\saveAdd.js:3830:        if (cart.length === 0) return;
+  scripts\saveAdd.js:3831:        openOrderFormModal();
+  scripts\saveAdd.js:3832:    });
+  scripts\saveAdd.js:3833:
+> scripts\saveAdd.js:3834:    function setCartOpen(open) {
+  scripts\saveAdd.js:3835:        container2.classList.toggle(
+  scripts\saveAdd.js:3836:            'open',
+  scripts\saveAdd.js:3839:
+> scripts\saveAdd.js:3840:        container2.classList.remove(
+  scripts\saveAdd.js:3841:            'expanded',
+  scripts\saveAdd.js:3842:            'dragging'
+  scripts\saveAdd.js:3844:
+> scripts\saveAdd.js:3845:        container2.style.removeProperty(
+> scripts\saveAdd.js:3846:            '--cart-sheet-drag-offset'
+  scripts\saveAdd.js:3847:        );
+  scripts\saveAdd.js:3848:
+> scripts\saveAdd.js:3849:        cartButton.setAttribute(
+  scripts\saveAdd.js:3850:            'aria-expanded',
+  scripts\saveAdd.js:3851:            String(open)
+  scripts\saveAdd.js:3853:
+> scripts\saveAdd.js:3854:        if (cartHandle) {
+> scripts\saveAdd.js:3855:            cartHandle.setAttribute(
+  scripts\saveAdd.js:3856:                'aria-label',
+> scripts\saveAdd.js:3857:                'Expand cart'
+  scripts\saveAdd.js:3858:            );
+  scripts\saveAdd.js:3859:        }
+  scripts\saveAdd.js:3861:
+> scripts\saveAdd.js:3862:    function setCartExpanded(expanded) {
+  scripts\saveAdd.js:3863:        container2.classList.toggle(
+  scripts\saveAdd.js:3864:            'expanded',
+  scripts\saveAdd.js:3867:
+> scripts\saveAdd.js:3868:        if (cartHandle) {
+> scripts\saveAdd.js:3869:            cartHandle.setAttribute(
+  scripts\saveAdd.js:3870:                'aria-label',
+> scripts\saveAdd.js:3871:                expanded ? 'Collapse cart' : 
+'Expand cart'
+  scripts\saveAdd.js:3872:            );
+  scripts\saveAdd.js:3873:        }
+  scripts\saveAdd.js:3875:
+> scripts\saveAdd.js:3876:    function getCartPeekHeight(sheetHeight) {
+  scripts\saveAdd.js:3877:        const configuredPeekHeight =
+  scripts\saveAdd.js:3878:            Number.parseFloat(
+  scripts\saveAdd.js:3879:                
+getComputedStyle(container2).getPropertyValue(
+> scripts\saveAdd.js:3880:                    '--cart-sheet-peek'
+  scripts\saveAdd.js:3881:                )
+  scripts\saveAdd.js:3882:            ) || 190;
+  scripts\saveAdd.js:3889:
+> scripts\saveAdd.js:3890:    cartButton.addEventListener(
+  scripts\saveAdd.js:3891:        'click',
+  scripts\saveAdd.js:3892:        () => {
+> scripts\saveAdd.js:3893:            setCartOpen(
+  scripts\saveAdd.js:3894:                
+!container2.classList.contains('open')
+  scripts\saveAdd.js:3895:            );
+  scripts\saveAdd.js:3898:
+> scripts\saveAdd.js:3899:    if (cartClose) {
+  scripts\saveAdd.js:3900:
+> scripts\saveAdd.js:3901:        cartClose.addEventListener(
+  scripts\saveAdd.js:3902:            'click',
+  scripts\saveAdd.js:3903:            () => {
+> scripts\saveAdd.js:3904:                setCartOpen(false);
+  scripts\saveAdd.js:3905:            }
+  scripts\saveAdd.js:3906:        );
+  scripts\saveAdd.js:3908:
+> scripts\saveAdd.js:3909:    if (cartHandle) {
+  scripts\saveAdd.js:3910:        let pointerStartY = 0;
+  scripts\saveAdd.js:3911:        let startingOffset = 0;
+  scripts\saveAdd.js:3915:
+> scripts\saveAdd.js:3916:        cartHandle.addEventListener('click', event 
+=> {
+  scripts\saveAdd.js:3917:            if (suppressHandleClick) {
+  scripts\saveAdd.js:3918:                suppressHandleClick = false;
+  scripts\saveAdd.js:3922:
+> scripts\saveAdd.js:3923:            setCartExpanded(
+  scripts\saveAdd.js:3924:                
+!container2.classList.contains('expanded')
+  scripts\saveAdd.js:3925:            );
+  scripts\saveAdd.js:3927:
+> scripts\saveAdd.js:3928:        cartHandle.addEventListener('pointerdown', 
+event => {
+  scripts\saveAdd.js:3929:            if (!event.isPrimary || event.button 
+!== 0) {
+  scripts\saveAdd.js:3930:                return;
+  scripts\saveAdd.js:3940:            const peekHeight =
+> scripts\saveAdd.js:3941:                getCartPeekHeight(sheetHeight);
+  scripts\saveAdd.js:3942:
+  scripts\saveAdd.js:3943:            startingOffset =
+  scripts\saveAdd.js:3947:
+> scripts\saveAdd.js:3948:            
+cartHandle.setPointerCapture(event.pointerId);
+  scripts\saveAdd.js:3949:        });
+  scripts\saveAdd.js:3950:
+  scripts\saveAdd.js:3975:            container2.style.setProperty(
+> scripts\saveAdd.js:3976:                '--cart-sheet-drag-offset',
+  scripts\saveAdd.js:3977:                `${offset}px`
+  scripts\saveAdd.js:3978:            );
+  scripts\saveAdd.js:3979:        };
+> scripts\saveAdd.js:3980:        cartHandle.addEventListener('pointermove', 
+handlePointerMove);
+  scripts\saveAdd.js:3981:
+> scripts\saveAdd.js:3982:        function finishCartDrag(event) {
+  scripts\saveAdd.js:3983:            if (event.pointerId !== 
+activePointerId) {
+  scripts\saveAdd.js:3984:                return;
+  scripts\saveAdd.js:4001:            const peekHeight =
+> scripts\saveAdd.js:4002:                getCartPeekHeight(sheetHeight);
+  scripts\saveAdd.js:4003:
+  scripts\saveAdd.js:4004:            const collapsedOffset =
+  scripts\saveAdd.js:4009:                    
+container2.style.getPropertyValue(
+> scripts\saveAdd.js:4010:                        '--cart-sheet-drag-offset'
+  scripts\saveAdd.js:4011:                    )
+  scripts\saveAdd.js:4012:                ) || 0;
+  scripts\saveAdd.js:4016:                { offset: collapsedOffset, state: 
+'peek' },
+> scripts\saveAdd.js:4017:                { offset: sheetHeight, state: 
+'closed' }
+  scripts\saveAdd.js:4018:            ];
+  scripts\saveAdd.js:4019:
+  scripts\saveAdd.js:4027:
+> scripts\saveAdd.js:4028:            if (nearestSnap.state === 'closed') {
+> scripts\saveAdd.js:4029:                setCartOpen(false);
+  scripts\saveAdd.js:4030:                return;
+  scripts\saveAdd.js:4031:            }
+  scripts\saveAdd.js:4032:
+> scripts\saveAdd.js:4033:            
+container2.classList.remove('dragging');
+  scripts\saveAdd.js:4034:
+> scripts\saveAdd.js:4035:            container2.style.removeProperty(
+> scripts\saveAdd.js:4036:                '--cart-sheet-drag-offset'
+  scripts\saveAdd.js:4037:            );
+  scripts\saveAdd.js:4038:
+> scripts\saveAdd.js:4039:            setCartExpanded(
+  scripts\saveAdd.js:4040:                nearestSnap.state === 'expanded'
+  scripts\saveAdd.js:4041:            );
+  scripts\saveAdd.js:4043:
+> scripts\saveAdd.js:4044:        cartHandle.addEventListener('pointerup', 
+finishCartDrag);
+> scripts\saveAdd.js:4045:        
+cartHandle.addEventListener('pointercancel', finishCartDrag);
+  scripts\saveAdd.js:4046:    }
+  scripts\saveAdd.js:4047:}
+  scripts\saveAdd.js:4085:
+> scripts\saveAdd.js:4086:function closeImage() {
+  scripts\saveAdd.js:4087:
+  scripts\saveAdd.js:4088:    const viewer =
+  scripts\saveAdd.js:4095:
+> scripts\saveAdd.js:4096:        viewer.classList.remove(
+  scripts\saveAdd.js:4097:            'show'
+  scripts\saveAdd.js:4098:        );
+  scripts\saveAdd.js:4179:            const option =
+> scripts\saveAdd.js:4180:                
+event.target.closest('[data-language-option]');
+  scripts\saveAdd.js:4181:
+  scripts\saveAdd.js:4182:            if (option) {
+  scripts\saveAdd.js:4252:    const itemsContainer = 
+document.getElementById('orderFormItems');
+> scripts\saveAdd.js:4253:    const totalElement = 
+document.getElementById('orderFormTotal');
+  scripts\saveAdd.js:4254:
+> scripts\saveAdd.js:4255:    if (!itemsContainer || !totalElement) return;
+  scripts\saveAdd.js:4256:
+> scripts\saveAdd.js:4257:    if (!cart.length) {
+> scripts\saveAdd.js:4258:        itemsContainer.innerHTML = '<p>Your cart 
+is empty.</p>';
+> scripts\saveAdd.js:4259:        totalElement.textContent = '0 ETB';
+  scripts\saveAdd.js:4260:        return;
+  scripts\saveAdd.js:4261:    }
+  scripts\saveAdd.js:4264:        <div class="order-form-item-list">
+> scripts\saveAdd.js:4265:            ${cart.map(item => {
+  scripts\saveAdd.js:4266:                const name = String(item.name ?? 
+'');
+  scripts\saveAdd.js:4267:                const note = String(item.note || 
+'').trim();
+> scripts\saveAdd.js:4268:                const quantity = Math.max(0, 
+Number(item.quantity) || 0);
+  scripts\saveAdd.js:4269:                const price = Math.max(0, 
+Number(item.price) || 0);
+> scripts\saveAdd.js:4270:                const lineTotal = quantity * price;
+  scripts\saveAdd.js:4271:
+  scripts\saveAdd.js:4272:                return `
+  scripts\saveAdd.js:4275:                            
+<strong>${escapeHtml(name)}</strong>
+> scripts\saveAdd.js:4276:                            
+<span>${formatCustomerCurrency(lineTotal)}</span>
+  scripts\saveAdd.js:4277:                        </div>
+  scripts\saveAdd.js:4278:                        <div 
+class="order-form-item-details">
+> scripts\saveAdd.js:4279:                            Qty: 
+${formatCustomerNumber(quantity)}
+  scripts\saveAdd.js:4280:                            · 
+${formatCustomerCurrency(price)} each
+  scripts\saveAdd.js:4281:                        </div>
+  scripts\saveAdd.js:4288:
+> scripts\saveAdd.js:4289:    const total = cart.reduce(
+  scripts\saveAdd.js:4290:        (sum, item) =>
+> scripts\saveAdd.js:4291:            sum + (Number(item.price) || 0) * 
+(Number(item.quantity) || 0),
+  scripts\saveAdd.js:4292:        0
+  scripts\saveAdd.js:4293:    );
+  scripts\saveAdd.js:4294:
+> scripts\saveAdd.js:4295:    totalElement.innerHTML = 
+formatCustomerCurrency(total);
+  scripts\saveAdd.js:4296:}
+  scripts\saveAdd.js:4297:
+  scripts\saveAdd.js:4339:
+> scripts\saveAdd.js:4340:        if (!cart.length) {
+> scripts\saveAdd.js:4341:            if (message) message.textContent = 
+'Your cart is empty. Add items before continuing.';
+  scripts\saveAdd.js:4342:            return;
+  scripts\saveAdd.js:4343:        }
+  scripts\saveAdd.js:4358:
+> scripts\saveAdd.js:4359:        closeOrderFormModal();
+  scripts\saveAdd.js:4360:        openPaymentModal();
+  scripts\saveAdd.js:4361:    });
+  scripts\saveAdd.js:4364:function openOrderFormModal() {
+> scripts\saveAdd.js:4365:    if (!cart.length) return;
+  scripts\saveAdd.js:4366:
+  scripts\saveAdd.js:4367:    setupOrderFormEvents();
+  scripts\saveAdd.js:4381:
+> scripts\saveAdd.js:4382:function closeOrderFormModal() {
+  scripts\saveAdd.js:4383:    const modal = 
+document.getElementById('orderFormModal');
+  scripts\saveAdd.js:4384:
+  scripts\saveAdd.js:4385:    if (modal) {
+> scripts\saveAdd.js:4386:        modal.classList.remove('is-open');
+  scripts\saveAdd.js:4387:        modal.setAttribute('aria-hidden', 'true');
+  scripts\saveAdd.js:4388:    }
+  scripts\saveAdd.js:4396:
+> scripts\saveAdd.js:4397:    const paymentTotal =
+  scripts\saveAdd.js:4398:        document.getElementById(
+> scripts\saveAdd.js:4399:            'payment-total'
+  scripts\saveAdd.js:4400:        );
+  scripts\saveAdd.js:4401:
+  scripts\saveAdd.js:4407:
+> scripts\saveAdd.js:4408:    const total =
+> scripts\saveAdd.js:4409:        cart.reduce(
+  scripts\saveAdd.js:4410:            (sum, item) =>
+  scripts\saveAdd.js:4411:                sum +
+  scripts\saveAdd.js:4413:                    (Number(item.price) || 0) *
+> scripts\saveAdd.js:4414:                    (Number(item.quantity) || 0)
+  scripts\saveAdd.js:4415:                ),
+  scripts\saveAdd.js:4416:            0
+  scripts\saveAdd.js:4419:
+> scripts\saveAdd.js:4420:    if (!total) {
+  scripts\saveAdd.js:4421:
+  scripts\saveAdd.js:4422:        showToast(
+> scripts\saveAdd.js:4423:            'Add an item to the cart before 
+paying.',
+  scripts\saveAdd.js:4424:            'error'
+  scripts\saveAdd.js:4425:        );
+  scripts\saveAdd.js:4430:
+> scripts\saveAdd.js:4431:    if (paymentTotal) {
+  scripts\saveAdd.js:4432:
+> scripts\saveAdd.js:4433:        paymentTotal.innerHTML =
+> scripts\saveAdd.js:4434:            formatCustomerCurrency(total);
+  scripts\saveAdd.js:4435:    }
+  scripts\saveAdd.js:4436:
+  scripts\saveAdd.js:4453:
+> scripts\saveAdd.js:4454:function closePaymentModal() {
+  scripts\saveAdd.js:4455:
+  scripts\saveAdd.js:4456:    const modal =
+  scripts\saveAdd.js:4463:
+> scripts\saveAdd.js:4464:        modal.classList.remove(
+  scripts\saveAdd.js:4465:            'show'
+  scripts\saveAdd.js:4466:        );
+  scripts\saveAdd.js:4571:
+> scripts\saveAdd.js:4572:                closePaymentModal();
+  scripts\saveAdd.js:4573:            }
+  scripts\saveAdd.js:4574:        }
+  scripts\saveAdd.js:4593:                            item =>
+> scripts\saveAdd.js:4594:                                
+item.classList.remove(
+  scripts\saveAdd.js:4595:                                    'selected'
+  scripts\saveAdd.js:4596:                                )
+  scripts\saveAdd.js:4652:
+> scripts\saveAdd.js:4653:    const total =
+> scripts\saveAdd.js:4654:        cart.reduce(
+  scripts\saveAdd.js:4655:            (sum, item) =>
+  scripts\saveAdd.js:4656:                sum +
+  scripts\saveAdd.js:4658:                    (Number(item.price) || 0) *
+> scripts\saveAdd.js:4659:                    (Number(item.quantity) || 0)
+  scripts\saveAdd.js:4660:                ),
+  scripts\saveAdd.js:4661:            0
+  scripts\saveAdd.js:4685:
+> scripts\saveAdd.js:4686:    if (!total) {
+  scripts\saveAdd.js:4687:
+  scripts\saveAdd.js:4688:        showToast(
+> scripts\saveAdd.js:4689:            'Your cart is empty.',
+  scripts\saveAdd.js:4690:            'error'
+  scripts\saveAdd.js:4691:        );
+  scripts\saveAdd.js:4726:                            accountNumber,
+> scripts\saveAdd.js:4727:                            amount: total,
+> scripts\saveAdd.js:4728:                            items: cart
+  scripts\saveAdd.js:4729:                        })
+  scripts\saveAdd.js:4730:                }
+  scripts\saveAdd.js:4762:        await copyPaymentDetails(
+> scripts\saveAdd.js:4763:            `Telebirr: ${total} ETB to 
+${merchantAccount}`
+  scripts\saveAdd.js:4764:        );
+  scripts\saveAdd.js:4765:
+  scripts\saveAdd.js:4877:
+> scripts\saveAdd.js:4878:        textarea.remove();
+  scripts\saveAdd.js:4879:
+  scripts\saveAdd.js:4880:
+  scripts\saveAdd.js:4911:
+> scripts\saveAdd.js:4912:            closeCustomerDaySpecial();
+  scripts\saveAdd.js:4913:
+> scripts\saveAdd.js:4914:            closePaymentModal();
+  scripts\saveAdd.js:4915:
+> scripts\saveAdd.js:4916:            closeImage();
+  scripts\saveAdd.js:4917:        }
+  scripts\saveAdd.js:4918:    );
+  scripts\saveAdd.js:4938:
+> scripts\saveAdd.js:4939:        setupCartButton();
+  scripts\saveAdd.js:4940:
+  scripts\saveAdd.js:4941:        setupEscapeKey();
+  scripts\saveAdd.js:4944:
+> scripts\saveAdd.js:4945:        loadCart();
+  scripts\saveAdd.js:4946:    }
+  scripts\saveAdd.js:4947:);
+  scripts\saveAdd.js:4957: * Admin changes menu
+> scripts\saveAdd.js:4958: *        â†’
+  scripts\saveAdd.js:4959: * Server saves it
+> scripts\saveAdd.js:4960: *        â†’
+  scripts\saveAdd.js:4961: * Customer automatically requests latest data
+> scripts\saveAdd.js:4962: *        â†’
+  scripts\saveAdd.js:4963: * Menu/profile/day-special updates
+  scripts\saveAdd.js:4964: *
+> scripts\saveAdd.js:4965: * The cart is NOT touched.
+  scripts\saveAdd.js:4966: */
+  scripts\saveAdd.js:4967:
+
+

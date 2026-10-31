@@ -1,0 +1,462 @@
+﻿
+  server.js:1144:
+  server.js:1145:/* 
+================================================================
+  server.js:1146:   ADMIN LOGIN
+  server.js:1147:   
+================================================================ */
+  server.js:1148:
+> server.js:1149:app.post(
+  server.js:1150:  '/api/admin/login',
+  server.js:1151:  async (req, res) => {
+  server.js:1152:    try {
+  server.js:1153:      const {
+  server.js:1154:        email,
+  server.js:1155:        password
+  server.js:1156:      } = req.body;
+  server.js:1157:if (!email || !password) {
+  server.js:1158:        return res.status(400).json({
+  server.js:1159:          ok: false,
+  server.js:1332:        message: 'Unable to reveal saved credential. Check 
+server configuration.'
+  server.js:1333:      });
+  server.js:1334:    }
+  server.js:1335:  }
+  server.js:1336:);
+> server.js:1337:app.post(
+  server.js:1338:  '/api/admin/logout',
+  server.js:1339:  (req, res) => {
+  server.js:1340:    res.clearCookie(
+  server.js:1341:      'adminToken',
+  server.js:1342:      {
+  server.js:1343:        httpOnly: true,
+  server.js:1344:        sameSite: 'lax',
+  server.js:1345:        secure: process.env.NODE_ENV === 'production'
+  server.js:1346:      }
+  server.js:1347:    );
+  server.js:1438:
+  server.js:1439:/* 
+================================================================
+  server.js:1440:   SUPER ADMIN ACCOUNT SETTINGS
+  server.js:1441:   
+================================================================ */
+  server.js:1442:
+> server.js:1443:app.put(
+  server.js:1444:  '/api/owner/account',
+  server.js:1445:  requireOwner,
+  server.js:1446:  async (req, res) => {
+  server.js:1447:    try {
+  server.js:1448:      if (!isSuperAdminRole(req.user.role)) {
+  server.js:1449:        return res.status(403).json({
+  server.js:1450:          ok: false,
+  server.js:1451:          message: 'Super admin access required.'
+  server.js:1452:        });
+  server.js:1453:      }
+  server.js:1770:
+  server.js:1771:/* 
+================================================================
+  server.js:1772:   RESTAURANT PROFILE - UPDATE
+  server.js:1773:   
+================================================================ */
+  server.js:1774:
+> server.js:1775:app.put(
+  server.js:1776:  '/api/admin/profile/:slug',
+  server.js:1777:  requireRestaurantAdmin,
+  server.js:1778:  async (req, res) => {
+  server.js:1779:    try {
+  server.js:1780:      const { slug } = req.params;
+  server.js:1781:
+  server.js:1782:      const {
+  server.js:1783:        logo = '',
+  server.js:1784:        phone_numbers = [],
+  server.js:1785:        addresses = []
+  server.js:1981:      });
+  server.js:1982:    }
+  server.js:1983:  }
+  server.js:1984:);
+  server.js:1985:
+> server.js:1986:app.put(
+  server.js:1987:  '/api/admin/payment-settings/:slug',
+  server.js:1988:  requireRestaurantAdmin,
+  server.js:1989:  async (req, res) => {
+  server.js:1990:    try {
+  server.js:1991:      const { slug } = req.params;
+  server.js:1992:      const {
+  server.js:1993:        telebirr_enabled = false,
+  server.js:1994:        order_now_enabled = true,
+  server.js:1995:        merchant_name = '',
+  server.js:1996:        merchant_code = '',
+  server.js:2255:      });
+  server.js:2256:    }
+  server.js:2257:  }
+  server.js:2258:);
+  server.js:2259:
+> server.js:2260:app.post(
+  server.js:2261:  '/api/admin/payment-branches/:slug',
+  server.js:2262:  requireRestaurantAdmin,
+  server.js:2263:  async (req, res) => {
+  server.js:2264:    try {
+  server.js:2265:      const restaurant = await 
+getPaymentBranchRestaurant(req, res, true);
+  server.js:2266:      if (!restaurant) return;
+  server.js:2267:
+  server.js:2268:      const name = typeof req.body?.name === 'string'
+  server.js:2269:        ? req.body.name.trim()
+  server.js:2270:        : '';
+  server.js:2303:      });
+  server.js:2304:    }
+  server.js:2305:  }
+  server.js:2306:);
+  server.js:2307:
+> server.js:2308:app.put(
+  server.js:2309:  '/api/admin/payment-branches/:slug/:branchId',
+  server.js:2310:  requireRestaurantAdmin,
+  server.js:2311:  async (req, res) => {
+  server.js:2312:    try {
+  server.js:2313:      const restaurant = await 
+getPaymentBranchRestaurant(req, res, true);
+  server.js:2314:      if (!restaurant) return;
+  server.js:2315:
+  server.js:2316:      const branchId = Number(req.params.branchId);
+  server.js:2317:      if (!Number.isInteger(branchId) || branchId < 1) {
+  server.js:2318:        return res.status(400).json({
+  server.js:3105:
+  server.js:3106:/* 
+============================================================
+  server.js:3107:   CUSTOMER ORDERS â€” NO PAYMENT PROCESSING
+  server.js:3108:   
+============================================================ */
+  server.js:3109:
+> server.js:3110:app.post('/api/orders/:slug', async (req, res) => {
+  server.js:3111:  try {
+  server.js:3112:    const slug = String(req.params.slug || '').trim();
+  server.js:3113:
+  server.js:3114:    const {
+  server.js:3115:      customer_name,
+  server.js:3116:      customer_phone,
+  server.js:3117:      branch_id,
+  server.js:3118:      order_type,
+  server.js:3119:      table_number,
+  server.js:3120:      customer_address,
+  server.js:3371:/* 
+============================================================
+  server.js:3372:   ADMIN â€” LIST CUSTOMER ORDERS
+  server.js:3373:   
+============================================================ */
+  server.js:3374:
+  server.js:3375:app.get(
+> server.js:3376:  '/api/admin/orders/:slug',
+  server.js:3377:  requireRestaurantAdmin,
+  server.js:3378:  async (req, res) => {
+  server.js:3379:    try {
+  server.js:3380:      const slug = String(req.params.slug || '').trim();
+  server.js:3381:
+  server.js:3382:      const restaurantResult = await pool.query(
+  server.js:3383:        `SELECT id, name, slug
+  server.js:3384:         FROM restaurants
+  server.js:3385:         WHERE slug = $1
+  server.js:3386:         LIMIT 1`,
+  server.js:3495:      return res.status(500).json({ ok: false, message: 
+'Unable to check cashier PIN settings.' });
+  server.js:3496:    }
+  server.js:3497:  }
+  server.js:3498:);
+  server.js:3499:
+> server.js:3500:app.put(
+  server.js:3501:  '/api/admin/cashier-pin/:slug',
+  server.js:3502:  requireRestaurantAdmin,
+  server.js:3503:  async (req, res) => {
+  server.js:3504:    try {
+  server.js:3505:      const slug = String(req.params.slug || '').trim();
+  server.js:3506:      const pin = String(req.body?.pin || '');
+  server.js:3507:
+  server.js:3508:      if (!/^\d{6,12}$/.test(pin)) {
+  server.js:3509:        return res.status(400).json({
+  server.js:3510:          ok: false,
+  server.js:3552:      return res.status(500).json({ ok: false, message: 
+'Unable to save cashier PIN.' });
+  server.js:3553:    }
+  server.js:3554:  }
+  server.js:3555:);
+  server.js:3556:
+> server.js:3557:app.post('/api/cashier/login/:slug', async (req, res) => {
+  server.js:3558:  try {
+  server.js:3559:    const slug = String(req.params.slug || '').trim();
+  server.js:3560:    const pin = String(req.body?.pin || '');
+  server.js:3561:    const restaurantResult = await pool.query(
+  server.js:3562:      `SELECT id, name, slug FROM restaurants WHERE slug = 
+$1 LIMIT 1`,
+  server.js:3563:      [slug]
+  server.js:3564:    );
+  server.js:3565:
+  server.js:3566:    if (!restaurantResult.rows.length) {
+  server.js:3567:      return res.status(404).json({ ok: false, message: 
+'Restaurant not found.' });
+  server.js:3636:    console.error('[cashier:login] Failed:', error);
+  server.js:3637:    return res.status(500).json({ ok: false, message: 
+'Unable to sign in right now.' });
+  server.js:3638:  }
+  server.js:3639:});
+  server.js:3640:
+> server.js:3641:app.get('/api/cashier/orders/:slug', requireCashier, async 
+(req, res) => {
+  server.js:3642:  try {
+  server.js:3643:    const slug = String(req.params.slug || '').trim();
+  server.js:3644:
+  server.js:3645:    if (slug !== req.cashier.restaurant_slug) {
+  server.js:3646:      return res.status(403).json({ ok: false, message: 
+'You are not authorized to view these orders.' });
+  server.js:3647:    }
+  server.js:3648:
+  server.js:3649:    const ordersResult = await pool.query(
+  server.js:3650:      `SELECT
+  server.js:3651:              (
+  server.js:3681:    console.error('[cashier:orders] Failed:', error);
+  server.js:3682:    return res.status(500).json({ ok: false, message: 
+'Unable to load orders right now.' });
+  server.js:3683:  }
+  server.js:3684:});
+  server.js:3685:
+> server.js:3686:app.post('/api/cashier/logout', (req, res) => {
+  server.js:3687:  clearCashierCookie(res);
+  server.js:3688:  res.set('Cache-Control', 'no-store');
+  server.js:3689:  return res.json({ ok: true });
+  server.js:3690:});
+  server.js:3691:
+  server.js:3692:
+  server.js:3693:/* 
+================================================================
+  server.js:3694:   TELEBIRR PAYMENT
+  server.js:3695:   
+================================================================ */
+  server.js:3696:
+> server.js:3697:app.post(
+  server.js:3698:  '/api/payments/telebirr/create',
+  server.js:3699:  async (req, res) => {
+  server.js:3700:    try {
+  server.js:3701:      const {
+  server.js:3702:        amount,
+  server.js:3703:        items
+  server.js:3704:      } = req.body;
+  server.js:3705:
+  server.js:3706:      const numericAmount =
+  server.js:3707:        Number(amount);
+  server.js:3749:
+  server.js:3750:/* 
+================================================================
+  server.js:3751:   RESTAURANT MENU - SAVE
+  server.js:3752:   
+================================================================ */
+  server.js:3753:
+> server.js:3754:app.post(
+  server.js:3755:  '/api/admin/menu/:slug',
+  server.js:3756:  requireRestaurantAdmin,
+  server.js:3757:  async (req, res) => {
+  server.js:3758:    try {
+  server.js:3759:      const { slug } = req.params;
+  server.js:3760:      const { menu } = req.body;
+  server.js:3761:
+  server.js:3762:      if (
+  server.js:3763:        !menu ||
+  server.js:3764:        typeof menu !== 'object' ||
+  server.js:4103:      });
+  server.js:4104:    }
+  server.js:4105:  }
+  server.js:4106:);
+  server.js:4107:
+> server.js:4108:app.put(
+  server.js:4109:  '/api/owner/restaurants/:id/self-ordering',
+  server.js:4110:  requireOwner,
+  server.js:4111:  async (req, res) => {
+  server.js:4112:    if (!isSuperAdminRole(req.user.role)) {
+  server.js:4113:      return res.status(403).json({
+  server.js:4114:        ok: false,
+  server.js:4115:        message: 'Super admin access required.'
+  server.js:4116:      });
+  server.js:4117:    }
+  server.js:4118:
+  server.js:4171:      });
+  server.js:4172:    }
+  server.js:4173:  }
+  server.js:4174:);
+  server.js:4175:
+> server.js:4176:app.put(
+  server.js:4177:  '/api/owner/restaurants/:id/menu-expiration',
+  server.js:4178:  requireOwner,
+  server.js:4179:  async (req, res) => {
+  server.js:4180:    if (!isSuperAdminRole(req.user.role)) {
+  server.js:4181:      return res.status(403).json({
+  server.js:4182:        ok: false,
+  server.js:4183:        message: 'Super admin access required.'
+  server.js:4184:      });
+  server.js:4185:    }
+  server.js:4186:
+  server.js:4275:/* 
+================================================================
+  server.js:4276:   SUPER ADMIN
+  server.js:4277:   CREATE RESTAURANT
+  server.js:4278:   
+================================================================ */
+  server.js:4279:
+> server.js:4280:app.post(
+  server.js:4281:  '/api/owner/restaurants',
+  server.js:4282:  requireOwner,
+  server.js:4283:  async (req, res) => {
+  server.js:4284:    const client =
+  server.js:4285:      await pool.connect();
+  server.js:4286:
+  server.js:4287:    try {
+  server.js:4288:      const {
+  server.js:4289:        name,
+  server.js:4290:        slug,
+  server.js:4522:/* 
+================================================================
+  server.js:4523:   SUPER ADMIN
+  server.js:4524:   DUPLICATE RESTAURANT
+  server.js:4525:   
+================================================================ */
+  server.js:4526:
+> server.js:4527:app.post(
+  server.js:4528:  '/api/owner/restaurants/:id/duplicate',
+  server.js:4529:  requireOwner,
+  server.js:4530:  async (req, res) => {
+  server.js:4531:    const client =
+  server.js:4532:      await pool.connect();
+  server.js:4533:
+  server.js:4534:    try {
+  server.js:4535:      const sourceRestaurantId =
+  server.js:4536:        Number(req.params.id);
+  server.js:4537:
+  server.js:4898:/* 
+================================================================
+  server.js:4899:   SUPER ADMIN
+  server.js:4900:   EDIT RESTAURANT
+  server.js:4901:   
+================================================================ */
+  server.js:4902:
+> server.js:4903:app.put(
+  server.js:4904:  '/api/owner/restaurants/:id',
+  server.js:4905:  requireOwner,
+  server.js:4906:  async (req, res) => {
+  server.js:4907:    try {
+  server.js:4908:      const restaurantId =
+  server.js:4909:        Number(req.params.id);
+  server.js:4910:
+  server.js:4911:      const {
+  server.js:4912:        name,
+  server.js:4913:        slug
+  server.js:5119:      });
+  server.js:5120:    }
+  server.js:5121:  }
+  server.js:5122:);
+  server.js:5123:
+> server.js:5124:app.put(
+  server.js:5125:  '/api/owner/restaurants/:id/appearance',
+  server.js:5126:  requireOwner,
+  server.js:5127:  async (req, res) => {
+  server.js:5128:    try {
+  server.js:5129:      const restaurantId =
+  server.js:5130:        Number(req.params.id);
+  server.js:5131:
+  server.js:5132:      if (
+  server.js:5133:        !Number.isInteger(restaurantId) ||
+  server.js:5134:        restaurantId <= 0
+  server.js:5639:      });
+  server.js:5640:    }
+  server.js:5641:  }
+  server.js:5642:);
+  server.js:5643:
+> server.js:5644:app.put(
+  server.js:5645:  '/api/owner/restaurants/:id/admin',
+  server.js:5646:  requireOwner,
+  server.js:5647:  async (req, res) => {
+  server.js:5648:    try {
+  server.js:5649:      const restaurantId =
+  server.js:5650:        Number(req.params.id);
+  server.js:5651:
+  server.js:5652:      const {
+  server.js:5653:        email,
+  server.js:5654:        password
+  server.js:5855:/* 
+================================================================
+  server.js:5856:   SUPER ADMIN
+  server.js:5857:   CHANGE RESTAURANT STATUS
+  server.js:5858:   
+================================================================ */
+  server.js:5859:
+> server.js:5860:app.post(
+  server.js:5861:  '/api/owner/verify-action-password',
+  server.js:5862:  requireOwner,
+  server.js:5863:  async (req, res) => {
+  server.js:5864:    if (!isSuperAdminRole(req.user.role)) {
+  server.js:5865:      return res.status(403).json({
+  server.js:5866:        ok: false,
+  server.js:5867:        message: 'Super admin access required.'
+  server.js:5868:      });
+  server.js:5869:    }
+  server.js:5870:
+  server.js:5927:      });
+  server.js:5928:    }
+  server.js:5929:  }
+  server.js:5930:);
+  server.js:5931:
+> server.js:5932:app.put(
+  server.js:5933:  '/api/owner/restaurants/:id/status',
+  server.js:5934:  requireOwner,
+  server.js:5935:  requireSuperAdminPassword,
+  server.js:5936:  async (req, res) => {
+  server.js:5937:    try {
+  server.js:5938:      const restaurantId =
+  server.js:5939:        Number(req.params.id);
+  server.js:5940:
+  server.js:5941:      const {
+  server.js:5942:        status
+  server.js:6006:      );
+  server.js:6007:
+  server.js:6008:      return res.status(500).json({
+  server.js:6009:        ok: false,
+  server.js:6010:        message:
+> server.js:6011:          'Unable to update restaurant status.'
+  server.js:6012:      });
+  server.js:6013:    }
+  server.js:6014:  }
+  server.js:6015:);
+  server.js:6016:
+  server.js:6017:
+  server.js:6018:/* 
+================================================================
+  server.js:6019:   SUPER ADMIN
+  server.js:6020:   PRICE MANAGEMENT
+  server.js:6021:   
+================================================================ */
+  server.js:6022:
+> server.js:6023:app.post(
+  server.js:6024:  '/api/owner/restaurants/:id/price-management',
+  server.js:6025:  requireOwner,
+  server.js:6026:  async (req, res) => {
+  server.js:6027:    const client =
+  server.js:6028:      await pool.connect();
+  server.js:6029:
+  server.js:6030:    try {
+  server.js:6031:      const restaurantId =
+  server.js:6032:        Number(req.params.id);
+  server.js:6033:
+  server.js:6895:   SUPER ADMIN
+  server.js:6896:   COMPANY SETTINGS
+  server.js:6897:   UPDATE COMPANY SETTINGS
+  server.js:6898:   
+================================================================ */
+  server.js:6899:
+> server.js:6900:app.put(
+  server.js:6901:  '/api/owner/company-settings',
+  server.js:6902:  requireOwner,
+  server.js:6903:  async (req, res) => {
+  server.js:6904:    try {
+  server.js:6905:      const {
+  server.js:6906:    companyName,
+  server.js:6907:    slogan,
+  server.js:6908:    phone,
+  server.js:6909:    phoneNumbers,
+  server.js:6910:    addresses,
+
+
