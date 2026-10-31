@@ -2268,7 +2268,7 @@ async function toggleOwnerSelfOrdering(restaurantId) {
 
         showOwnerNotification(
             'Self-Ordering Updated',
-            `${restaurant.name || restaurant.slug || 'Restaurant'}: self-ordering ${enabled ? 'enabled' : 'disabled'}.`,
+            `${restaurant.name || restaurant.slug || 'Restaurant'}: self-ordering ${enabled ? 'enabled. Customers can now create accounts, log in and order.' : 'disabled. Login and Order Now are hidden from customers.'}`,
             'success'
         );
 

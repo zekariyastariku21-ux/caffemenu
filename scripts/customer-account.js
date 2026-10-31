@@ -1,0 +1,651 @@
+/* ==========================================================================
+   CUSTOMER ACCOUNT  (log in / create account with SMS code, order tracking)
+   Works together with scripts/saveAdd.js through window.CustomerAccount.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  var pathSlug = location.pathname.split('/').filter(Boolean)[0];
+  var SLUG = ((pathSlug && pathSlug !== 'save.html' ? pathSlug : '') ||
+    (function () { try { return localStorage.getItem('selectedRestaurantSlug') || ''; } catch (_) { return ''; } })()
+  ).trim();
+
+  var TOKEN_KEY = 'cafeCustomerToken:' + SLUG;
+  var PROFILE_KEY = 'cafeCustomerProfile:' + SLUG;
+
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (_) {} },
+    del: function (k) { try { localStorage.removeItem(k); } catch (_) {} }
+  };
+  function parseJson(text) { try { return text ? JSON.parse(text) : null; } catch (_) { return null; } }
+
+  var STEPS = [
+    { key: 'pending', label: 'Received', at: 'created_at' },
+    { key: 'preparing', label: 'Preparing', at: 'preparing_at' },
+    { key: 'ready', label: 'Ready', at: 'ready_at' },
+    { key: 'completed', label: 'Completed', at: 'completed_at' }
+  ];
+
+  var state = {
+    enabled: false,
+    token: store.get(TOKEN_KEY) || '',
+    customer: parseJson(store.get(PROFILE_KEY)),
+    orders: [],
+    ordersLoaded: false,
+    view: null,                // null | 'auth' | 'account'
+    tab: 'active',             // 'active' | 'history'
+    auth: { mode: 'login', step: 'details', phone: '', name: '', code: '', devOtp: '', resendAt: 0, busy: false, error: '', info: '' },
+    pending: null,             // callback to run after a successful login
+    stream: null,
+    poll: null,
+    refreshTimer: null,
+    tick: null
+  };
+
+  var el = {};   // DOM references
+
+  /* ---------------- small helpers ---------------- */
+
+
+  function h(tag, attrs, children) {
+    var node = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        var v = attrs[k];
+        if (v === false || v == null) return;
+        if (k === 'class') node.className = v;
+        else if (k === 'text') node.textContent = v;
+        else if (k.slice(0, 2) === 'on' && typeof v === 'function') node.addEventListener(k.slice(2), v);
+        else node.setAttribute(k, v === true ? '' : v);
+      });
+    }
+    (children || []).forEach(function (c) {
+      if (c == null || c === false) return;
+      node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    });
+    return node;
+  }
+
+  function money(v) { return (Math.round((Number(v) || 0) * 100) / 100) + ' ETB'; }
+
+  function when(v) {
+    if (!v) return '';
+    var d = new Date(v);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  function toast(message, type) {
+    if (typeof window.showToast === 'function') { try { window.showToast(message, type || 'success'); return; } catch (_) {} }
+    var t = h('div', { class: 'ca-toast', role: 'status', text: message });
+    document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 3200);
+  }
+
+  function api(path, options) {
+    var opts = options || {};
+    var headers = { Accept: 'application/json' };
+    if (opts.body) headers['Content-Type'] = 'application/json';
+    if (state.token && !opts.noAuth) headers.Authorization = 'Bearer ' + state.token;
+
+    return fetch('/api/customer/' + encodeURIComponent(SLUG) + path, {
+      method: opts.method || 'GET',
+      headers: headers,
+      cache: 'no-store',
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    }).then(function (response) {
+      return response.json().catch(function () { return {}; }).then(function (data) {
+        if (!response.ok || data.ok !== true) {
+          var err = new Error(data.message || 'Something went wrong. Please try again.');
+          err.status = response.status;
+          err.code = data.code || '';
+          throw err;
+        }
+        return data;
+      });
+    });
+  }
+
+  /* ---------------- session ---------------- */
+
+  function isLoggedIn() { return !!(state.token && state.customer); }
+
+  function saveSession(token, customer) {
+    state.token = token;
+    state.customer = customer;
+    store.set(TOKEN_KEY, token);
+    store.set(PROFILE_KEY, JSON.stringify(customer));
+  }
+
+  function clearSession() {
+    state.token = '';
+    state.customer = null;
+    state.orders = [];
+    state.ordersLoaded = false;
+    store.del(TOKEN_KEY);
+    store.del(PROFILE_KEY);
+    stopLive();
+  }
+
+  function logout() {
+    clearSession();
+    closeOverlay();
+    renderButton();
+    toast('You are logged out.');
+  }
+
+  /* ---------------- header button ---------------- */
+
+  function activeOrders() {
+    return state.orders.filter(function (o) { return String(o.status || '').toLowerCase() !== 'completed'; });
+  }
+
+  function renderButton() {
+    if (!el.button) return;
+    el.button.hidden = !state.enabled;
+    if (el.bar) el.bar.hidden = !state.enabled;
+    el.button.replaceChildren();
+
+    if (isLoggedIn()) {
+      var first = String(state.customer.full_name || '').split(' ')[0] || 'Account';
+      el.button.appendChild(h('span', { class: 'ca-btn-icon', 'aria-hidden': 'true', text: '\u{1F464}' }));
+      el.button.appendChild(h('span', { class: 'ca-btn-label notranslate', translate: 'no', text: first }));
+      var n = activeOrders().length;
+      if (n > 0) el.button.appendChild(h('span', { class: 'ca-badge', 'aria-label': n + ' active order(s)', text: String(n) }));
+      el.button.setAttribute('aria-label', 'My account');
+    } else {
+      el.button.appendChild(h('span', { class: 'ca-btn-icon', 'aria-hidden': 'true', text: '\u{1F464}' }));
+      el.button.appendChild(h('span', { class: 'ca-btn-label', text: 'Log in' }));
+      el.button.setAttribute('aria-label', 'Log in or create account');
+    }
+    placeButton();
+  }
+
+  // The language selector in this menu is pinned (position:absolute) to the top-right
+  // corner of the header. Put the Log in button right beside it, in the same strip,
+  // and keep the cafe name from running underneath it.
+  function placeButton() {
+    var btn = el.button;
+    var row = btn && btn.parentElement;
+    if (!btn || !row || !row.classList.contains('menu-brand-row')) return;
+
+    var lang = document.getElementById('customerLanguageControl');
+    var cs = lang ? window.getComputedStyle(lang) : null;
+
+    if (!lang || cs.position !== 'absolute' || !lang.offsetWidth) {
+      // Language selector is part of the normal row: plain flex layout is enough.
+      btn.classList.remove('ca-btn-abs');
+      btn.style.top = btn.style.right = btn.style.height = '';
+      row.classList.remove('ca-reserve');
+      row.style.removeProperty('--ca-reserve');
+      return;
+    }
+
+    btn.classList.add('ca-btn-abs');
+    btn.style.top = cs.top;
+    btn.style.right = ((parseFloat(cs.right) || 0) + lang.offsetWidth + 8) + 'px';
+    btn.style.height = Math.max(26, lang.offsetHeight) + 'px';
+
+    if (btn.hidden) {
+      row.classList.remove('ca-reserve');
+      row.style.removeProperty('--ca-reserve');
+      return;
+    }
+
+    // Keep the cafe name from running underneath the button: measure the real overlap.
+    var info = row.querySelector('.menu-brand-info');
+    row.style.setProperty('--ca-reserve', '0px');
+    row.classList.add('ca-reserve');
+    if (info) {
+      var need = Math.ceil(info.getBoundingClientRect().right - btn.getBoundingClientRect().left + 8);
+      row.style.setProperty('--ca-reserve', Math.max(0, need) + 'px');
+    }
+  }
+
+  function buildButton() {
+    el.button = h('button', { type: 'button', class: 'ca-btn', id: 'customerAccountBtn', hidden: true, onclick: onButtonClick });
+
+    // Same row as the logo and cafe name, at the far right.
+    var row = document.querySelector('header.menu-profile-header .menu-brand-row');
+    if (row) {
+      row.appendChild(el.button);
+      window.addEventListener('resize', placeButton);
+      if (window.ResizeObserver) {
+        try { new ResizeObserver(placeButton).observe(el.button); } catch (_) {}
+      }
+    } else {
+      // Fallback if the header layout is not found: small floating button.
+      el.bar = h('div', { class: 'ca-bar ca-bar-floating', hidden: true }, [el.button]);
+      document.body.appendChild(el.bar);
+    }
+    renderButton();
+  }
+
+  function onButtonClick() {
+    if (isLoggedIn()) openAccount('active');
+    else openAuth('login');
+  }
+
+  /* ---------------- overlay shell ---------------- */
+
+  function buildOverlay() {
+    el.card = h('section', { class: 'ca-card', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Customer account' });
+    el.overlay = h('div', { class: 'ca-overlay', hidden: true }, [el.card]);
+    el.overlay.addEventListener('mousedown', function (e) { if (e.target === el.overlay) closeOverlay(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && state.view) closeOverlay(); });
+    document.body.appendChild(el.overlay);
+  }
+
+  function showOverlay() {
+    el.overlay.hidden = false;
+    document.body.classList.add('ca-lock');
+  }
+
+  function closeOverlay() {
+    state.view = null;
+    state.pending = null;
+    clearInterval(state.tick);
+    if (el.overlay) el.overlay.hidden = true;
+    document.body.classList.remove('ca-lock');
+  }
+
+  function closeButton() {
+    return h('button', { type: 'button', class: 'ca-close', 'aria-label': 'Close', onclick: closeOverlay, text: '\u00D7' });
+  }
+
+  /* ---------------- login / sign-up ---------------- */
+
+  function openAuth(mode, notice) {
+    state.view = 'auth';
+    state.auth = { mode: mode === 'signup' ? 'signup' : 'login', step: 'details', phone: '', name: '', code: '', devOtp: '', resendAt: 0, busy: false, error: '', info: notice || '' };
+    renderAuth();
+    showOverlay();
+    setTimeout(function () {
+      var first = el.card.querySelector('input');
+      if (first) first.focus();
+    }, 30);
+  }
+
+  function setAuth(patch) {
+    Object.keys(patch).forEach(function (k) { state.auth[k] = patch[k]; });
+    renderAuth();
+  }
+
+  function renderAuth() {
+    if (state.view !== 'auth') return;
+    clearInterval(state.tick);
+    var a = state.auth;
+    var body;
+
+    if (a.step === 'code') body = codeStep(a); else body = detailsStep(a);
+
+    el.card.replaceChildren(closeButton(), body);
+  }
+
+  function detailsStep(a) {
+    var signup = a.mode === 'signup';
+
+    var nameInput = signup ? h('input', {
+      id: 'caName', type: 'text', autocomplete: 'name', maxlength: '120',
+      placeholder: 'Your full name', value: a.name, required: true,
+      oninput: function (e) { a.name = e.target.value; }
+    }) : null;
+
+    var phoneInput = h('input', {
+      id: 'caPhone', type: 'tel', inputmode: 'tel', autocomplete: 'tel', maxlength: '20',
+      placeholder: '09XXXXXXXX', value: a.phone, required: true,
+      oninput: function (e) { a.phone = e.target.value; }
+    });
+
+    var form = h('form', { class: 'ca-form', novalidate: true, onsubmit: function (e) { e.preventDefault(); sendCode(false); } }, [
+      signup ? h('label', { for: 'caName', text: 'Full name' }) : null,
+      nameInput,
+      h('label', { for: 'caPhone', text: 'Phone number' }),
+      phoneInput,
+      h('p', { class: 'ca-hint', text: 'We will text you a 6-digit code to confirm your number.' }),
+      a.info ? h('p', { class: 'ca-info', role: 'status', text: a.info }) : null,
+      a.error ? h('p', { class: 'ca-error', role: 'alert', text: a.error }) : null,
+      h('button', { type: 'submit', class: 'ca-primary', disabled: a.busy, text: a.busy ? 'Sending...' : 'Send code' })
+    ]);
+
+    return h('div', null, [
+      h('h2', { class: 'ca-title', text: signup ? 'Create your account' : 'Log in' }),
+      h('p', { class: 'ca-sub', text: signup ? 'Sign up once to order and track your orders.' : 'Welcome back. Log in to order and track your orders.' }),
+      h('div', { class: 'ca-switch', role: 'tablist' }, [
+        h('button', { type: 'button', role: 'tab', 'aria-selected': String(!signup), class: signup ? '' : 'on', onclick: function () { setAuth({ mode: 'login', error: '', info: '' }); }, text: 'Log in' }),
+        h('button', { type: 'button', role: 'tab', 'aria-selected': String(signup), class: signup ? 'on' : '', onclick: function () { setAuth({ mode: 'signup', error: '', info: '' }); }, text: 'Create account' })
+      ]),
+      form
+    ]);
+  }
+
+  function codeStep(a) {
+    var codeInput = h('input', {
+      id: 'caCode', type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code',
+      maxlength: '6', pattern: '[0-9]*', placeholder: '------', class: 'ca-code notranslate', translate: 'no', value: a.code || '',
+      oninput: function (e) {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+        a.code = e.target.value;
+        if (e.target.value.length === 6 && !a.busy) verifyCode(e.target.value);
+      }
+    });
+
+    var resend = h('button', { type: 'button', class: 'ca-link', id: 'caResend', onclick: function () { sendCode(true); } });
+
+    function paintResend() {
+      var left = Math.max(0, Math.ceil((a.resendAt - Date.now()) / 1000));
+      resend.disabled = left > 0 || a.busy;
+      resend.textContent = left > 0 ? 'Resend code in ' + left + 's' : 'Resend code';
+    }
+    paintResend();
+    state.tick = setInterval(paintResend, 1000);
+
+    var form = h('form', { class: 'ca-form', novalidate: true, onsubmit: function (e) { e.preventDefault(); verifyCode(codeInput.value); } }, [
+      h('label', { for: 'caCode', text: '6-digit code' }),
+      codeInput,
+      a.devOtp ? h('p', { class: 'ca-dev', text: 'Test mode code: ' + a.devOtp }) : null,
+      a.info ? h('p', { class: 'ca-info', role: 'status', text: a.info }) : null,
+      a.error ? h('p', { class: 'ca-error', role: 'alert', text: a.error }) : null,
+      h('button', { type: 'submit', class: 'ca-primary', disabled: a.busy, text: a.busy ? 'Checking...' : (a.mode === 'signup' ? 'Confirm & create account' : 'Confirm & log in') }),
+      h('div', { class: 'ca-row' }, [
+        resend,
+        h('button', { type: 'button', class: 'ca-link', onclick: function () { setAuth({ step: 'details', error: '', info: '', devOtp: '' }); }, text: 'Change number' })
+      ])
+    ]);
+
+    setTimeout(function () { codeInput.focus(); }, 30);
+
+    return h('div', null, [
+      h('h2', { class: 'ca-title', text: 'Enter the code' }),
+      h('p', { class: 'ca-sub' }, ['We sent a code to ', h('strong', { class: 'notranslate', translate: 'no', text: a.phone }), '.']),
+      form
+    ]);
+  }
+
+  function sendCode(isResend) {
+    var a = state.auth;
+    if (a.busy) return;
+
+    var phone = String(a.phone || '').trim();
+    var name = String(a.name || '').replace(/\s+/g, ' ').trim();
+
+    if (a.mode === 'signup' && name.length < 2) { setAuth({ error: 'Enter your full name.', info: '' }); return; }
+    if (!phone) { setAuth({ error: 'Enter your phone number.', info: '' }); return; }
+
+    setAuth({ busy: true, error: '', info: '' });
+
+    api('/request-otp', { method: 'POST', noAuth: true, body: { mode: a.mode, full_name: name, phone: phone } })
+      .then(function (data) {
+        setAuth({
+          busy: false, step: 'code', phone: data.phone || phone, name: name,
+          devOtp: data.dev_otp || '',
+          resendAt: Date.now() + (Number(data.resend_in) || 45) * 1000,
+          info: isResend ? 'A new code was sent.' : '', error: ''
+        });
+      })
+      .catch(function (err) {
+        var patch = { busy: false, error: err.message, info: '' };
+        // Friendly redirects between the two modes
+        if (err.code === 'account_exists') { patch.mode = 'login'; patch.error = ''; patch.info = 'This number already has an account. Tap "Send code" to log in.'; }
+        if (err.code === 'account_not_found') { patch.mode = 'signup'; patch.error = ''; patch.info = 'No account for this number yet. Enter your name to create one.'; }
+        if (err.code === 'self_ordering_disabled') { setEnabled(false); return; }
+        setAuth(patch);
+      });
+  }
+
+  function verifyCode(code) {
+    var a = state.auth;
+    if (a.busy) return;
+    code = String(code || '').replace(/\D/g, '');
+    if (code.length !== 6) { setAuth({ error: 'Enter the 6-digit code.' }); return; }
+
+    setAuth({ busy: true, error: '', info: '' });
+
+    api('/verify-otp', { method: 'POST', noAuth: true, body: { mode: a.mode, phone: a.phone, code: code } })
+      .then(function (data) {
+        saveSession(data.token, data.customer);
+        var cb = state.pending;
+        state.pending = null;
+        closeOverlay();
+        renderButton();
+        startLive();
+        loadOrders().then(function () {
+          toast(data.message || 'You are logged in.');
+          if (typeof cb === 'function') cb();
+          else openAccount('active');
+        });
+      })
+      .catch(function (err) {
+        if (err.code === 'self_ordering_disabled') { setEnabled(false); return; }
+        setAuth({ busy: false, error: err.message, info: '', code: '' });
+      });
+  }
+
+  /* ---------------- account panel ---------------- */
+
+  function openAccount(tab) {
+    if (!isLoggedIn()) { openAuth('login'); return; }
+    state.view = 'account';
+    state.tab = tab === 'history' ? 'history' : 'active';
+    renderAccount();
+    showOverlay();
+    loadOrders();
+  }
+
+  function trackerFor(order) {
+    var status = String(order.status || 'pending').toLowerCase();
+    var index = 0;
+    STEPS.forEach(function (s, i) { if (s.key === status) index = i; });
+
+    var note = {
+      pending: 'We received your order and are waiting for the cafe to start it.',
+      preparing: 'Your order is being prepared.',
+      ready: order.order_type === 'delivery' ? 'Your order is ready and on its way.' :
+        (order.order_type === 'pickup' ? 'Your order is ready for pick-up.' : 'Your order is ready.'),
+      completed: 'This order is complete.'
+    }[status] || '';
+
+    var list = h('ol', { class: 'ca-steps' }, STEPS.map(function (s, i) {
+      var cls = i < index ? 'done' : (i === index ? 'current' : '');
+      return h('li', { class: cls }, [
+        h('span', { class: 'ca-dot', 'aria-hidden': 'true' }),
+        h('span', { class: 'ca-step-label', text: s.label }),
+        h('span', { class: 'ca-step-time', text: i <= index ? when(order[s.at]) : '' })
+      ]);
+    }));
+
+    return h('div', { class: 'ca-track' }, [list, note ? h('p', { class: 'ca-track-note', text: note }) : null]);
+  }
+
+  function orderCard(order, withTracker) {
+    var status = String(order.status || 'pending').toLowerCase();
+    var items = (Array.isArray(order.items) ? order.items : []).map(function (item) {
+      var qty = Number(item.quantity != null ? item.quantity : item.qty) || 1;
+      var price = Number(item.price != null ? item.price : item.unit_price) || 0;
+      return h('li', null, [
+        h('div', { class: 'ca-item-row' }, [
+          h('span', { text: qty + ' \u00D7 ' + String(item.name || '') }),
+          h('span', { text: money(price * qty) })
+        ]),
+        item.note ? h('div', { class: 'ca-item-note', text: 'Note: ' + item.note }) : null
+      ]);
+    });
+
+    var where = [order.branch_name, order.order_type === 'dine-in' ? 'Dine-in' : (order.order_type === 'pickup' ? 'Pick-up' : 'Delivery')];
+    if (order.table_number) where.push('Table ' + order.table_number);
+
+    return h('article', { class: 'ca-order ca-status-' + status }, [
+      h('div', { class: 'ca-order-head' }, [
+        h('strong', { text: 'Order #' + (order.display_number != null ? order.display_number : order.id) }),
+        h('span', { class: 'ca-pill', text: status.charAt(0).toUpperCase() + status.slice(1) })
+      ]),
+      h('p', { class: 'ca-order-meta', text: when(order.created_at) }),
+      h('p', { class: 'ca-order-meta', text: where.filter(Boolean).join(' \u00B7 ') }),
+      order.customer_address ? h('p', { class: 'ca-order-meta', text: 'Address: ' + order.customer_address }) : null,
+      withTracker ? trackerFor(order) : null,
+      h('ul', { class: 'ca-items' }, items),
+      h('div', { class: 'ca-total' }, [h('span', { text: 'Total' }), h('strong', { text: money(order.total) })])
+    ]);
+  }
+
+  function renderAccount() {
+    if (state.view !== 'account') return;
+    var c = state.customer || {};
+    var active = activeOrders();
+    var past = state.orders.filter(function (o) { return String(o.status || '').toLowerCase() === 'completed'; });
+
+    var list;
+    if (!state.ordersLoaded) {
+      list = h('p', { class: 'ca-empty', text: 'Loading your orders...' });
+    } else if (state.tab === 'active') {
+      list = active.length
+        ? h('div', null, active.map(function (o) { return orderCard(o, true); }))
+        : h('p', { class: 'ca-empty', text: 'You have no active orders right now.' });
+    } else {
+      list = past.length
+        ? h('div', null, past.map(function (o) { return orderCard(o, false); }))
+        : h('p', { class: 'ca-empty', text: 'Your completed orders will appear here.' });
+    }
+
+    var scrollBox = el.card.querySelector('.ca-scroll');
+    var previousScroll = scrollBox ? scrollBox.scrollTop : 0;
+
+    el.card.replaceChildren(
+      closeButton(),
+      h('div', { class: 'ca-profile' }, [
+        h('div', { class: 'ca-avatar', 'aria-hidden': 'true', text: String(c.full_name || '?').trim().charAt(0).toUpperCase() }),
+        h('div', { class: 'ca-profile-text' }, [
+          h('strong', { class: 'notranslate', translate: 'no', text: c.full_name || '' }),
+          h('span', { class: 'notranslate', translate: 'no', text: c.phone || '' })
+        ]),
+        h('button', { type: 'button', class: 'ca-logout', onclick: logout, text: 'Log out' })
+      ]),
+      h('div', { class: 'ca-switch', role: 'tablist' }, [
+        h('button', { type: 'button', role: 'tab', 'aria-selected': String(state.tab === 'active'), class: state.tab === 'active' ? 'on' : '', onclick: function () { state.tab = 'active'; renderAccount(); },
+          text: 'Current order' + (active.length ? ' (' + active.length + ')' : '') }),
+        h('button', { type: 'button', role: 'tab', 'aria-selected': String(state.tab === 'history'), class: state.tab === 'history' ? 'on' : '', onclick: function () { state.tab = 'history'; renderAccount(); },
+          text: 'Order history' })
+      ]),
+      h('div', { class: 'ca-scroll' }, [list])
+    );
+
+    var nextScroll = el.card.querySelector('.ca-scroll');
+    if (nextScroll) nextScroll.scrollTop = previousScroll;
+  }
+
+  /* ---------------- orders + live updates ---------------- */
+
+  function loadOrders() {
+    if (!isLoggedIn()) return Promise.resolve();
+    return api('/orders')
+      .then(function (data) {
+        state.orders = data.orders || [];
+        state.ordersLoaded = true;
+        renderButton();
+        renderAccount();
+      })
+      .catch(function (err) {
+        if (err.status === 401) { handleUnauthorized(); return; }
+        if (err.code === 'self_ordering_disabled') { setEnabled(false); return; }
+        state.ordersLoaded = true;
+        renderAccount();
+      });
+  }
+
+  function scheduleRefresh() {
+    clearTimeout(state.refreshTimer);
+    state.refreshTimer = setTimeout(loadOrders, 400);
+  }
+
+  function startLive() {
+    stopLive();
+    if (!isLoggedIn() || !state.enabled) return;
+
+    try {
+      if (window.EventSource) {
+        state.stream = new EventSource('/api/orders-stream/' + encodeURIComponent(SLUG));
+        state.stream.addEventListener('orders', scheduleRefresh);
+      }
+    } catch (_) {}
+
+    // Safety net in case the live connection drops.
+    state.poll = setInterval(function () {
+      if (document.hidden) return;
+      if (state.view === 'account' || activeOrders().length) loadOrders();
+    }, 20000);
+  }
+
+  function stopLive() {
+    if (state.stream) { try { state.stream.close(); } catch (_) {} state.stream = null; }
+    clearInterval(state.poll); state.poll = null;
+    clearTimeout(state.refreshTimer);
+  }
+
+  function handleUnauthorized(callback) {
+    var wasOpen = !!state.view;
+    clearSession();
+    renderButton();
+    if (wasOpen || typeof callback === 'function') {
+      openAuth('login', 'Your session expired. Please log in again.');
+      if (typeof callback === 'function') state.pending = callback;
+    }
+  }
+
+  /* ---------------- self-ordering switch ---------------- */
+
+  function setEnabled(value) {
+    state.enabled = !!value;
+    if (!state.enabled) {
+      state.pending = null;
+      closeOverlay();
+      stopLive();
+    } else if (isLoggedIn()) {
+      startLive();
+      loadOrders();
+    }
+    renderButton();
+  }
+
+  /* ---------------- hooks used by saveAdd.js ---------------- */
+
+  function requireLogin(callback) {
+    state.pending = typeof callback === 'function' ? callback : null;
+    openAuth('login', 'Log in or create an account to place your order.');
+  }
+
+  function prefillOrderForm() {
+    if (!isLoggedIn()) return;
+    var name = document.getElementById('orderCustomerName');
+    var phone = document.getElementById('orderCustomerPhone');
+    if (name) { name.value = state.customer.full_name || ''; name.readOnly = true; }
+    if (phone) { phone.value = state.customer.phone || ''; phone.readOnly = true; }
+  }
+
+  function onOrderPlaced() {
+    loadOrders().then(function () { openAccount('active'); });
+  }
+
+  window.CustomerAccount = {
+    isLoggedIn: isLoggedIn,
+    authHeader: function () { return state.token ? { Authorization: 'Bearer ' + state.token } : {}; },
+    requireLogin: requireLogin,
+    setEnabled: setEnabled,
+    prefillOrderForm: prefillOrderForm,
+    onOrderPlaced: onOrderPlaced,
+    handleUnauthorized: handleUnauthorized,
+    openAccount: openAccount
+  };
+
+  /* ---------------- start ---------------- */
+
+  function init() {
+    if (!SLUG) return;
+    buildButton();
+    buildOverlay();
+    // The button stays hidden until saveAdd.js reports that self-ordering is enabled.
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();

@@ -1,0 +1,334 @@
+/* ==========================================================================
+   CUSTOMER ACCOUNT  (login button, login modal, My Account panel)
+   Change the colours here to match your menu theme.
+   ========================================================================== */
+
+:root {
+  --ca-accent: #b9833a;
+  --ca-accent-dark: #8f6226;
+  --ca-bg: #ffffff;
+  --ca-text: #2a1f17;
+  --ca-muted: #7a6a5c;
+  --ca-line: #eadfd2;
+  --ca-soft: #faf5ee;
+  --ca-danger: #b3261e;
+  --ca-ok: #2e7d4f;
+}
+
+/* ---------- header button (far right of the logo / name row) ---------- */
+
+.ca-bar-floating { position: fixed; top: 10px; right: 10px; z-index: 900; }
+.ca-bar[hidden], .ca-btn[hidden] { display: none !important; }
+
+.ca-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  margin-left: 10px;
+  min-height: 38px;
+  padding: 6px 14px;
+  border: 1px solid var(--ca-accent);
+  border-radius: 999px;
+  background: var(--ca-bg);
+  color: var(--ca-accent-dark);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+  transition: background .15s ease, color .15s ease;
+}
+.ca-btn:hover { background: var(--ca-accent); color: #fff; }
+.ca-btn-icon { font-size: 15px; line-height: 1; }
+.ca-btn-label { max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+.ca-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ca-danger);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+
+/* When the language selector is pinned to the corner, the button sits beside it. */
+.ca-btn.ca-btn-abs {
+  position: absolute;
+  margin: 0;
+  min-height: 0;
+  padding: 0 10px;
+  font-size: 13px;
+  gap: 5px;
+  z-index: 2;
+}
+.ca-btn.ca-btn-abs .ca-btn-icon { font-size: 13px; }
+.ca-btn.ca-btn-abs .ca-btn-label { max-width: 64px; }
+.ca-btn.ca-btn-abs .ca-badge { min-width: 16px; height: 16px; padding: 0 4px; font-size: 11px; }
+.menu-brand-row.ca-reserve .menu-brand-info { margin-right: var(--ca-reserve, 0px); }
+
+/* very small phones: keep the row from overflowing */
+@media (max-width: 380px) {
+  .ca-btn { margin-left: 6px; padding: 6px 10px; }
+  .ca-btn-label { max-width: 60px; }
+}
+
+/* ---------- overlay + card ---------- */
+
+body.ca-lock { overflow: hidden; }
+
+.ca-card, .ca-card *, .ca-btn, .ca-bar { box-sizing: border-box; }
+
+.ca-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(20, 12, 6, .55);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.ca-overlay[hidden] { display: none; }
+
+.ca-card {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  max-height: 92vh;
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 20px 20px;
+  border-radius: 20px 20px 0 0;
+  background: var(--ca-bg);
+  color: var(--ca-text);
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, .3);
+  animation: ca-up .22s ease-out;
+}
+@keyframes ca-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (min-width: 560px) {
+  .ca-overlay { align-items: center; }
+  .ca-card { border-radius: 20px; max-height: 86vh; }
+}
+
+.ca-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ca-muted);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ca-close:hover { background: var(--ca-soft); }
+
+.ca-title { margin: 4px 36px 4px 0; font-size: 22px; }
+.ca-sub { margin: 0 0 14px; color: var(--ca-muted); font-size: 14px; }
+
+/* ---------- segmented switch ---------- */
+
+.ca-switch {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 14px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--ca-soft);
+}
+.ca-switch button {
+  flex: 1;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ca-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ca-switch button.on { background: var(--ca-bg); color: var(--ca-accent-dark); box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
+
+/* ---------- form ---------- */
+
+.ca-form { display: flex; flex-direction: column; gap: 8px; }
+.ca-form label { font-size: 13px; font-weight: 700; }
+.ca-form input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid var(--ca-line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ca-text);
+  font: inherit;
+  font-size: 16px;
+}
+.ca-form input:focus { outline: 2px solid var(--ca-accent); outline-offset: 1px; }
+.ca-code { text-align: center; font-size: 28px !important; letter-spacing: .5em; font-weight: 700; }
+
+.ca-hint { margin: 0; color: var(--ca-muted); font-size: 13px; }
+.ca-info { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--ca-soft); color: var(--ca-text); font-size: 14px; }
+.ca-error { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fdecea; color: var(--ca-danger); font-size: 14px; }
+.ca-dev { margin: 0; padding: 8px 12px; border-radius: 10px; background: #fff7d6; color: #6b5300; font-size: 13px; text-align: center; }
+
+.ca-primary {
+  margin-top: 4px;
+  padding: 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--ca-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ca-primary:hover:not(:disabled) { background: var(--ca-accent-dark); }
+.ca-primary:disabled { opacity: .6; cursor: default; }
+
+.ca-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ca-link {
+  padding: 8px 2px;
+  border: 0;
+  background: none;
+  color: var(--ca-accent-dark);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ca-link:disabled { color: var(--ca-muted); cursor: default; }
+
+/* ---------- account panel ---------- */
+
+.ca-profile { display: flex; align-items: center; gap: 12px; margin-right: 36px; }
+.ca-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ca-accent);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+}
+.ca-profile-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.ca-profile-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ca-profile-text span { color: var(--ca-muted); font-size: 13px; }
+.ca-logout {
+  padding: 8px 12px;
+  border: 1px solid var(--ca-line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ca-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ca-logout:hover { border-color: var(--ca-danger); color: var(--ca-danger); }
+
+.ca-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 0 -6px; padding: 0 6px 6px; }
+.ca-empty { padding: 28px 8px; text-align: center; color: var(--ca-muted); }
+
+/* ---------- order card ---------- */
+
+.ca-order {
+  margin-bottom: 12px;
+  padding: 14px;
+  border: 1px solid var(--ca-line);
+  border-radius: 14px;
+  background: #fff;
+}
+.ca-order-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ca-order-meta { margin: 4px 0 0; color: var(--ca-muted); font-size: 13px; }
+
+.ca-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ca-soft);
+  color: var(--ca-accent-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+.ca-status-preparing .ca-pill { background: #fff3d6; color: #8a5a00; }
+.ca-status-ready .ca-pill { background: #dff5e7; color: var(--ca-ok); }
+.ca-status-completed .ca-pill { background: #eee; color: #555; }
+
+.ca-items { margin: 12px 0 0; padding: 0; list-style: none; border-top: 1px dashed var(--ca-line); }
+.ca-items li { padding: 8px 0; border-bottom: 1px dashed var(--ca-line); }
+.ca-item-row { display: flex; justify-content: space-between; gap: 12px; }
+.ca-item-note { margin-top: 2px; color: var(--ca-muted); font-size: 12px; }
+.ca-total { display: flex; justify-content: space-between; margin-top: 10px; font-size: 16px; }
+
+/* ---------- tracker ---------- */
+
+.ca-track { margin: 14px 0 4px; padding: 12px; border-radius: 12px; background: var(--ca-soft); }
+.ca-steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0; }
+.ca-steps li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  column-gap: 10px;
+  padding: 7px 0;
+  color: var(--ca-muted);
+}
+.ca-steps li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 29px;
+  bottom: -7px;
+  width: 2px;
+  background: var(--ca-line);
+}
+.ca-steps li.done:not(:last-child)::after { background: var(--ca-ok); }
+.ca-dot {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ca-line);
+  border-radius: 50%;
+  background: #fff;
+  z-index: 1;
+}
+.ca-steps li.done .ca-dot { border-color: var(--ca-ok); background: var(--ca-ok); }
+.ca-steps li.current .ca-dot { border-color: var(--ca-accent); background: var(--ca-accent); box-shadow: 0 0 0 4px rgba(185, 131, 58, .25); animation: ca-pulse 1.6s infinite; }
+.ca-steps li.current .ca-step-label, .ca-steps li.done .ca-step-label { color: var(--ca-text); font-weight: 700; }
+.ca-step-time { font-size: 12px; }
+.ca-track-note { margin: 8px 0 0; font-size: 14px; font-weight: 700; color: var(--ca-accent-dark); }
+@keyframes ca-pulse { 50% { box-shadow: 0 0 0 7px rgba(185, 131, 58, .08); } }
+
+/* ---------- toast fallback ---------- */
+
+.ca-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 100001;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: #2a1f17;
+  color: #fff;
+  font-size: 14px;
+}
+
+/* locked fields on the order form (name / phone come from the account) */
+#orderCustomerName[readonly], #orderCustomerPhone[readonly] { background: #f3eee7; cursor: not-allowed; }

@@ -317,6 +317,9 @@ main {
 .admin-customer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .admin-customer-main { min-width: 0; overflow-wrap: anywhere; }
 .admin-detail-btn { color: var(--gold); border-color: #80643b; white-space: nowrap; }
+.admin-branch-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; }
+.admin-branch-bar label { color: var(--muted); font-size: 14px; font-weight: bold; }
+.admin-branch-bar select { min-width: 190px; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: #302116; color: var(--cream); font-size: 15px; }
 .admin-delete-btn { padding: 8px 12px; border-radius: 10px; border: 1px solid #8b3a3a; background: transparent; color: #ff8c8c; cursor: pointer; font-size: 14px; }
 .admin-delete-btn:hover { background: rgba(255,90,90,.12); }
 @media (max-width: 520px) { .admin-tools-bar { flex-wrap: wrap; justify-content: flex-end; } }
@@ -345,6 +348,7 @@ main {
         <button type="button" data-admin-view="live">&#128203; Live Orders</button>
         <button type="button" data-admin-view="history">&#128197; Order History</button>
         <button type="button" data-admin-view="customers">&#128101; Customers</button>
+        <button type="button" data-admin-view="accounts">&#128100; Customer Accounts</button>
       </div>
     </div>
   </header>
@@ -562,6 +566,38 @@ let customerCache = [];
 let customerSearch = '';
 let currentCustomer = null;
 
+// ---- Branch filter (order history, customers, customer accounts) ----
+let adminBranches = null;
+let adminBranchId = sessionStorage.getItem('adminBranchFilter');
+if (adminBranchId === null) adminBranchId = sessionStorage.getItem('orderBranchId') || '';
+let currentAccount = null;
+let accountCache = [];
+let accountSearch = '';
+let accountTotal = 0;
+
+async function ensureAdminBranches() {
+  if (adminBranches) return;
+  try {
+    const data = await adminRequest(`/api/admin/branches/${encodeURIComponent(slug)}`);
+    adminBranches = data.branches || [];
+  } catch (e) { adminBranches = []; }
+  if (adminBranchId && !adminBranches.some(b => String(b.id) === String(adminBranchId))) adminBranchId = '';
+}
+function branchFilterMarkup() {
+  if (!adminBranches || !adminBranches.length) return '';
+  return `<div class="admin-branch-bar"><label for="adminBranchSelect">Branch</label><select id="adminBranchSelect"><option value="">All branches</option>${adminBranches.map(b => `<option value="${escapeHtml(b.id)}"${String(b.id) === String(adminBranchId) ? ' selected' : ''}>${escapeHtml(b.name)}</option>`).join('')}</select></div>`;
+}
+function branchQuery(prefix) { return adminBranchId ? prefix + 'branch_id=' + encodeURIComponent(adminBranchId) : ''; }
+function onBranchFilterChange(value) {
+  adminBranchId = value || '';
+  sessionStorage.setItem('adminBranchFilter', adminBranchId);
+  if (adminView === 'history') showHistory();
+  else if (adminView === 'customers') showCustomers();
+  else if (adminView === 'accounts') showAccounts();
+  else if (adminView === 'customer-detail' && currentCustomer) showCustomerOrders(currentCustomer.key, currentCustomer.name);
+  else if (adminView === 'account-detail' && currentAccount) showAccountOrders(currentAccount.id, currentAccount.name);
+}
+
 async function adminRequest(url, options) {
   const opts = options || {};
   const response = await fetch(url, Object.assign({ cache: 'no-store' }, opts, {
@@ -609,7 +645,8 @@ async function showHistory() {
   adminView = 'history';
   adminOverlayTitle.textContent = 'Order History';
   if (!historyDate) historyDate = todayString();
-  adminOverlayBody.innerHTML = `<div class="admin-date-bar">
+  await ensureAdminBranches();
+  adminOverlayBody.innerHTML = branchFilterMarkup() + `<div class="admin-date-bar">
       <button type="button" data-history-shift="-1" aria-label="Previous day">&#8249;</button>
       <input type="date" id="historyDateInput" value="${historyDate}">
       <button type="button" data-history-shift="1" aria-label="Next day">&#8250;</button>
@@ -623,7 +660,7 @@ async function loadHistory() {
   if (!box) return;
   box.innerHTML = '<p class="muted">Loading...</p>';
   try {
-    const data = await adminRequest(`/api/admin/order-history/${encodeURIComponent(slug)}?date=${encodeURIComponent(historyDate)}`);
+    const data = await adminRequest(`/api/admin/order-history/${encodeURIComponent(slug)}?date=${encodeURIComponent(historyDate)}${branchQuery('&')}`);
     if (adminView !== 'history') return;
     const orders = data.orders || [];
     if (!orders.length) { box.innerHTML = '<div class="empty">No orders on this day.</div>'; return; }
@@ -644,9 +681,10 @@ async function showCustomers() {
   adminView = 'customers';
   currentCustomer = null;
   adminOverlayTitle.textContent = 'Customers';
-  adminOverlayBody.innerHTML = `<input type="search" id="customerSearchInput" class="admin-search" placeholder="Search name, phone or address" value="${escapeHtml(customerSearch)}"><div id="customerResult"><p class="muted">Loading...</p></div>`;
+  await ensureAdminBranches();
+  adminOverlayBody.innerHTML = branchFilterMarkup() + `<input type="search" id="customerSearchInput" class="admin-search" placeholder="Search name, phone or address" value="${escapeHtml(customerSearch)}"><div id="customerResult"><p class="muted">Loading...</p></div>`;
   try {
-    const data = await adminRequest(`/api/admin/customers/${encodeURIComponent(slug)}`);
+    const data = await adminRequest(`/api/admin/customers/${encodeURIComponent(slug)}${branchQuery('?')}`);
     if (adminView !== 'customers') return;
     customerCache = data.customers || [];
     renderCustomers();
@@ -679,8 +717,61 @@ async function showCustomerOrders(key, name) {
   adminOverlayBody.innerHTML = `<div class="admin-date-bar"><button type="button" data-customer-back>&#8249; Back to customers</button></div><div id="customerOrdersResult"><p class="muted">Loading...</p></div>`;
   const box = document.getElementById('customerOrdersResult');
   try {
-    const data = await adminRequest(`/api/admin/customers/${encodeURIComponent(slug)}/orders?key=${encodeURIComponent(key)}`);
+    const data = await adminRequest(`/api/admin/customers/${encodeURIComponent(slug)}/orders?key=${encodeURIComponent(key)}${branchQuery('&')}`);
     if (adminView !== 'customer-detail') return;
+    const orders = data.orders || [];
+    if (!orders.length) { box.innerHTML = '<div class="empty">No orders for this customer.</div>'; return; }
+    const total = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    box.innerHTML = `<div class="admin-summary"><strong>${orders.length}</strong> order(s) &middot; <strong>${formatMoney(total)}</strong> total</div>` + orders.map(historyOrderMarkup).join('');
+  } catch (e) { box.innerHTML = `<p class="muted">${escapeHtml(e.message || 'Unable to load orders.')}</p>`; }
+}
+
+// ---- Customer Accounts module (accounts created from the customer menu) ----
+async function showAccounts() {
+  adminView = 'accounts';
+  currentAccount = null;
+  adminOverlayTitle.textContent = 'Customer Accounts';
+  adminOverlayBody.innerHTML = '<p class="muted">Loading...</p>';
+  await ensureAdminBranches();
+  if (adminView !== 'accounts') return;
+  adminOverlayBody.innerHTML = branchFilterMarkup() + `<input type="search" id="accountSearchInput" class="admin-search" placeholder="Search name or phone" value="${escapeHtml(accountSearch)}"><div id="accountResult"><p class="muted">Loading...</p></div>`;
+  try {
+    const data = await adminRequest(`/api/admin/customer-accounts/${encodeURIComponent(slug)}${branchQuery('?')}`);
+    if (adminView !== 'accounts') return;
+    accountCache = data.accounts || [];
+    accountTotal = Number(data.total_accounts) || 0;
+    renderAccounts();
+  } catch (e) {
+    const box = document.getElementById('accountResult');
+    if (box) box.innerHTML = `<p class="muted">${escapeHtml(e.message || 'Unable to load customer accounts.')}</p>`;
+  }
+}
+function renderAccounts() {
+  const box = document.getElementById('accountResult');
+  if (!box) return;
+  const q = accountSearch.trim().toLowerCase();
+  const list = accountCache.filter(a => !q || [a.full_name, a.phone].join(' ').toLowerCase().includes(q));
+  if (!list.length) { box.innerHTML = `<div class="empty">${accountTotal ? 'No accounts found.' : 'No customer accounts have been created yet.'}</div>`; return; }
+  box.innerHTML = `<p class="muted">${list.length} account(s)${adminBranchId ? ' with orders at this branch' : ''} &middot; ${accountTotal} created in total</p>` + list.map(a => `
+    <article class="order admin-customer">
+      <div class="admin-customer-main">
+        <strong>${escapeHtml(a.full_name || 'Unknown')}</strong>
+        <div>${escapeHtml(a.phone || '')}</div>
+        <div class="muted">Joined ${escapeHtml(formatDate(a.created_at))}${a.last_login_at ? ' &middot; Last login ' + escapeHtml(formatDate(a.last_login_at)) : ''}</div>
+        <div class="muted">${escapeHtml(a.order_count)} order(s) &middot; ${formatMoney(a.total_spent)}${a.last_order_at ? ' &middot; Last order ' + escapeHtml(formatDate(a.last_order_at)) : ''}</div>
+      </div>
+      <button type="button" class="admin-detail-btn" data-account-id="${escapeHtml(a.id)}" data-account-name="${escapeHtml(a.full_name || '')}">Orders</button>
+    </article>`).join('');
+}
+async function showAccountOrders(id, name) {
+  adminView = 'account-detail';
+  currentAccount = { id: id, name: name };
+  adminOverlayTitle.textContent = (name || 'Customer') + ' - Orders';
+  adminOverlayBody.innerHTML = `<div class="admin-date-bar"><button type="button" data-account-back>&#8249; Back to accounts</button></div><div id="accountOrdersResult"><p class="muted">Loading...</p></div>`;
+  const box = document.getElementById('accountOrdersResult');
+  try {
+    const data = await adminRequest(`/api/admin/customer-accounts/${encodeURIComponent(slug)}/${encodeURIComponent(id)}/orders${branchQuery('?')}`);
+    if (adminView !== 'account-detail') return;
     const orders = data.orders || [];
     if (!orders.length) { box.innerHTML = '<div class="empty">No orders for this customer.</div>'; return; }
     const total = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
@@ -697,6 +788,7 @@ async function deleteOrder(id, number) {
     if (!adminOverlay.hidden) {
       if (adminView === 'history') await loadHistory();
       else if (adminView === 'customer-detail' && currentCustomer) await showCustomerOrders(currentCustomer.key, currentCustomer.name);
+      else if (adminView === 'account-detail' && currentAccount) await showAccountOrders(currentAccount.id, currentAccount.name);
     }
   } catch (e) { window.alert(e.message || 'Unable to delete the order.'); }
 }
@@ -710,7 +802,7 @@ adminMenu.addEventListener('click', e => {
   const view = b.dataset.adminView;
   if (view === 'live') { if (!adminOverlay.hidden) closeOverlay(); return; }
   openOverlay();
-  if (view === 'history') showHistory(); else showCustomers();
+  if (view === 'history') showHistory(); else if (view === 'accounts') showAccounts(); else showCustomers();
 });
 document.getElementById('adminOverlayClose').addEventListener('click', closeOverlay);
 document.addEventListener('keydown', e => {
@@ -737,13 +829,18 @@ adminOverlay.addEventListener('click', e => {
   }
   const detail = e.target.closest('button[data-customer-key]');
   if (detail) { showCustomerOrders(detail.dataset.customerKey, detail.dataset.customerName); return; }
-  if (e.target.closest('button[data-customer-back]')) showCustomers();
+  if (e.target.closest('button[data-customer-back]')) { showCustomers(); return; }
+  const acct = e.target.closest('button[data-account-id]');
+  if (acct) { showAccountOrders(acct.dataset.accountId, acct.dataset.accountName); return; }
+  if (e.target.closest('button[data-account-back]')) showAccounts();
 });
 adminOverlay.addEventListener('change', e => {
+  if (e.target.id === 'adminBranchSelect') { onBranchFilterChange(e.target.value); return; }
   if (e.target.id === 'historyDateInput' && e.target.value) { historyDate = e.target.value; loadHistory(); }
 });
 adminOverlay.addEventListener('input', e => {
   if (e.target.id === 'customerSearchInput') { customerSearch = e.target.value; renderCustomers(); }
+  if (e.target.id === 'accountSearchInput') { accountSearch = e.target.value; renderAccounts(); }
 });
   loadOrders();
 })();

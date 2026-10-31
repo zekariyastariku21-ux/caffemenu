@@ -405,6 +405,9 @@ async function ensureDatabaseStructure() {
       ON customer_orders (restaurant_id, created_at DESC)
     `);
 
+    // Customer accounts + OTP tables (customer-accounts-routes.js)
+    await customerAccounts.ensureTables();
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS restaurant_cashier_settings (
         restaurant_id INTEGER PRIMARY KEY
@@ -1904,7 +1907,10 @@ app.get('/api/public/payment-settings/:slug', async (req, res) => {
       order_now_enabled:
         settingsResult.rows.length === 0 ||
         (settingsResult.rows[0]?.order_now_enabled !== false &&
-        settingsResult.rows[0]?.super_admin_order_now_enabled !== false)
+        settingsResult.rows[0]?.super_admin_order_now_enabled !== false),
+      self_ordering_enabled:
+        settingsResult.rows.length === 0 ||
+        settingsResult.rows[0]?.super_admin_order_now_enabled !== false
     });
   } catch (error) {
     console.error('[public-payment-settings] Error:', error);
@@ -2527,6 +2533,11 @@ async function getAdminRestaurant(req, res) {
   return restaurant;
 }
 
+function adminBranchFilter(req) {
+  const value = Number(req.query.branch_id);
+  return Number.isSafeInteger(value) && value > 0 ? value : null;
+}
+
 const ADMIN_DAY_TZ = 'Africa/Addis_Ababa';
 const ADMIN_ORDER_COLUMNS = `
   (SELECT COUNT(*)::int FROM customer_orders AS earlier
@@ -2575,8 +2586,9 @@ app.get('/api/admin/order-history/:slug', requireRestaurantAdmin, async (req, re
        FROM customer_orders
        WHERE restaurant_id = $1
          AND (created_at::timestamptz AT TIME ZONE $2)::date = $3::date
+         AND ($4::int IS NULL OR branch_id = $4::int)
        ORDER BY created_at ASC, id ASC`,
-      [restaurant.id, ADMIN_DAY_TZ, date]
+      [restaurant.id, ADMIN_DAY_TZ, date, adminBranchFilter(req)]
     );
     res.set('Cache-Control', 'no-store');
     return res.json({ ok: true, date, orders: result.rows.map(mapAdminOrder) });
@@ -2601,9 +2613,10 @@ app.get('/api/admin/customers/:slug', requireRestaurantAdmin, async (req, res) =
               MAX(created_at) AS last_order_at
        FROM customer_orders
        WHERE restaurant_id = $1
+         AND ($2::int IS NULL OR branch_id = $2::int)
        GROUP BY COALESCE(NULLIF(TRIM(customer_phone), ''), customer_name)
        ORDER BY MAX(created_at) DESC`,
-      [restaurant.id]
+      [restaurant.id, adminBranchFilter(req)]
     );
     res.set('Cache-Control', 'no-store');
     return res.json({
@@ -2629,8 +2642,9 @@ app.get('/api/admin/customers/:slug/orders', requireRestaurantAdmin, async (req,
        FROM customer_orders
        WHERE restaurant_id = $1
          AND COALESCE(NULLIF(TRIM(customer_phone), ''), customer_name) = $2
+         AND ($3::int IS NULL OR branch_id = $3::int)
        ORDER BY created_at DESC, id DESC`,
-      [restaurant.id, key]
+      [restaurant.id, key, adminBranchFilter(req)]
     );
     res.set('Cache-Control', 'no-store');
     return res.json({ ok: true, orders: result.rows.map(mapAdminOrder) });
@@ -2669,6 +2683,16 @@ app.get('/api/orders-stream/:slug', (req, res) => {
     if (set) { set.delete(res); if (!set.size) orderStreamClients.delete(key); }
   });
 });
+/* ================================================================
+   CUSTOMER ACCOUNTS (sign-up / log-in with OTP, admin account list)
+   ================================================================ */
+const customerAccounts = require('./customer-accounts-routes')(app, {
+  pool,
+  requireRestaurantAdmin,
+  getAdminRestaurant,
+  isSuperAdminRole
+});
+
 app.post('/api/orders/:slug', async (req, res) => {
   try {
     const slug = String(req.params.slug || '').trim();
@@ -2683,8 +2707,8 @@ app.post('/api/orders/:slug', async (req, res) => {
       items
     } = req.body || {};
 
-    const customerName = String(customer_name || '').trim();
-    const customerPhone = String(customer_phone || '').trim();
+    let customerName = String(customer_name || '').trim();
+    let customerPhone = String(customer_phone || '').trim();
     const branchId = Number(branch_id);
     const orderType = String(order_type || '').trim();
     const tableNumber = String(table_number || '').trim();
@@ -2758,6 +2782,27 @@ app.post('/api/orders/:slug', async (req, res) => {
     }
 
     const restaurant = restaurantResult.rows[0];
+
+    // Self-ordering must be enabled by the super admin ...
+    if (!(await customerAccounts.isSelfOrderingEnabled(restaurant.id))) {
+      return res.status(403).json({
+        ok: false,
+        code: 'self_ordering_disabled',
+        message: 'Self-ordering is currently unavailable for this cafe.'
+      });
+    }
+
+    // ... and the customer must be logged in to their account.
+    const customerAccount = await customerAccounts.getCustomerFromRequest(req, restaurant.id);
+    if (!customerAccount) {
+      return res.status(401).json({
+        ok: false,
+        code: 'login_required',
+        message: 'Please log in or create an account to place your order.'
+      });
+    }
+    customerName = customerAccount.full_name;
+    customerPhone = customerAccount.phone;
 
     const menu =
       restaurant.menu &&
@@ -2881,9 +2926,10 @@ app.post('/api/orders/:slug', async (req, res) => {
          table_number,
          customer_address,
          items,
-         total
+         total,
+         customer_account_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11)
        RETURNING id, status, created_at, total`,
       [
         restaurant.id,
@@ -2895,7 +2941,8 @@ app.post('/api/orders/:slug', async (req, res) => {
         tableNumber,
         customerAddress,
         JSON.stringify(savedItems),
-        total
+        total,
+        customerAccount.id
       ]
     );
 
@@ -2995,9 +3042,10 @@ app.get(
            total
          FROM customer_orders
          WHERE restaurant_id = $1
+           AND ($2::int IS NULL OR branch_id = $2::int)
          ORDER BY created_at DESC, id DESC
          LIMIT 100`,
-        [restaurant.id]
+        [restaurant.id, adminBranchFilter(req)]
       );
 
       return res.json({

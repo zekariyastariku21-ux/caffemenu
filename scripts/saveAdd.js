@@ -3675,6 +3675,12 @@ function setupCartButton() {
     );
     document.getElementById('orderNowButton')?.addEventListener('click', () => {
         if (cart.length === 0) return;
+        if (window.CustomerAccount && !window.CustomerAccount.isLoggedIn()) {
+            window.CustomerAccount.requireLogin(() => {
+                if (cart.length) openOrderFormModal();
+            });
+            return;
+        }
         openOrderFormModal();
     });
 
@@ -4268,9 +4274,10 @@ form.addEventListener('submit', async event => {
             `${API_BASE}/api/orders/${encodeURIComponent(CAFE_SLUG)}`,
             {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: Object.assign(
+                    { 'Content-Type': 'application/json' },
+                    window.CustomerAccount ? window.CustomerAccount.authHeader() : {}
+                ),
                 body: JSON.stringify({
                     customer_name:
                         document.getElementById('orderCustomerName')?.value.trim() || '',
@@ -4295,6 +4302,12 @@ form.addEventListener('submit', async event => {
 
         const result = await response.json().catch(() => ({}));
 
+        if (response.status === 401 && window.CustomerAccount) {
+            window.CustomerAccount.handleUnauthorized(() => {
+                if (cart.length) openOrderFormModal();
+            });
+        }
+
         if (!response.ok || !result.ok) {
             throw new Error(
                 result.message || 'Unable to place your order. Please try again.'
@@ -4318,6 +4331,10 @@ form.addEventListener('submit', async event => {
         );
 
         closeOrderFormModal();
+
+        if (window.CustomerAccount) {
+            window.CustomerAccount.onOrderPlaced(result.order);
+        }
     } catch (error) {
         if (message) {
             message.textContent =
@@ -4347,6 +4364,7 @@ function openOrderFormModal() {
 
     setupOrderFormEvents();
     loadCustomerOrderBranches();
+    if (window.CustomerAccount) window.CustomerAccount.prefillOrderForm();
     renderOrderFormSummary();
     updateOrderFormFields();
 
@@ -4405,6 +4423,13 @@ async function loadCustomerTelebirrSetting() {
 
         if (orderNowButton) {
             orderNowButton.hidden = data?.ok === false || data?.order_now_enabled === false;
+        }
+
+        // Login / account button follows the super-admin Self-Ordering switch.
+        if (window.CustomerAccount) {
+            window.CustomerAccount.setEnabled(
+                data?.ok === true && data?.self_ordering_enabled !== false
+            );
         }
 
         const enabled =
