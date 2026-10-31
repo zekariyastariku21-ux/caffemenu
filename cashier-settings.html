@@ -9,29 +9,34 @@
     *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#392719,var(--bg) 65%);font-family:Arial,sans-serif;color:var(--cream);display:grid;place-items:center;padding:22px}
     main{width:min(100%,480px);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 18px 60px #0005}
     h1{margin:0 0 8px;font-size:25px}p{color:var(--muted);line-height:1.5}.eyebrow{color:var(--gold);font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase}
-    label{display:block;margin:22px 0 8px;font-weight:bold}input{width:100%;padding:14px;border:1px solid var(--line);border-radius:10px;background:#130f0d;color:var(--cream);font-size:18px;letter-spacing:4px}
+    label{display:block;margin:22px 0 8px;font-weight:bold}input,select{width:100%;padding:14px;border:1px solid var(--line);border-radius:10px;background:#130f0d;color:var(--cream)}
+    input{font-size:18px;letter-spacing:4px}select{font-size:16px}
     button{width:100%;margin-top:16px;border:0;border-radius:10px;padding:14px;background:var(--gold);color:#24170c;font-size:15px;font-weight:bold;cursor:pointer}button.secondary{background:transparent;color:var(--cream);border:1px solid var(--line)}
-    #message{min-height:24px;color:var(--gold);font-size:14px}.row{display:flex;gap:10px}.row button{flex:1}small{color:var(--muted)}
+    #message{min-height:24px;color:var(--gold);font-size:14px}#branchStatus{font-size:13px;margin:8px 0 0}.row{display:flex;gap:10px}.row button{flex:1}small{color:var(--muted)}
   </style>
 </head>
 <body>
 <main>
   <div class="eyebrow">CaffeMenu - Restaurant admin</div>
   <h1>Cashier PIN</h1>
-  <p id="restaurantLabel">Set or change the shared PIN your cashiers use to view this restaurant's orders. The PIN must be 6&ndash;12 digits.</p>
+  <p id="restaurantLabel">Set a separate PIN for each branch. Cashiers choose their branch and enter its PIN. The PIN must be 6&ndash;12 digits.</p>
   <form id="pinForm">
-    <label for="pin">New shared PIN</label>
+    <label for="branchSelect">Branch</label>
+    <select id="branchSelect" required><option value="">Loading branches...</option></select>
+    <p id="branchStatus"></p>
+    <label for="pin">New PIN for this branch</label>
     <input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6,12}" minlength="6" maxlength="12" required>
     <label for="confirmPin">Confirm PIN</label>
     <input id="confirmPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6,12}" minlength="6" maxlength="12" required>
-    <button type="submit">Save Cashier PIN</button>
+    <button type="submit">Save Branch PIN</button>
   </form>
   <p id="message" role="status"></p>
   <div class="row">
     <button type="button" class="secondary" id="backBtn">Back to Admin</button>
     <button type="button" class="secondary" id="loginLink">Cashier Sign In</button>
   </div>
-  <p><small>Only a restaurant administrator can set or change this PIN. It is stored as a salted hash and is never shown again.</small></p>
+  <p><small id="sharedNote"></small></p>
+  <p><small>Only a restaurant administrator can set or change these PINs. They are stored as salted hashes and are never shown again.</small></p>
 </main>
 <script>
 (function(){
@@ -39,21 +44,41 @@
   const slug=(params.get('restaurant')||'').trim();
   const form=document.getElementById('pinForm');
   const message=document.getElementById('message');
+  const select=document.getElementById('branchSelect');
+  const status=document.getElementById('branchStatus');
+  let branches=[];
   if(!slug){message.textContent='Restaurant not identified. Return to the admin panel and try again.';form.querySelector('button').disabled=true;return;}
-  document.getElementById('restaurantLabel').textContent='Restaurant: '+slug+'. Set or change the shared PIN your cashiers use to view this restaurant\u2019s orders. Use 6\u201312 digits.';
-  fetch('/api/admin/cashier-pin/'+encodeURIComponent(slug),{credentials:'same-origin',cache:'no-store'})
-    .then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to verify admin access.');message.textContent=d.configured?'A cashier PIN is already configured. Saving a new PIN will replace it.':'No cashier PIN is configured yet.';})
-    .catch(e=>{message.textContent=e.message;form.querySelector('button').disabled=true;});
+  function renderStatus(){
+    const b=branches.find(x=>String(x.id)===select.value);
+    status.textContent=!b?'':(b.configured?'This branch has its own PIN. Saving a new PIN will replace it.':'No PIN set for this branch yet.');
+  }
+  async function load(keep){
+    const r=await fetch('/api/admin/branch-pins/'+encodeURIComponent(slug),{credentials:'same-origin',cache:'no-store'});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.message||'Unable to load branches.');
+    branches=Array.isArray(d.branches)?d.branches:[];
+    select.replaceChildren(new Option(branches.length?'Select a branch':'No branches yet - add branches in Profile',''));
+    branches.forEach(b=>select.appendChild(new Option(b.name+(b.configured?' \u2713':''),String(b.id))));
+    if(keep&&branches.some(b=>String(b.id)===keep))select.value=keep;
+    document.getElementById('sharedNote').textContent=d.shared_configured?'Branches without their own PIN still accept the old shared PIN until you set one.':'';
+    renderStatus();
+  }
+  load('').catch(e=>{message.textContent=e.message;form.querySelector('button').disabled=true;});
+  select.addEventListener('change',renderStatus);
   form.addEventListener('submit',async e=>{
     e.preventDefault();
+    if(!select.value){message.textContent='Select a branch.';return;}
     const pin=document.getElementById('pin').value;
     if(!/^[0-9]{6,12}$/.test(pin)){message.textContent='Enter 6\u201312 digits.';return;}
     if(pin!==document.getElementById('confirmPin').value){message.textContent='The PINs do not match.';return;}
     const button=form.querySelector('button');button.disabled=true;message.textContent='Saving\u2026';
+    const keep=select.value;
     try{
-      const r=await fetch('/api/admin/cashier-pin/'+encodeURIComponent(slug),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin}),cache:'no-store'});
+      const r=await fetch('/api/admin/branch-pins/'+encodeURIComponent(slug)+'/'+encodeURIComponent(keep),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin}),cache:'no-store'});
       const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to save PIN.');
-      form.reset();message.textContent='Cashier PIN saved successfully.';
+      document.getElementById('pin').value='';document.getElementById('confirmPin').value='';
+      await load(keep);
+      message.textContent='Branch PIN saved successfully.';
     }catch(err){message.textContent=err.message;}finally{button.disabled=false;}
   });
   document.getElementById('backBtn').addEventListener('click',()=>location.href='/cafe-dashboard');

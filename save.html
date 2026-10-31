@@ -179,91 +179,6 @@
     </form>
   </section>
 </div>
-<!-- PAYMENT MODAL -->
-  <div
-    id="paymentModal"
-    class="payment-overlay"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="paymentTitle"
-  >
-
-    <div class="payment-card">
-
-      <button
-        class="payment-close"
-        type="button"
-        onclick="closePaymentModal()"
-        aria-label="Close payment options"
-      >
-        &times;
-      </button>
-
-      <h2 id="paymentTitle">Pay securely with Telebirr</h2>
-      <p class="telebirr-payment-intro">Use your Telebirr account to continue with payment. Review the total before proceeding.</p>
-
-      <p class="payment-total">
-        Total to pay:
-        <strong id="payment-total">
-          0 <span class="notranslate" translate="no">ETB</span>
-        </strong>
-      </p>
-
-      <div
-        class="payment-options"
-        role="group"
-        aria-label="Payment methods"
-      >
-
-        <button
-          type="button"
-          class="payment-option selected" hidden
-          data-method="Telebirr"
-        >
-          Telebirr
-        </button>
-
-      </div>
-
-      <form
-        id="telebirrPaymentForm"
-        class="payment-form"
-      >
-
-        <button type="button" class="payment-submit">Pay</button>
-        <label for="telebirrAccount">
-          Telebirr account number
-        </label>
-
-        <input
-          id="telebirrAccount"
-          name="telebirrAccount"
-          type="tel"
-          inputmode="tel"
-          autocomplete="tel"
-          placeholder="09XXXXXXXX"
-          required
-        >
-
-        <button
-          type="submit"
-          class="payment-submit"
-        >
-          Pay with Telebirr
-        </button>
-
-      </form>
-
-      <p
-        id="paymentMessage"
-        class="payment-message"
-        aria-live="polite"
-      ></p>
-
-    </div>
-
-  </div>
-
 
   <!-- CUSTOMER RESTAURANT HEADER -->
   <header class="menu-profile-header" hidden>
@@ -290,14 +205,6 @@
         </h1>
 
 
-        <!--
-          Customer contact information is populated
-          automatically from the restaurant profile.
-        -->
-        <div
-          id="restaurantContactRow"
-          class="menu-contact-row"
-        ></div>
 
       </div>
 
@@ -519,7 +426,6 @@
           </button>
         </div>
 
-       <button class="payment" type="button" hidden>Pay Now</button>
 
       </div>
 
@@ -555,5 +461,6 @@
   <script src="scripts/saveAdd.js?v=20261015g"></script>
   <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 
+<script src="scripts/customer-contacts.js?v=1"></script>
 </body>
 </html>

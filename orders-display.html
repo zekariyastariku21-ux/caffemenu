@@ -363,6 +363,7 @@ main {
   </button>
 </nav>
 
+  <div id="branchPicker"></div>
   <p id="message" role="status">Loading orders...</p>
   <section id="orders" aria-live="polite"></section>
 </main>
@@ -412,11 +413,12 @@ main {
       return;
     }
 
+    if (!sessionStorage.getItem('orderBranchId')) { message.textContent = 'Select a branch to view its orders.'; ordersContainer.replaceChildren(); return; }
     message.textContent = 'Loading orders...';
 
     try {
       const response = await fetch(
-        `/api/admin/orders/${encodeURIComponent(slug)}`,
+        `/api/admin/orders/${encodeURIComponent(slug)}` + (sessionStorage.getItem('orderBranchId') ? '?branch_id=' + encodeURIComponent(sessionStorage.getItem('orderBranchId')) : ''),
         { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }
       );
       const data = await response.json();
@@ -827,6 +829,7 @@ adminOverlay.addEventListener('input', e => {
   updateFilters();
 })();
 </script>
+<script src="/scripts/order-branch-picker.js?v=1"></script>
 </body>
 </html>
 

@@ -3677,14 +3677,3 @@ body.admin-loading-active {
     border-top-left-radius: 15px;
     border-top-right-radius: 15px;
 }
-
-
-/* Standalone Telebirr settings modal */
-#telebirrModal {
-    display: none;
-}
-
-#telebirrModal.active,
-#telebirrModal.show {
-    display: flex;
-}
