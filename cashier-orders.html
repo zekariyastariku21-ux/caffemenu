@@ -176,6 +176,7 @@ main {
 </nav>
 
 <main><div class="toolbar"><div><strong>Recent orders</strong><div class="muted">Showing the latest 100 orders for this restaurant.</div></div><small id="lastUpdated"></small></div><p id="message" role="status"></p><section id="orders" class="orders"></section></main>
+<script src="/scripts/order-alerts.js?v=1" data-mode="cashier"></script>
 <script>
 (function(){
  const pathParts=location.pathname.split('/').filter(Boolean);
@@ -194,6 +195,7 @@ main {
      if(r.status===401){location.href='/'+encodeURIComponent(slug)+'/cashier-login';return;}
      if(!r.ok)throw new Error(d.message||'Unable to load orders.');
      document.getElementById('restaurantName').textContent=(d.restaurant&&d.restaurant.name)||slug;
+     if(window.OrderAlerts&&d.branch&&d.branch.id!=null)OrderAlerts.setBranch(d.branch.id);
      const statusOrder={pending:0,preparing:1,ready:2,completed:3};
      const list=(Array.isArray(d.orders)?[...d.orders]:[]).sort((a,b)=>{
        const statusA=String(a.status||'pending').toLowerCase();

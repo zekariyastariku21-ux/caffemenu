@@ -2657,11 +2657,11 @@ app.get('/api/admin/customers/:slug/orders', requireRestaurantAdmin, async (req,
 // ---- Real-time order signals (Server-Sent Events) ----
 const orderStreamClients = new Map();
 function orderStreamKey(slug) { return String(slug || '').trim().toLowerCase(); }
-function broadcastOrderEvent(slug, type) {
+function broadcastOrderEvent(slug, type, data) {
   const clients = orderStreamClients.get(orderStreamKey(slug));
   if (!clients) return;
   for (const client of clients) {
-    try { client.write('event: orders\ndata: ' + JSON.stringify({ type }) + '\n\n'); } catch (e) {}
+    try { client.write('event: orders\ndata: ' + JSON.stringify(Object.assign({ type }, data || {})) + '\n\n'); } catch (e) {}
   }
 }
 app.get('/api/orders-stream/:slug', (req, res) => {
@@ -2955,7 +2955,12 @@ app.post('/api/orders/:slug', async (req, res) => {
 
     const displayNumber = displayNumberResult.rows[0].display_number;
     
-broadcastOrderEvent(req.params.slug, 'new-order');
+broadcastOrderEvent(req.params.slug, 'new-order', {
+      order_number: displayNumber,
+      branch_id: branchResult.rows[0].id,
+      branch_name: branchResult.rows[0].name,
+      order_type: orderType
+    });
 
     return res.status(201).json({
       ok: true,

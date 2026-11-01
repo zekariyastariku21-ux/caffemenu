@@ -79,63 +79,147 @@ function bearerToken(req) {
   return match ? match[1].trim() : '';
 }
 
-/* ---------------- SMS sending ---------------- */
+/* ---------------- code delivery: SMS + WhatsApp ---------------- */
+
+const env = name => String(process.env[name] || '').trim();
+
+function smsConfigured() {
+  const provider = env('SMS_PROVIDER').toLowerCase();
+  if (provider === 'afromessage') return !!env('AFROMESSAGE_TOKEN');
+  if (provider === 'twilio') return !!(env('TWILIO_ACCOUNT_SID') && env('TWILIO_AUTH_TOKEN') && env('TWILIO_FROM'));
+  return false;
+}
+
+function whatsappConfigured() {
+  const provider = env('WHATSAPP_PROVIDER').toLowerCase();
+  if (provider === 'meta') {
+    return !!(env('WHATSAPP_TOKEN') && env('WHATSAPP_PHONE_NUMBER_ID') && env('WHATSAPP_TEMPLATE_NAME'));
+  }
+  if (provider === 'twilio') {
+    return !!(env('TWILIO_ACCOUNT_SID') && env('TWILIO_AUTH_TOKEN') && env('TWILIO_WHATSAPP_FROM'));
+  }
+  return false;
+}
+
+// Channels the customer may choose from, in display order.
+// OTP_CHANNELS (optional, e.g. "whatsapp,sms") controls the order / restricts the list.
+function availableChannels() {
+  const ready = { sms: smsConfigured(), whatsapp: whatsappConfigured() };
+  const wanted = (env('OTP_CHANNELS') || 'sms,whatsapp')
+    .toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
+  return wanted.filter((c, i) => ready[c] && wanted.indexOf(c) === i);
+}
+
+async function postJson(url, headers, body, label) {
+  const response = await fetch(url, { method: 'POST', headers, body });
+  const data = await response.json().catch(() => ({}));
+  return { response, data, label };
+}
 
 async function sendSms(phone, text) {
-  const provider = String(process.env.SMS_PROVIDER || '').trim().toLowerCase();
+  const provider = env('SMS_PROVIDER').toLowerCase();
 
   if (provider === 'afromessage') {
-    const token = process.env.AFROMESSAGE_TOKEN;
-    if (!token) throw new Error('AFROMESSAGE_TOKEN is not set.');
-
     const payload = { to: phone, message: text };
-    if (process.env.AFROMESSAGE_IDENTIFIER_ID) payload.from = process.env.AFROMESSAGE_IDENTIFIER_ID;
-    if (process.env.AFROMESSAGE_SENDER_NAME) payload.sender = process.env.AFROMESSAGE_SENDER_NAME;
+    if (env('AFROMESSAGE_IDENTIFIER_ID')) payload.from = env('AFROMESSAGE_IDENTIFIER_ID');
+    if (env('AFROMESSAGE_SENDER_NAME')) payload.sender = env('AFROMESSAGE_SENDER_NAME');
 
-    const response = await fetch('https://api.afromessage.com/api/send', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-    const data = await response.json().catch(() => ({}));
+    const { response, data } = await postJson(
+      'https://api.afromessage.com/api/send',
+      { Authorization: `Bearer ${env('AFROMESSAGE_TOKEN')}`, 'Content-Type': 'application/json' },
+      JSON.stringify(payload)
+    );
     if (!response.ok || String(data.acknowledge || '').toLowerCase() !== 'success') {
       throw new Error(`AfroMessage rejected the SMS: ${JSON.stringify(data).slice(0, 300)}`);
     }
-    return { sent: true };
+    return;
   }
 
   if (provider === 'twilio') {
-    const sid = process.env.TWILIO_ACCOUNT_SID;
-    const auth = process.env.TWILIO_AUTH_TOKEN;
-    const from = process.env.TWILIO_FROM;
-    if (!sid || !auth || !from) throw new Error('Twilio settings are incomplete.');
-
+    const from = env('TWILIO_FROM');
     const body = new URLSearchParams({ To: phone, Body: text });
     if (/^MG/i.test(from)) body.set('MessagingServiceSid', from);
     else body.set('From', from);
 
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(sid)}/Messages.json`,
+    const { response, data } = await postJson(
+      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(env('TWILIO_ACCOUNT_SID'))}/Messages.json`,
       {
-        method: 'POST',
-        headers: {
-          Authorization: 'Basic ' + Buffer.from(`${sid}:${auth}`).toString('base64'),
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body
-      }
+        Authorization: 'Basic ' + Buffer.from(`${env('TWILIO_ACCOUNT_SID')}:${env('TWILIO_AUTH_TOKEN')}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body
     );
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(`Twilio rejected the SMS: ${JSON.stringify(data).slice(0, 300)}`);
-    }
-    return { sent: true };
+    if (!response.ok) throw new Error(`Twilio rejected the SMS: ${JSON.stringify(data).slice(0, 300)}`);
+    return;
   }
 
-  return { sent: false, reason: 'no-provider' };
+  throw new Error('SMS is not configured.');
+}
+
+async function sendWhatsapp(phone, code, text) {
+  const provider = env('WHATSAPP_PROVIDER').toLowerCase();
+
+  // Meta WhatsApp Cloud API: needs an approved "authentication" message template.
+  if (provider === 'meta') {
+    const version = env('WHATSAPP_API_VERSION') || 'v21.0';
+    const components = [{ type: 'body', parameters: [{ type: 'text', text: code }] }];
+    // Authentication templates carry a "copy code" button that also needs the code.
+    if (env('WHATSAPP_TEMPLATE_BUTTON').toLowerCase() !== 'false') {
+      components.push({ type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: code }] });
+    }
+
+    const { response, data } = await postJson(
+      `https://graph.facebook.com/${version}/${encodeURIComponent(env('WHATSAPP_PHONE_NUMBER_ID'))}/messages`,
+      { Authorization: `Bearer ${env('WHATSAPP_TOKEN')}`, 'Content-Type': 'application/json' },
+      JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: phone.replace(/^\+/, ''),
+        type: 'template',
+        template: {
+          name: env('WHATSAPP_TEMPLATE_NAME'),
+          language: { code: env('WHATSAPP_TEMPLATE_LANG') || 'en_US' },
+          components
+        }
+      })
+    );
+    if (!response.ok || !Array.isArray(data.messages) || !data.messages.length) {
+      throw new Error(`WhatsApp (Meta) rejected the message: ${JSON.stringify(data).slice(0, 400)}`);
+    }
+    return;
+  }
+
+  // Twilio WhatsApp (sandbox for testing, or an approved sender / content template)
+  if (provider === 'twilio') {
+    let from = env('TWILIO_WHATSAPP_FROM');
+    if (!/^whatsapp:/i.test(from)) from = 'whatsapp:' + from;
+
+    const body = new URLSearchParams({ To: 'whatsapp:' + phone, From: from });
+    if (env('TWILIO_WHATSAPP_CONTENT_SID')) {
+      body.set('ContentSid', env('TWILIO_WHATSAPP_CONTENT_SID'));
+      body.set('ContentVariables', JSON.stringify({ 1: code }));
+    } else {
+      body.set('Body', text);
+    }
+
+    const { response, data } = await postJson(
+      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(env('TWILIO_ACCOUNT_SID'))}/Messages.json`,
+      {
+        Authorization: 'Basic ' + Buffer.from(`${env('TWILIO_ACCOUNT_SID')}:${env('TWILIO_AUTH_TOKEN')}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body
+    );
+    if (!response.ok) throw new Error(`Twilio rejected the WhatsApp message: ${JSON.stringify(data).slice(0, 300)}`);
+    return;
+  }
+
+  throw new Error('WhatsApp is not configured.');
+}
+
+async function deliverCode(channel, phone, code, cafeName) {
+  const text = `${code} is your ${cafeName} verification code. It expires in 5 minutes.`;
+  if (channel === 'whatsapp') return sendWhatsapp(phone, code, text);
+  return sendSms(phone, text);
 }
 
 /* ---------------- module ---------------- */
@@ -292,6 +376,22 @@ module.exports = function registerCustomerAccounts(app, deps) {
   });
 
   /* ================================================================
+     PUBLIC: which ways can the code be sent? (no secrets are exposed)
+     ================================================================ */
+
+  app.get('/api/customer/:slug/otp-options', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const restaurant = await loadRestaurant(req.params.slug);
+      if (!restaurant) return res.status(404).json({ ok: false, message: 'Cafe not found.' });
+      return res.json({ ok: true, channels: availableChannels() });
+    } catch (error) {
+      console.error('[customer:otp-options] Failed:', error);
+      return res.status(500).json({ ok: false, message: 'Unable to load options.' });
+    }
+  });
+
+  /* ================================================================
      PUBLIC: request a code
      ================================================================ */
 
@@ -381,13 +481,21 @@ module.exports = function registerCustomerAccounts(app, deps) {
 
       const code = String(crypto.randomInt(100000, 1000000));
       const devMode = String(process.env.OTP_DEV_MODE || '').toLowerCase() === 'true';
-      const provider = String(process.env.SMS_PROVIDER || '').trim();
+      const channels = availableChannels();
 
-      if (!provider && !devMode) {
-        console.error('[customer:otp] No SMS_PROVIDER configured and OTP_DEV_MODE is not true.');
+      // Which way should the code travel?
+      const asked = String(req.body?.channel || '').trim().toLowerCase();
+      let channel = '';
+      if (channels.length) {
+        if (asked && !channels.includes(asked)) {
+          return res.status(400).json({ ok: false, message: 'That delivery method is not available.' });
+        }
+        channel = asked || channels[0];
+      } else if (!devMode) {
+        console.error('[customer:otp] No SMS/WhatsApp provider configured and OTP_DEV_MODE is not true.');
         return res.status(503).json({
           ok: false,
-          message: 'Verification SMS is not set up yet. Please contact the cafe.'
+          message: 'Verification messages are not set up yet. Please contact the cafe.'
         });
       }
 
@@ -412,30 +520,37 @@ module.exports = function registerCustomerAccounts(app, deps) {
 
       const reply = {
         ok: true,
-        message: 'We sent a 6-digit code to your phone.',
         phone,
+        channel: channel || 'screen',
+        channels,
         expires_in: Math.round(OTP_TTL_MS / 1000),
         resend_in: OTP_RESEND_WAIT_S
       };
 
-      if (provider) {
+      if (channel) {
         try {
-          await sendSms(
-            phone,
-            `${code} is your ${restaurant.name} verification code. It expires in 5 minutes.`
-          );
-        } catch (smsError) {
-          console.error('[customer:otp] SMS failed:', smsError.message);
+          await deliverCode(channel, phone, code, restaurant.name);
+        } catch (sendError) {
+          console.error(`[customer:otp] ${channel} delivery failed:`, sendError.message);
           await pool.query('UPDATE customer_otps SET consumed = TRUE WHERE id = $1', [inserted.rows[0].id]);
+          const other = channels.filter(c => c !== channel);
           return res.status(502).json({
             ok: false,
-            message: 'We could not send the SMS. Please check the number and try again.'
+            message: channel === 'whatsapp'
+              ? 'We could not send the WhatsApp message. Check the number has WhatsApp' +
+                (other.length ? ', or choose SMS.' : '.')
+              : 'We could not send the SMS. Check the number' +
+                (other.length ? ', or choose WhatsApp.' : '.')
           });
         }
+        reply.message = channel === 'whatsapp'
+          ? 'We sent a 6-digit code to your WhatsApp.'
+          : 'We sent a 6-digit code by SMS.';
       } else {
-        // Test mode, no SMS provider: show the code in the server log and in the reply.
+        // Test mode only (no provider configured): show the code on screen + server log.
         console.log(`[customer:otp] TEST MODE code for ${phone} (${restaurant.slug}): ${code}`);
         reply.dev_otp = code;
+        reply.message = 'Test mode: the code is shown below.';
       }
 
       return res.json(reply);
@@ -729,3 +844,4 @@ module.exports = function registerCustomerAccounts(app, deps) {
 };
 
 module.exports.normalizePhone = normalizePhone;
+module.exports.availableChannels = availableChannels;

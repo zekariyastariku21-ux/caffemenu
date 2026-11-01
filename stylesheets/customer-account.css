@@ -27,8 +27,8 @@
   gap: 6px;
   flex: 0 0 auto;
   margin-left: 10px;
-  min-height: 38px;
-  padding: 6px 14px;
+  min-height: 34px;
+  padding: 4px 14px;
   border: 1px solid var(--ca-accent);
   border-radius: 999px;
   background: var(--ca-bg);
@@ -332,3 +332,10 @@ body.ca-lock { overflow: hidden; }
 
 /* locked fields on the order form (name / phone come from the account) */
 #orderCustomerName[readonly], #orderCustomerPhone[readonly] { background: #f3eee7; cursor: not-allowed; }
+
+/* ---------- code delivery buttons (SMS / WhatsApp) ---------- */
+.ca-send { display: flex; flex-direction: column; gap: 8px; }
+.ca-send .ca-primary { margin-top: 0; }
+.ca-ch-whatsapp { background: #1fa855; }
+.ca-ch-whatsapp:hover:not(:disabled) { background: #168943; }
+.ca-switch-channel { color: #1a7f43; }

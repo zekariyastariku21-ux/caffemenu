@@ -35,8 +35,10 @@
     ordersLoaded: false,
     view: null,                // null | 'auth' | 'account'
     tab: 'active',             // 'active' | 'history'
-    auth: { mode: 'login', step: 'details', phone: '', name: '', code: '', devOtp: '', resendAt: 0, busy: false, error: '', info: '' },
+    auth: { mode: 'login', step: 'details', channel: '', phone: '', name: '', code: '', devOtp: '', resendAt: 0, busy: false, error: '', info: '' },
     pending: null,             // callback to run after a successful login
+    channels: null,            // ways a code can be sent: [] | ['sms'] | ['sms','whatsapp'] (null = not loaded yet)
+    channelsLoading: false,
     stream: null,
     poll: null,
     refreshTimer: null,
@@ -163,37 +165,36 @@
   }
 
   // The language selector in this menu is pinned (position:absolute) to the top-right
-  // corner of the header. Put the Log in button right beside it, in the same strip,
-  // and keep the cafe name from running underneath it.
+  // corner of the header. Preferred spot for the button: far right of the logo / name
+  // row, just under the selector. If the row is too short for that (small phones), put
+  // it right beside the selector instead. Either way the cafe name never goes under it.
   function placeButton() {
     var btn = el.button;
     var row = btn && btn.parentElement;
     if (!btn || !row || !row.classList.contains('menu-brand-row')) return;
 
+    // 1) start from the normal in-row position
+    btn.classList.remove('ca-btn-abs');
+    btn.style.top = btn.style.right = btn.style.height = '';
+    row.classList.remove('ca-reserve');
+    row.style.removeProperty('--ca-reserve');
+    if (btn.hidden) return;
+
     var lang = document.getElementById('customerLanguageControl');
     var cs = lang ? window.getComputedStyle(lang) : null;
+    if (!lang || cs.position !== 'absolute' || !lang.offsetWidth) return;   // nothing to avoid
 
-    if (!lang || cs.position !== 'absolute' || !lang.offsetWidth) {
-      // Language selector is part of the normal row: plain flex layout is enough.
-      btn.classList.remove('ca-btn-abs');
-      btn.style.top = btn.style.right = btn.style.height = '';
-      row.classList.remove('ca-reserve');
-      row.style.removeProperty('--ca-reserve');
-      return;
-    }
+    var b = btn.getBoundingClientRect();
+    var l = lang.getBoundingClientRect();
+    var clash = !(b.right <= l.left - 4 || b.left >= l.right + 4 || b.bottom <= l.top - 4 || b.top >= l.bottom + 4);
+    if (!clash) return;                                                    // fits under the selector
 
+    // 2) not enough room: sit beside the selector, same height
     btn.classList.add('ca-btn-abs');
     btn.style.top = cs.top;
     btn.style.right = ((parseFloat(cs.right) || 0) + lang.offsetWidth + 8) + 'px';
     btn.style.height = Math.max(26, lang.offsetHeight) + 'px';
 
-    if (btn.hidden) {
-      row.classList.remove('ca-reserve');
-      row.style.removeProperty('--ca-reserve');
-      return;
-    }
-
-    // Keep the cafe name from running underneath the button: measure the real overlap.
     var info = row.querySelector('.menu-brand-info');
     row.style.setProperty('--ca-reserve', '0px');
     row.classList.add('ca-reserve');
@@ -258,7 +259,8 @@
 
   function openAuth(mode, notice) {
     state.view = 'auth';
-    state.auth = { mode: mode === 'signup' ? 'signup' : 'login', step: 'details', phone: '', name: '', code: '', devOtp: '', resendAt: 0, busy: false, error: '', info: notice || '' };
+    loadChannels();
+    state.auth = { mode: mode === 'signup' ? 'signup' : 'login', step: 'details', channel: '', phone: '', name: '', code: '', devOtp: '', resendAt: 0, busy: false, error: '', info: notice || '' };
     renderAuth();
     showOverlay();
     setTimeout(function () {
@@ -283,6 +285,21 @@
     el.card.replaceChildren(closeButton(), body);
   }
 
+  var CHANNEL_LABEL = { sms: 'SMS', whatsapp: 'WhatsApp' };
+
+  function loadChannels() {
+    if (state.channels !== null || state.channelsLoading) return;
+    state.channelsLoading = true;
+    api('/otp-options', { noAuth: true })
+      .then(function (d) { state.channels = Array.isArray(d.channels) ? d.channels : []; })
+      .catch(function () { state.channels = []; })
+      .then(function () {
+        state.channelsLoading = false;
+        var typing = document.activeElement && el.card && el.card.contains(document.activeElement) && document.activeElement.tagName === 'INPUT';
+        if (state.view === 'auth' && state.auth.step === 'details' && !typing) renderAuth();
+      });
+  }
+
   function detailsStep(a) {
     var signup = a.mode === 'signup';
 
@@ -303,10 +320,10 @@
       nameInput,
       h('label', { for: 'caPhone', text: 'Phone number' }),
       phoneInput,
-      h('p', { class: 'ca-hint', text: 'We will text you a 6-digit code to confirm your number.' }),
+      h('p', { class: 'ca-hint', text: channelHint() }),
       a.info ? h('p', { class: 'ca-info', role: 'status', text: a.info }) : null,
       a.error ? h('p', { class: 'ca-error', role: 'alert', text: a.error }) : null,
-      h('button', { type: 'submit', class: 'ca-primary', disabled: a.busy, text: a.busy ? 'Sending...' : 'Send code' })
+      sendButtons(a)
     ]);
 
     return h('div', null, [
@@ -320,6 +337,33 @@
     ]);
   }
 
+  function channelHint() {
+    var ch = state.channels || [];
+    if (ch.length > 1) return 'Choose how you want to receive your 6-digit code.';
+    if (ch.length === 1) return 'We will send a 6-digit code by ' + CHANNEL_LABEL[ch[0]] + ' to confirm your number.';
+    return 'We will send you a 6-digit code to confirm your number.';
+  }
+
+  function sendButtons(a) {
+    var ch = state.channels || [];
+    var wrap = h('div', { class: 'ca-send' });
+    if (ch.length === 0) {
+      wrap.appendChild(h('button', { type: 'submit', class: 'ca-primary', disabled: a.busy, text: a.busy ? 'Sending...' : 'Send code' }));
+      return wrap;
+    }
+    ch.forEach(function (c, i) {
+      var busyThis = a.busy && a.sending === c;
+      wrap.appendChild(h('button', {
+        type: i === 0 ? 'submit' : 'button',
+        class: 'ca-primary ca-ch-' + c,
+        disabled: a.busy,
+        onclick: i === 0 ? null : function () { sendCode(false, c); },
+        text: busyThis ? 'Sending...' : 'Send code by ' + CHANNEL_LABEL[c]
+      }));
+    });
+    return wrap;
+  }
+
   function codeStep(a) {
     var codeInput = h('input', {
       id: 'caCode', type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code',
@@ -331,11 +375,16 @@
       }
     });
 
-    var resend = h('button', { type: 'button', class: 'ca-link', id: 'caResend', onclick: function () { sendCode(true); } });
+    var resend = h('button', { type: 'button', class: 'ca-link', id: 'caResend', onclick: function () { sendCode(true, a.channel); } });
+    var others = (state.channels || []).filter(function (c) { return c !== a.channel; });
+    var switchBtns = others.map(function (c) {
+      return h('button', { type: 'button', class: 'ca-link ca-switch-channel', disabled: a.busy, onclick: function () { sendCode(true, c); }, text: 'Send by ' + CHANNEL_LABEL[c] + ' instead' });
+    });
 
     function paintResend() {
       var left = Math.max(0, Math.ceil((a.resendAt - Date.now()) / 1000));
       resend.disabled = left > 0 || a.busy;
+      switchBtns.forEach(function (b) { b.disabled = left > 0 || a.busy; });
       resend.textContent = left > 0 ? 'Resend code in ' + left + 's' : 'Resend code';
     }
     paintResend();
@@ -351,21 +400,26 @@
       h('div', { class: 'ca-row' }, [
         resend,
         h('button', { type: 'button', class: 'ca-link', onclick: function () { setAuth({ step: 'details', error: '', info: '', devOtp: '' }); }, text: 'Change number' })
-      ])
+      ]),
+      switchBtns.length ? h('div', { class: 'ca-row' }, switchBtns) : null
     ]);
 
     setTimeout(function () { codeInput.focus(); }, 30);
 
     return h('div', null, [
       h('h2', { class: 'ca-title', text: 'Enter the code' }),
-      h('p', { class: 'ca-sub' }, ['We sent a code to ', h('strong', { class: 'notranslate', translate: 'no', text: a.phone }), '.']),
+      h('p', { class: 'ca-sub' }, [
+        a.channel === 'whatsapp' ? 'We sent a code to your WhatsApp ' : (a.channel === 'sms' ? 'We sent a code by SMS to ' : 'We sent a code to '),
+        h('strong', { class: 'notranslate', translate: 'no', text: a.phone }), '.'
+      ]),
       form
     ]);
   }
 
-  function sendCode(isResend) {
+  function sendCode(isResend, channel) {
     var a = state.auth;
     if (a.busy) return;
+    var chosen = channel || a.channel || (state.channels && state.channels[0]) || '';
 
     var phone = String(a.phone || '').trim();
     var name = String(a.name || '').replace(/\s+/g, ' ').trim();
@@ -373,16 +427,21 @@
     if (a.mode === 'signup' && name.length < 2) { setAuth({ error: 'Enter your full name.', info: '' }); return; }
     if (!phone) { setAuth({ error: 'Enter your phone number.', info: '' }); return; }
 
-    setAuth({ busy: true, error: '', info: '' });
+    setAuth({ busy: true, sending: chosen, error: '', info: '' });
 
-    api('/request-otp', { method: 'POST', noAuth: true, body: { mode: a.mode, full_name: name, phone: phone } })
+    var payload = { mode: a.mode, full_name: name, phone: phone };
+    if (chosen) payload.channel = chosen;
+
+    api('/request-otp', { method: 'POST', noAuth: true, body: payload })
       .then(function (data) {
         setAuth({
           busy: false, step: 'code', phone: data.phone || phone, name: name,
+          channel: data.channel === 'sms' || data.channel === 'whatsapp' ? data.channel : '',
           devOtp: data.dev_otp || '',
           resendAt: Date.now() + (Number(data.resend_in) || 45) * 1000,
           info: isResend ? 'A new code was sent.' : '', error: ''
         });
+        if (Array.isArray(data.channels)) state.channels = data.channels;
       })
       .catch(function (err) {
         var patch = { busy: false, error: err.message, info: '' };
@@ -600,9 +659,9 @@
       state.pending = null;
       closeOverlay();
       stopLive();
-    } else if (isLoggedIn()) {
-      startLive();
-      loadOrders();
+    } else {
+      loadChannels();
+      if (isLoggedIn()) { startLive(); loadOrders(); }
     }
     renderButton();
   }
