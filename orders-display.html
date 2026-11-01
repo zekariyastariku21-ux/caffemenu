@@ -116,6 +116,21 @@
   .order > p { margin: 9px 0; line-height: 1.5; font-size: 14px; }
   .order > p.muted { margin: 7px 0 14px; }
 
+  .order-contact-table {
+    width: 100%;
+    margin: 10px 0;
+    table-layout: fixed;
+    border-collapse: collapse;
+    color: var(--cream);
+    font-size: 14px;
+  }
+  .order-contact-table td {
+    padding: 5px 8px;
+    border: 1px solid var(--line);
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
   .items {
     border-top: 1px solid var(--line);
     padding: 12px 0 0 20px;
@@ -130,6 +145,19 @@
 
   .items li + li { border-top: 1px solid rgba(73, 55, 43, .55); }
   .items .muted { margin-top: 4px; }
+  .order-customization,
+  .admin-item-customization {
+    margin-top: 6px;
+    padding: 5px 9px;
+    border-left: 2px solid var(--gold);
+    border-radius: 0 7px 7px 0;
+    background: rgba(216, 173, 98, .12);
+    color: #ffe0b9;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
 
   .empty {
     grid-column: 1 / -1;
@@ -468,10 +496,32 @@ main {
           const qty = Number(item.quantity ?? item.qty) || 1;
           const price = Number(item.price ?? item.unit_price) || 0;
           const fmt = n => (Math.round(n * 100) / 100) + ' ETB';
+          const extras = Array.isArray(item.extras)
+            ? item.extras.filter(extra => extra && typeof extra === 'object')
+            : [];
+          const customization = [
+            ...(Array.isArray(item.removedIngredients) && item.removedIngredients.length
+              ? item.removedIngredients
+              : []),
+            ...(Array.isArray(item.adjustments) && item.adjustments.length
+              ? item.adjustments
+              : []),
+            ...(extras.length
+              ? extras.map(extra =>
+                `${extra.name}${Number(extra.quantity) > 1 ? ' x' + extra.quantity : ''}`
+              )
+              : [])
+          ].map(escapeHtml).join(', ');
           return `
           <li style="list-style:none;padding:0 0 8px 0;">
             <div style="display:flex;justify-content:space-between;gap:12px;"><span>${escapeHtml(item.name)}</span><span>${fmt(price * qty)}</span></div>
+            ${extras.map(extra => {
+              const extraQuantity = Number(extra.quantity) || 0;
+              const extraPrice = Number(extra.price) || 0;
+              return `<div style="display:flex;justify-content:space-between;gap:12px;padding-left:12px;font-size:13px;"><span>+ ${escapeHtml(extra.name)}</span><span>${fmt(extraPrice * extraQuantity)}</span></div>`;
+            }).join('')}
             <div class="muted" style="font-size:13px;">Qty: ${qty} - ${fmt(price)} each</div>
+            ${customization ? `<div class="order-customization">${customization}</div>` : ''}
             ${item.note ? `<div class="muted" style="font-size:13px;">Note: ${escapeHtml(item.note)}</div>` : ''}
           </li>`;
         }).join('');
@@ -483,9 +533,13 @@ main {
               <span class="status">${escapeHtml(order.status)}</span>
             </div>
             <p class="muted">${escapeHtml(formatDate(order.created_at))}</p>
-            <p><strong>Customer:</strong> ${escapeHtml(order.customer_name)}</p>
-            <p><strong>Phone:</strong> ${escapeHtml(order.customer_phone)}</p>
-            <p><strong>Branch:</strong> ${escapeHtml(order.branch_name)}</p>
+            <table class="order-contact-table">
+              <tbody><tr>
+                <td>${escapeHtml(order.customer_name)}</td>
+                <td>${escapeHtml(order.customer_phone)}</td>
+                <td>${escapeHtml(order.branch_name)}</td>
+              </tr></tbody>
+            </table>
             <p><strong>Order type:</strong> ${escapeHtml(order.order_type)}</p>
             ${order.table_number ? `<p><strong>Table:</strong> ${escapeHtml(order.table_number)}</p>` : ''}
             ${order.customer_address ? `<p><strong>Address:</strong> ${escapeHtml(order.customer_address)}</p>` : ''}
@@ -621,15 +675,37 @@ function historyOrderMarkup(order) {
   const itemsHtml = items.map(item => {
     const qty = Number(item.quantity ?? item.qty) || 1;
     const price = Number(item.price ?? item.unit_price) || 0;
+    const extras = Array.isArray(item.extras)
+      ? item.extras.filter(extra => extra && typeof extra === 'object')
+      : [];
+    const customization = [
+      ...(Array.isArray(item.removedIngredients) && item.removedIngredients.length
+        ? item.removedIngredients
+        : []),
+      ...(Array.isArray(item.adjustments) && item.adjustments.length
+        ? item.adjustments
+        : []),
+      ...(extras.length
+        ? extras.map(extra =>
+          `${extra.name}${Number(extra.quantity) > 1 ? ' x' + extra.quantity : ''}`
+        )
+        : [])
+    ].map(escapeHtml).join(', ');
     return `<li><div class="admin-item-row"><span>${escapeHtml(item.name)}</span><span>${formatMoney(price * qty)}</span></div>
+      ${extras.map(extra => `<div class="admin-item-row admin-item-sub"><span>+ ${escapeHtml(extra.name)}</span><span>${formatMoney((Number(extra.price) || 0) * (Number(extra.quantity) || 0))}</span></div>`).join('')}
       <div class="muted admin-item-sub">Qty: ${qty} - ${formatMoney(price)} each</div>
+      ${customization ? `<div class="admin-item-customization">${customization}</div>` : ''}
       ${item.note ? `<div class="muted admin-item-sub">Note: ${escapeHtml(item.note)}</div>` : ''}</li>`;
   }).join('');
   return `<article class="order">
     <div class="order-head"><strong>Order #${escapeHtml(order.display_number ?? order.id)}</strong><span class="status">${escapeHtml(order.status)}</span></div>
     <p class="muted">${escapeHtml(formatDate(order.created_at))}</p>
-    <p><strong>Customer:</strong> ${escapeHtml(order.customer_name)}${order.customer_phone ? ' - ' + escapeHtml(order.customer_phone) : ''}</p>
-    <p><strong>Branch:</strong> ${escapeHtml(order.branch_name)} - ${escapeHtml(order.order_type)}${order.table_number ? ' - Table ' + escapeHtml(order.table_number) : ''}</p>
+    <table class="order-contact-table"><tbody><tr>
+      <td>${escapeHtml(order.customer_name)}</td>
+      <td>${escapeHtml(order.customer_phone || '')}</td>
+      <td>${escapeHtml(order.branch_name)}</td>
+    </tr></tbody></table>
+    <p><strong>Order type:</strong> ${escapeHtml(order.order_type)}${order.table_number ? ' - Table ' + escapeHtml(order.table_number) : ''}</p>
     ${order.customer_address ? `<p><strong>Address:</strong> ${escapeHtml(order.customer_address)}</p>` : ''}
     <ul class="admin-item-list">${itemsHtml}</ul>
     <h3>Total: ${formatMoney(order.total)}</h3>
@@ -930,5 +1006,3 @@ adminOverlay.addEventListener('input', e => {
 <script src="/scripts/order-alerts.js?v=1" data-mode="admin"></script>
 </body>
 </html>
-
-

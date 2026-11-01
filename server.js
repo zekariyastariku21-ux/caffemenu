@@ -2830,25 +2830,57 @@ app.post('/api/orders/:slug', async (req, res) => {
     }
 
     // Flatten the category-based menu.
-    const menuItems = Object.values(menu).flatMap(category =>
-      Array.isArray(category) ? category : []
+    const isExtraItemsCategory = category =>
+      /^extras?(?:\s+items?)?$/i.test(String(category || '').trim());
+    const menuItems = Object.entries(menu).flatMap(([category, products]) =>
+      !isExtraItemsCategory(category) && Array.isArray(products)
+        ? products
+        : []
     );
 
     const savedItems = [];
     let totalCents = 0;
+    const defaultRemovableIngredients = [
+      'No vegetables',
+      'No cheese',
+      'No onion',
+      'No tomato',
+      'No sugar'
+    ];
+    const defaultAdjustments = [
+      'Less coffee',
+      'More coffee',
+      'Less chili',
+      'More chili',
+      'Less salt'
+    ];
+    const availableExtraProducts = Object.entries(menu)
+      .filter(([category, products]) =>
+        isExtraItemsCategory(category) && Array.isArray(products)
+      )
+      .flatMap(([, products]) => products);
 
     for (const requestedItem of items) {
       const itemName = String(requestedItem?.name || '').trim();
       const requestedId = requestedItem?.id;
       const quantity = Number(requestedItem?.quantity);
       const note = String(requestedItem?.note || '').trim();
+      const requestedRemovals = requestedItem?.removedIngredients ?? [];
+      const requestedAdjustments = requestedItem?.adjustments ?? [];
+      const requestedExtras = requestedItem?.extras ?? [];
 
       if (
         !itemName ||
         !Number.isSafeInteger(quantity) ||
         quantity < 1 ||
         quantity > 99 ||
-        note.length > 500
+        note.length > 500 ||
+        !Array.isArray(requestedRemovals) ||
+        requestedRemovals.length > 20 ||
+        !Array.isArray(requestedAdjustments) ||
+        requestedAdjustments.length > 20 ||
+        !Array.isArray(requestedExtras) ||
+        requestedExtras.length > 20
       ) {
         return res.status(400).json({
           ok: false,
@@ -2877,6 +2909,46 @@ app.post('/api/orders/:slug', async (req, res) => {
 
       const food = matches[0];
       const price = Number(food.price);
+      const foodCustomization =
+        food.customization &&
+        typeof food.customization === 'object'
+          ? food.customization
+          : {};
+      const allowedRemovals = Array.isArray(foodCustomization.removeIngredients)
+        ? foodCustomization.removeIngredients
+        : defaultRemovableIngredients;
+      const allowedAdjustments = Array.isArray(foodCustomization.adjustments)
+        ? foodCustomization.adjustments
+        : defaultAdjustments;
+      const allowedExtraNames = Array.isArray(foodCustomization.extraItems)
+        ? foodCustomization.extraItems
+        : [];
+      const normalizeSelections = (requested, allowed) => {
+        const normalized = requested.map(value =>
+          typeof value === 'string' ? value.trim() : ''
+        );
+
+        if (
+          normalized.some(value => !value || value.length > 80) ||
+          new Set(normalized).size !== normalized.length ||
+          normalized.some(value => !allowed.includes(value))
+        ) {
+          return null;
+        }
+
+        return normalized;
+      };
+      const removedIngredients =
+        normalizeSelections(requestedRemovals, allowedRemovals);
+      const adjustments =
+        normalizeSelections(requestedAdjustments, allowedAdjustments);
+
+      if (!removedIngredients || !adjustments) {
+        return res.status(400).json({
+          ok: false,
+          message: `The customization for "${itemName}" is no longer available. Refresh the menu and try again.`
+        });
+      }
 
       if (!Number.isFinite(price) || price < 0) {
         return res.status(400).json({
@@ -2894,7 +2966,77 @@ app.post('/api/orders/:slug', async (req, res) => {
         });
       }
 
-      totalCents += priceCents * quantity;
+      const savedExtras = [];
+      const requestedExtraNames = new Set();
+      let extrasCents = 0;
+
+      for (const requestedExtra of requestedExtras) {
+        const extraName = String(requestedExtra?.name || '').trim();
+        const extraQuantity = Number(requestedExtra?.quantity);
+
+        if (
+          !extraName ||
+          extraName.length > 120 ||
+          !Number.isSafeInteger(extraQuantity) ||
+          extraQuantity < 1 ||
+          extraQuantity > 99 ||
+          requestedExtraNames.has(extraName) ||
+          !allowedExtraNames.includes(extraName)
+        ) {
+          return res.status(400).json({
+            ok: false,
+            message: `One or more extras for "${itemName}" are invalid.`
+          });
+        }
+
+        requestedExtraNames.add(extraName);
+        const matchingExtras = availableExtraProducts.filter(extra =>
+          extra &&
+          typeof extra === 'object' &&
+          extra.available !== false &&
+          extra.isAvailable !== false &&
+          String(extra.name || '').trim() === extraName
+        );
+
+        if (matchingExtras.length !== 1) {
+          return res.status(400).json({
+            ok: false,
+            message: `The extra "${extraName}" is no longer available. Refresh the menu and try again.`
+          });
+        }
+
+        const extraPrice = Number(matchingExtras[0].price);
+        const extraPriceCents = Math.round(extraPrice * 100);
+
+        if (
+          !Number.isFinite(extraPrice) ||
+          extraPrice < 0 ||
+          !Number.isSafeInteger(extraPriceCents)
+        ) {
+          return res.status(400).json({
+            ok: false,
+            message: `The price for "${extraName}" is invalid.`
+          });
+        }
+
+        extrasCents += extraPriceCents * extraQuantity;
+
+        if (!Number.isSafeInteger(extrasCents)) {
+          return res.status(400).json({
+            ok: false,
+            message: 'The order total is too large.'
+          });
+        }
+
+        savedExtras.push({
+          name: extraName,
+          quantity: extraQuantity,
+          price: extraPriceCents / 100
+        });
+      }
+
+      const unitPriceCents = priceCents + extrasCents;
+      totalCents += unitPriceCents * quantity;
 
       if (!Number.isSafeInteger(totalCents)) {
         return res.status(400).json({
@@ -2907,7 +3049,11 @@ app.post('/api/orders/:slug', async (req, res) => {
         id: food.id ?? null,
         name: String(food.name).trim(),
         quantity,
-        price: priceCents / 100,
+        base_price: priceCents / 100,
+        price: unitPriceCents / 100,
+        removedIngredients,
+        adjustments,
+        extras: savedExtras,
         note
       });
     }

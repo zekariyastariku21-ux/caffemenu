@@ -15,6 +15,20 @@ let restaurantProfile = {
 let adminLoadingTimer = null;
 
 const MAX_DAY_SPECIALS = 5;
+const DEFAULT_REMOVABLE_INGREDIENTS = [
+    'No vegetables',
+    'No cheese',
+    'No onion',
+    'No tomato',
+    'No sugar'
+];
+const DEFAULT_ITEM_ADJUSTMENTS = [
+    'Less coffee',
+    'More coffee',
+    'Less chili',
+    'More chili',
+    'Less salt'
+];
 
 /* ================================================================
    ADMIN INACTIVITY TIMEOUT
@@ -216,6 +230,202 @@ function escapeAttributeForAdmin(value) {
         .replace(/'/g, '&#039;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
+}
+
+function isExtraItemsCategory(category) {
+    return /^extras?(?:\s+items?)?$/i.test(
+        String(category || '').trim()
+    );
+}
+
+function getMenuExtraItems() {
+    return Object.entries(foods)
+        .filter(([category, items]) =>
+            isExtraItemsCategory(category) && Array.isArray(items)
+        )
+        .flatMap(([, items]) =>
+            items.filter(item =>
+            item &&
+            typeof item === 'object' &&
+            item.available !== false &&
+            item.isAvailable !== false &&
+            String(item.name || '').trim()
+            )
+        );
+}
+
+function getItemCustomization(item) {
+    const customization =
+        item?.customization &&
+        typeof item.customization === 'object'
+            ? item.customization
+            : {};
+
+    return {
+        removeIngredients: Array.isArray(customization.removeIngredients)
+            ? customization.removeIngredients
+            : DEFAULT_REMOVABLE_INGREDIENTS,
+        adjustments: Array.isArray(customization.adjustments)
+            ? customization.adjustments
+            : DEFAULT_ITEM_ADJUSTMENTS,
+        extraItems: Array.isArray(customization.extraItems)
+            ? customization.extraItems
+            : []
+    };
+}
+
+function renderCustomizationChoices(group, options, selectedValues, extraItems = []) {
+    const choices = group === 'extraItems'
+        ? extraItems.map(item => ({
+            value: String(item.name).trim(),
+            label: `${item.name} (+${item.price ?? 0} ETB)`
+        }))
+        : options.map(value => ({
+            value,
+            label: value
+        }));
+
+    if (!choices.length) {
+        return group === 'extraItems'
+            ? '<p class="customization-empty">Add products to an “Extra” or “Extra Items” category to offer priced extras.</p>'
+            : '<p class="customization-empty">No options added yet.</p>';
+    }
+
+    return choices.map(choice => `
+        <label class="customization-choice">
+            <input
+                type="checkbox"
+                data-customization-group="${group}"
+                value="${escapeAttributeForAdmin(choice.value)}"
+                ${selectedValues.includes(choice.value) ? 'checked' : ''}
+            >
+            <span>${escapeHtmlForAdmin(choice.label)}</span>
+        </label>
+    `).join('');
+}
+
+function renderItemCustomizationEditor(containerId, item = null) {
+    const container = document.getElementById(containerId);
+
+    if (!container) {
+        return;
+    }
+
+    const customization = getItemCustomization(item);
+    const extraItems = getMenuExtraItems();
+
+    container.innerHTML = `
+        <div class="item-customization-heading">
+            <h4>Item Customization</h4>
+            <p>Configure what customers can remove, adjust, or add.</p>
+        </div>
+        <div class="item-customization-groups">
+            <section class="item-customization-group">
+                <h5>Remove ingredients</h5>
+                <p>Customers can choose what they don't want.</p>
+                <div class="customization-choices">
+                    ${renderCustomizationChoices(
+                        'removeIngredients',
+                        customization.removeIngredients,
+                        customization.removeIngredients
+                    )}
+                </div>
+                <div class="customization-add-row">
+                    <input type="text" maxlength="60" placeholder="Add ingredient option">
+                    <button type="button" class="customization-add-option" data-customization-group="removeIngredients">Add option</button>
+                </div>
+            </section>
+            <section class="item-customization-group">
+                <h5>Adjust quantity</h5>
+                <p>Let customers adjust the flavor.</p>
+                <div class="customization-choices">
+                    ${renderCustomizationChoices(
+                        'adjustments',
+                        customization.adjustments,
+                        customization.adjustments
+                    )}
+                </div>
+                <div class="customization-add-row">
+                    <input type="text" maxlength="60" placeholder="Add adjustment option">
+                    <button type="button" class="customization-add-option" data-customization-group="adjustments">Add option</button>
+                </div>
+            </section>
+            <section class="item-customization-group">
+                <h5>Extra items</h5>
+                <p>Select products from your Extra category. Prices stay synced with those products.</p>
+                <div class="customization-choices">
+                    ${renderCustomizationChoices(
+                        'extraItems',
+                        [],
+                        customization.extraItems,
+                        extraItems
+                    )}
+                </div>
+            </section>
+        </div>
+    `;
+
+    container.querySelectorAll('.customization-add-option').forEach(button => {
+        button.addEventListener('click', () => {
+            const input = button.parentElement.querySelector('input');
+            const value = input?.value.trim();
+            const group = button.dataset.customizationGroup;
+            const choices = button.closest('.item-customization-group')
+                ?.querySelector('.customization-choices');
+
+            if (!value || !choices) {
+                return;
+            }
+
+            const existing = Array.from(
+                choices.querySelectorAll(`[data-customization-group="${group}"]`)
+            ).some(option =>
+                option.value.trim().toLowerCase() === value.toLowerCase()
+            );
+
+            if (existing) {
+                showMessage('That customization option already exists.', 'error');
+                return;
+            }
+
+            const label = document.createElement('label');
+            label.className = 'customization-choice';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = true;
+            checkbox.dataset.customizationGroup = group;
+            checkbox.value = value;
+            const text = document.createElement('span');
+            text.textContent = value;
+            label.append(checkbox, text);
+            choices.appendChild(label);
+            input.value = '';
+        });
+    });
+}
+
+function collectItemCustomization(containerId) {
+    const container = document.getElementById(containerId);
+
+    const getSelected = group => Array.from(
+        container?.querySelectorAll(
+            `input[data-customization-group="${group}"]:checked`
+        ) || []
+    ).map(input => input.value.trim()).filter(Boolean);
+
+    return {
+        removeIngredients: getSelected('removeIngredients'),
+        adjustments: getSelected('adjustments'),
+        extraItems: getSelected('extraItems')
+    };
+}
+
+function refreshCustomizationEditors() {
+    renderItemCustomizationEditor('newItemCustomization');
+    renderItemCustomizationEditor(
+        'editItemCustomization',
+        getSelectedItemData()?.item || null
+    );
 }
 
 
@@ -754,6 +964,12 @@ if (dashboardAccess !== 'cafe_admin') {
         updateCategoryManager();
         updateExistingItemCategorySelect();
         refreshExistingItemsSelect();
+        renderItemCustomizationEditor(
+            'newItemCustomization'
+        );
+        renderItemCustomizationEditor(
+            'editItemCustomization'
+        );
         renderCurrentMenu();
 
         console.log(
@@ -1465,6 +1681,11 @@ function populateSelectedItemFields() {
     renderEditItemImage(
         item.image || ''
     );
+
+    renderItemCustomizationEditor(
+        'editItemCustomization',
+        item
+    );
 }
 
 
@@ -1619,6 +1840,9 @@ function clearEditFields() {
     }
 
     renderEditItemImage('');
+    renderItemCustomizationEditor(
+        'editItemCustomization'
+    );
 }
 
 
@@ -1662,6 +1886,7 @@ function addCategoryFromUI() {
     updateAdminCategoryOptions();
     updateCategoryManager();
     updateExistingItemCategorySelect();
+    refreshCustomizationEditors();
     renderCurrentMenu();
 
     showMessage(
@@ -1825,6 +2050,7 @@ async function updateSelectedCategory() {
         updateAdminCategoryOptions();
         updateCategoryManager();
         updateExistingItemCategorySelect();
+        refreshCustomizationEditors();
         renderCurrentMenu();
 
         const newCategorySelect =
@@ -2046,6 +2272,9 @@ async function addItemFromUI() {
         price,
         ingridient: ingredient,
         image,
+        customization: collectItemCustomization(
+            'newItemCustomization'
+        ),
         available:
             availableInput
                 ? availableInput.checked
@@ -2077,6 +2306,7 @@ async function addItemFromUI() {
     updateAdminCategoryOptions();
     updateCategoryManager();
     updateExistingItemCategorySelect();
+    refreshCustomizationEditors();
     renderCurrentMenu();
 
     showMessage(
@@ -2199,6 +2429,9 @@ async function updateSelectedItem() {
         name,
         price,
         ingridient: ingredient,
+        customization: collectItemCustomization(
+            'editItemCustomization'
+        ),
         available:
             availableInput
                 ? availableInput.checked
@@ -2264,6 +2497,7 @@ async function updateSelectedItem() {
     updateCategoryManager();
     updateExistingItemCategorySelect();
     refreshExistingItemsSelect();
+    refreshCustomizationEditors();
     renderCurrentMenu();
     clearEditFields();
 
@@ -2332,6 +2566,7 @@ async function deleteSelectedItem() {
         updateCategoryManager();
         updateExistingItemCategorySelect();
         refreshExistingItemsSelect();
+        refreshCustomizationEditors();
         renderCurrentMenu();
         clearEditFields();
 
@@ -2512,6 +2747,12 @@ async function refreshAdminMenu() {
         updateCategoryManager();
         updateExistingItemCategorySelect();
         refreshExistingItemsSelect();
+        renderItemCustomizationEditor(
+            'newItemCustomization'
+        );
+        renderItemCustomizationEditor(
+            'editItemCustomization'
+        );
         renderCurrentMenu();
 
         showMessage(
@@ -5105,14 +5346,6 @@ async function refreshCustomerMenuSilently() {
         );
     }
 }
-
-
-
-
-
-
-
-
 
 
 

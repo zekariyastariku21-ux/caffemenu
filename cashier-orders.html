@@ -11,7 +11,7 @@ h1{font-size:21px;margin:0}small,.muted{color:var(--muted)}button{border:1px sol
 main{max-width:1100px;margin:auto;padding:24px 18px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 #message{color:var(--gold);min-height:22px}.orders{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}
 .order{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:17px;min-width:0}.order-top{display:flex;justify-content:space-between;gap:12px;align-items:start}.order h2{font-size:17px;margin:0 0 6px}.status{font-size:12px;border:1px solid #80643b;border-radius:30px;padding:5px 8px;color:var(--gold);white-space:nowrap}
-.meta{font-size:13px;color:var(--muted);line-height:1.6;margin:12px 0}.items{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}.item{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:14px}.total{display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-weight:bold;color:var(--gold)}.empty{border:1px dashed var(--line);border-radius:14px;padding:30px;text-align:center;color:var(--muted)}
+.meta{font-size:13px;color:var(--muted);line-height:1.6;margin:12px 0}.order-contact-table{width:100%;margin:10px 0;table-layout:fixed;border-collapse:collapse;color:var(--cream);font-size:13px}.order-contact-table td{width:33.33%;padding:5px 8px;border:1px solid var(--line);text-align:left;overflow-wrap:anywhere}.items{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}.item{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:14px}.order-customization{margin-top:6px;padding:5px 9px;border-left:2px solid var(--gold);border-radius:0 7px 7px 0;background:rgba(216,173,98,.12);color:#ffe0b9;font-size:14px;font-weight:700;line-height:1.5;overflow-wrap:anywhere}.total{display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-weight:bold;color:var(--gold)}.empty{border:1px dashed var(--line);border-radius:14px;padding:30px;text-align:center;color:var(--muted)}
 @media(max-width:520px){header{align-items:flex-start}h1{font-size:18px}.header-buttons{display:flex;gap:6px;flex-direction:column}}
 
 /* Full-width layout for admin and cashier order displays */
@@ -226,9 +226,16 @@ main {
          heading.append(el('div','muted',order.created_at?new Date(order.created_at).toLocaleString():'Date unavailable'));
          top.append(heading,el('span','status',order.status||'pending'));card.append(top);
          const details=el('div','meta');
-         details.append(el('div','',`Customer: ${order.customer_name||'Walk-in customer'}`));
-         details.append(el('div','',`Phone: ${order.customer_phone||'Not provided'}`));
-         details.append(el('div','',`Branch: ${order.branch_name||'Main branch'}`));
+         const contactTable=document.createElement('table');
+         contactTable.className='order-contact-table';
+         const contactBody=document.createElement('tbody');
+         const contactRow=document.createElement('tr');
+         [order.customer_name||'Walk-in customer',order.customer_phone||'Not provided',order.branch_name||'Main branch'].forEach(value=>{
+           contactRow.append(el('td','',value));
+         });
+         contactBody.append(contactRow);
+         contactTable.append(contactBody);
+         details.append(contactTable);
          details.append(el('div','',`Type: ${order.order_type||'In-person'}${order.table_number?'  | Table '+order.table_number:''}`));
          if(order.customer_address)details.append(el('div','',`Address: ${order.customer_address}`));
          card.append(details);
@@ -236,9 +243,24 @@ main {
          if(items.length){items.forEach(item=>{
            const qty=Number(item&& (item.quantity??item.qty))||1;
            const price=Number(item&& (item.price??item.unit_price))||0;
+           const extras=Array.isArray(item.extras)?item.extras.filter(extra=>extra&&typeof extra==='object'):[];
             const row=el('div','item');row.append(el('span','',itemText(item)),el('span','',money(price*qty)));
             const block=el('div','');block.style.cssText='padding-bottom:6px;';block.append(row);
+            extras.forEach(extra=>{
+              const extraRow=el('div','item');
+              extraRow.style.cssText='padding:2px 0 2px 12px;font-size:13px;';
+              extraRow.append(
+                el('span','',`+ ${String(extra.name||'')}`),
+                el('span','',money((Number(extra.price)||0)*(Number(extra.quantity)||0)))
+              );
+              block.append(extraRow);
+            });
             const sub=el('div','muted','Qty: '+qty+' - '+money(price)+' each');sub.style.cssText='font-size:13px;color:var(--muted);';block.append(sub);
+            const customization=[];
+            if(Array.isArray(item.removedIngredients))customization.push(...item.removedIngredients);
+            if(Array.isArray(item.adjustments))customization.push(...item.adjustments);
+            extras.forEach(extra=>customization.push(String(extra.name||'')+(Number(extra.quantity)>1?' x'+extra.quantity:'')));
+            if(customization.length){const c=el('div','order-customization',customization.join(', '));block.append(c);}
             const noteText=item&&typeof item==='object'?String(item.note||'').trim():'';
             if(noteText){const n=el('div','muted','Note: '+noteText);n.style.cssText='font-size:13px;color:var(--muted);';block.append(n);}
             itemWrap.append(block);
@@ -398,4 +420,3 @@ try {
 })();
 </script>
 </body></html>
-

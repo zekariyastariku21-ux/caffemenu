@@ -512,6 +512,89 @@ body {
     font-weight: 800;
 }
 
+.item-customization-editor {
+    margin: 18px 0;
+    padding: 18px;
+    border: 1px solid #e8ddd3;
+    border-radius: 14px;
+    background: #fffaf5;
+}
+
+.item-customization-heading h4,
+.item-customization-group h5 {
+    margin: 0;
+    color: #432b1e;
+}
+
+.item-customization-heading p,
+.item-customization-group > p {
+    margin: 6px 0 12px;
+    color: #897769;
+    font-size: 13px;
+}
+
+.item-customization-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.item-customization-group {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #eee2d8;
+    border-radius: 11px;
+    background: #fff;
+}
+
+.customization-choices {
+    display: grid;
+    gap: 7px;
+}
+
+.customization-choice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #5c4333;
+    font-size: 13px;
+}
+
+.customization-choice input {
+    width: 17px;
+    min-height: 17px;
+    margin: 0;
+    accent-color: #69432e;
+}
+
+.customization-add-row {
+    display: flex;
+    gap: 7px;
+    margin-top: 12px;
+}
+
+.customization-add-row input {
+    min-width: 0;
+    min-height: 38px;
+}
+
+.customization-add-option {
+    flex: 0 0 auto;
+    padding: 0 10px;
+    border: 1px solid #c9aa91;
+    border-radius: 8px;
+    color: #4f3021;
+    background: #f7ecdf;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.customization-empty {
+    margin: 0;
+    color: #897769;
+    font-size: 12px;
+}
+
 
 /* ================================================================
    INPUTS / SELECTS / TEXTAREA

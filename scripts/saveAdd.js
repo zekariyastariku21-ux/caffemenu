@@ -1,6 +1,6 @@
 let cart = [];
-let editingCartNoteName = null;
-let recentlyAddedCartItemName = null;
+let editingCartLineId = null;
+let recentlyAddedCartLineId = null;
 
 let currentCategory = 'all';
 
@@ -12,6 +12,20 @@ let defaultCompanyImage = getRestaurantLoadingLogo();
 const CUSTOMER_LANGUAGE_KEY = 'customer-menu-language';
 let customerLanguage = 'en';
 let customerTranslationTimer = null;
+const DEFAULT_REMOVABLE_INGREDIENTS = [
+    'No vegetables',
+    'No cheese',
+    'No onion',
+    'No tomato',
+    'No sugar'
+];
+const DEFAULT_ITEM_ADJUSTMENTS = [
+    'Less coffee',
+    'More coffee',
+    'Less chili',
+    'More chili',
+    'Less salt'
+];
 
 async function loadDefaultCompanyImage() {
     try {
@@ -2014,6 +2028,18 @@ function getOrderedMenuCategories() {
     );
 }
 
+function isExtraItemsCategory(category) {
+    return /^extras?(?:\s+items?)?$/i.test(
+        String(category || '').trim()
+    );
+}
+
+function getCustomerMenuCategories() {
+    return getOrderedMenuCategories().filter(
+        category => !isExtraItemsCategory(category)
+    );
+}
+
 function renderCategoryButtons() {
 
     const container =
@@ -2060,7 +2086,7 @@ function renderCategoryButtons() {
        ---------------------------------------------------------------------- */
 
     const categories =
-        getOrderedMenuCategories();
+        getCustomerMenuCategories();
 
     categories.forEach(category => {
 
@@ -2126,12 +2152,13 @@ function renderItems() {
     if (currentCategory === 'all') {
 
         items =
-            getOrderedMenuCategories()
+            getCustomerMenuCategories()
                 .flatMap(category => foods[category]);
 
     } else {
 
         items =
+            !isExtraItemsCategory(currentCategory) &&
             Array.isArray(
                 foods[currentCategory]
             )
@@ -2351,7 +2378,7 @@ function getDaySpecialItems() {
 
     const specials = [];
 
-    getOrderedMenuCategories().forEach(category => {
+    getCustomerMenuCategories().forEach(category => {
 
         const categoryItems =
             Array.isArray(foods[category])
@@ -2815,33 +2842,23 @@ function openCustomerDaySpecial() {
 
                     addToCart(
                         event,
-                        fakeButton
-                    );
-
-
-                    addButton.textContent =
-                        '✓ Added to Cart';
-
-                    addButton.disabled =
-                        true;
-
-
-                    setTimeout(() => {
-
-                        if (
-                            document.body.contains(
-                                addButton
-                            )
-                        ) {
-
+                        fakeButton,
+                        () => {
                             addButton.textContent =
-                                '+ Add to Cart';
+                                '✓ Added to Cart';
 
-                            addButton.disabled =
-                                false;
+                            addButton.disabled = true;
+
+                            setTimeout(() => {
+                                if (document.body.contains(addButton)) {
+                                    addButton.textContent =
+                                        '+ Add to Cart';
+
+                                    addButton.disabled = false;
+                                }
+                            }, 900);
                         }
-
-                    }, 900);
+                    );
                 }
             );
         });
@@ -2974,7 +2991,11 @@ function loadFromLocalStorage() {
                 item &&
                 typeof item === 'object' &&
                 Number(item.quantity) > 0
-        );
+        ).map(item => ({
+            ...item,
+            lineId: item.lineId ||
+                `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+        }));
 
     } catch (error) {
 
@@ -2996,16 +3017,37 @@ function saveToLocalStorage() {
             id:
                 item.id,
 
+            lineId:
+                item.lineId,
+
             name:
                 item.name,
 
             price:
                 item.price,
 
+            basePrice:
+                item.basePrice ?? item.price,
+
             ingridient:
                 item.ingridient ||
                 item.ingredient ||
                 '',
+
+            removedIngredients:
+                Array.isArray(item.removedIngredients)
+                    ? item.removedIngredients
+                    : [],
+
+            adjustments:
+                Array.isArray(item.adjustments)
+                    ? item.adjustments
+                    : [],
+
+            extras:
+                Array.isArray(item.extras)
+                    ? item.extras
+                    : [],
 
             note:
                 String(item.note || ''),
@@ -3040,160 +3082,342 @@ function saveCart() {
     saveToLocalStorage();
 }
 
+function getFoodCustomization(food) {
+    const customization =
+        food?.customization &&
+        typeof food.customization === 'object'
+            ? food.customization
+            : {};
+
+    return {
+        removeIngredients: Array.isArray(customization.removeIngredients)
+            ? customization.removeIngredients
+            : DEFAULT_REMOVABLE_INGREDIENTS,
+        adjustments: Array.isArray(customization.adjustments)
+            ? customization.adjustments
+            : DEFAULT_ITEM_ADJUSTMENTS,
+        extraItems: Array.isArray(customization.extraItems)
+            ? customization.extraItems
+            : []
+    };
+}
+
+function getAllowedExtraProducts(food) {
+    const allowedNames = getFoodCustomization(food).extraItems;
+    return getOrderedMenuCategories()
+        .filter(isExtraItemsCategory)
+        .flatMap(category => foods[category])
+        .filter(extra =>
+            extra &&
+            typeof extra === 'object' &&
+            extra.available !== false &&
+            extra.isAvailable !== false &&
+            allowedNames.includes(String(extra.name || '').trim())
+        );
+}
+
+function renderCustomizationCheckboxes(group, options) {
+    if (!options.length) {
+        return '<p class="item-customization-empty">No options available.</p>';
+    }
+
+    return options.map(option => `
+        <label class="customer-customization-choice">
+            <input type="checkbox" data-choice-group="${group}" value="${escapeAttribute(option)}">
+            <span>${escapeHtml(option)}</span>
+        </label>
+    `).join('');
+}
+
+function openItemCustomization(event, button, onAdded) {
+    if (!button) {
+        return;
+    }
+
+    const name = button.dataset?.name;
+    const food = Object.values(foods)
+        .filter(Array.isArray)
+        .flat()
+        .find(item => item && item.name === name);
+
+    if (!food || food.available === false || food.isAvailable === false) {
+        showToast(
+            food ? 'This item is currently unavailable.' : 'This item is no longer available.',
+            'error'
+        );
+        return;
+    }
+
+    const customization = getFoodCustomization(food);
+    const extras = getAllowedExtraProducts(food);
+    const overlay = document.createElement('div');
+    overlay.className = 'item-customization-overlay';
+    overlay.id = 'itemCustomizationOverlay';
+
+    const extraRows = extras.length
+        ? extras.map(extra => `
+            <article class="customer-extra-row" data-extra-name="${escapeAttribute(extra.name)}" data-extra-price="${escapeAttribute(extra.price ?? 0)}" data-quantity="0">
+                <div>
+                    <strong>${escapeHtml(extra.name)}</strong>
+                    <span>+${formatCustomerCurrency(extra.price ?? 0)}</span>
+                </div>
+                <button type="button" class="customer-extra-add" data-extra-action="add">+ Add</button>
+                <div class="customer-extra-quantity" hidden>
+                    <button type="button" data-extra-action="decrease" aria-label="Remove one ${escapeAttribute(extra.name)}">−</button>
+                    <span data-extra-count>0</span>
+                    <button type="button" data-extra-action="increase" aria-label="Add one ${escapeAttribute(extra.name)}">+</button>
+                </div>
+            </article>
+        `).join('')
+        : '<p class="item-customization-empty">No extras are available for this item.</p>';
+
+    overlay.innerHTML = `
+        <section class="item-customization-dialog" role="dialog" aria-modal="true" aria-labelledby="itemCustomizationTitle">
+            <button type="button" class="item-customization-close" aria-label="Close customization">&times;</button>
+            <div class="item-customization-product">
+                <img src="${escapeAttribute(food.image || 'image/food.jpeg')}" alt="${escapeAttribute(food.name)}" onerror="this.onerror=null;this.src='image/food.jpeg';">
+                <div>
+                    <h2 id="itemCustomizationTitle">Customize your order</h2>
+                    <strong>${escapeHtml(food.name)}</strong>
+                    <span>${formatCustomerCurrency(food.price || 0)}</span>
+                </div>
+            </div>
+            <div class="customer-customization-sections">
+                <section class="customer-customization-section">
+                    <h3>Remove ingredients</h3>
+                    <p>Choose anything you don't want.</p>
+                    <div class="customer-customization-options">
+                        ${renderCustomizationCheckboxes('removeIngredients', customization.removeIngredients)}
+                    </div>
+                </section>
+                <section class="customer-customization-section">
+                    <h3>Adjust your taste</h3>
+                    <div class="customer-customization-options">
+                        ${renderCustomizationCheckboxes('adjustments', customization.adjustments)}
+                    </div>
+                </section>
+                <section class="customer-customization-section">
+                    <h3>Add extras</h3>
+                    <div class="customer-extra-list">${extraRows}</div>
+                </section>
+            </div>
+            <label class="customer-customization-instructions">
+                <span>Special instructions</span>
+                <textarea maxlength="500" rows="3" placeholder="Any other requests?"></textarea>
+            </label>
+            <div class="item-customization-total">
+                <span>Total</span>
+                <strong data-customization-total>${formatCustomerCurrency(food.price || 0)}</strong>
+            </div>
+            <button type="button" class="item-customization-submit">Add to Cart</button>
+        </section>
+    `;
+
+    const close = () => {
+        overlay.remove();
+        document.body.classList.remove('item-customization-open');
+        button.focus?.();
+    };
+    const updateTotal = () => {
+        const extrasTotal = Array.from(
+            overlay.querySelectorAll('.customer-extra-row')
+        ).reduce((total, row) =>
+            total +
+            Number(row.dataset.extraPrice || 0) *
+            Number(row.dataset.quantity || 0),
+        0);
+
+        const total = Number(food.price || 0) + extrasTotal;
+        const totalElement = overlay.querySelector('[data-customization-total]');
+        if (totalElement) {
+            totalElement.innerHTML = formatCustomerCurrency(total);
+        }
+    };
+
+    overlay.querySelector('.item-customization-close')
+        .addEventListener('click', close);
+    overlay.addEventListener('click', clickEvent => {
+        if (clickEvent.target === overlay) {
+            close();
+        }
+    });
+    overlay.addEventListener('keydown', keyEvent => {
+        if (keyEvent.key === 'Escape') {
+            close();
+        }
+    });
+    overlay.querySelectorAll('.customer-extra-row').forEach(row => {
+        row.querySelectorAll('[data-extra-action]').forEach(actionButton => {
+            actionButton.addEventListener('click', () => {
+                let quantity = Number(row.dataset.quantity || 0);
+                const action = actionButton.dataset.extraAction;
+                quantity = action === 'decrease'
+                    ? Math.max(0, quantity - 1)
+                    : Math.min(99, quantity + 1);
+                row.dataset.quantity = String(quantity);
+                row.querySelector('[data-extra-count]').textContent = String(quantity);
+                row.querySelector('.customer-extra-add').hidden = quantity > 0;
+                row.querySelector('.customer-extra-quantity').hidden = quantity === 0;
+                updateTotal();
+            });
+        });
+    });
+    overlay.querySelectorAll('input[data-choice-group="adjustments"]')
+        .forEach(input => input.addEventListener('change', () => {
+            if (!input.checked) {
+                return;
+            }
+
+            const current = input.value.toLowerCase();
+            const oppositePrefix = current.startsWith('less ')
+                ? 'more '
+                : current.startsWith('more ')
+                    ? 'less '
+                    : '';
+
+            if (oppositePrefix) {
+                const oppositeValue =
+                    `${oppositePrefix}${current.replace(/^(less|more)\s+/, '')}`;
+                const opposite = Array.from(
+                    overlay.querySelectorAll('input[data-choice-group="adjustments"]')
+                ).find(option => option.value.toLowerCase() === oppositeValue);
+
+                if (opposite) {
+                    opposite.checked = false;
+                }
+            }
+        }));
+
+    overlay.querySelector('.item-customization-submit')
+        .addEventListener('click', () => {
+            const selectedExtras = Array.from(
+                overlay.querySelectorAll('.customer-extra-row')
+            ).filter(row => Number(row.dataset.quantity) > 0)
+                .map(row => {
+                    const product = extras.find(
+                        extra => String(extra.name).trim() === row.dataset.extraName
+                    );
+
+                    return {
+                        name: row.dataset.extraName,
+                        quantity: Number(row.dataset.quantity),
+                        price: Number(product?.price || 0)
+                    };
+                });
+            const removedIngredients = Array.from(
+                overlay.querySelectorAll('input[data-choice-group="removeIngredients"]:checked')
+            ).map(input => input.value);
+            const adjustments = Array.from(
+                overlay.querySelectorAll('input[data-choice-group="adjustments"]:checked')
+            ).map(input => input.value);
+            const note = overlay.querySelector('textarea').value.trim();
+            const unitPrice =
+                Number(food.price || 0) +
+                selectedExtras.reduce(
+                    (total, extra) => total + extra.price * extra.quantity,
+                    0
+                );
+            const item = {
+                id: food.id,
+                lineId: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+                name: food.name,
+                price: unitPrice,
+                basePrice: Number(food.price || 0),
+                ingridient: food.ingridient || food.ingredient || '',
+                removedIngredients,
+                adjustments,
+                extras: selectedExtras,
+                note,
+                quantity: 1
+            };
+            const signature = current =>
+                JSON.stringify([
+                    current.removedIngredients || [],
+                    current.adjustments || [],
+                    current.extras || [],
+                    current.note || ''
+                ]);
+            const matchingItem = cart.find(current =>
+                current.name === item.name &&
+                signature(current) === signature(item)
+            );
+
+            if (matchingItem) {
+                matchingItem.quantity =
+                    Number(matchingItem.quantity || 0) + 1;
+                item.lineId = matchingItem.lineId;
+            } else {
+                cart.push(item);
+            }
+
+            recentlyAddedCartLineId = item.lineId;
+            saveCart();
+            renderCart();
+            close();
+
+            const cartSheet = document.getElementById('cartSheet');
+            const cartButton = document.querySelector('.cartbutton');
+            if (cartSheet && cartButton) {
+                cartSheet.classList.add('open');
+                cartSheet.classList.remove('expanded');
+                cartButton.setAttribute('aria-expanded', 'true');
+                cartSheet.querySelector('.cart-sheet-handle')
+                    ?.setAttribute('aria-label', 'Expand cart');
+            }
+
+            if (onAdded) {
+                onAdded();
+            } else if (button && 'textContent' in button) {
+                const originalText = button.textContent;
+                button.textContent = '✓ Added';
+                button.disabled = true;
+                setTimeout(() => {
+                    if (button.parentNode) {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                    }
+                }, 250);
+            }
+        });
+
+    document.body.appendChild(overlay);
+    document.body.classList.add('item-customization-open');
+    overlay.querySelector('.item-customization-close').focus();
+    queueCustomerTranslation();
+}
 
 function addToCart(
     event,
-    button
+    button,
+    onAdded
 ) {
 
     if (!button) {
         return;
     }
 
-
-    const name =
-        button.dataset?.name;
-
-
-    if (!name) {
-        return;
-    }
-
-
-    const food =
-        Object.values(foods)
-            .filter(Array.isArray)
-            .flat()
-            .find(
-                item =>
-                    item &&
-                    item.name === name
-            );
-
-
-    if (!food) {
-
-        showToast(
-            'This item is no longer available.',
-            'error'
-        );
-
-        return;
-    }
-
-
-    if (
-        food.available === false
-    ) {
-
-        showToast(
-            'This item is currently unavailable.',
-            'error'
-        );
-
-        return;
-    }
-
-
-    const matchingItem =
-        cart.find(
-            item =>
-                item.name ===
-                food.name
-        );
-
-
-    if (matchingItem) {
-
-        matchingItem.quantity =
-            Number(
-                matchingItem.quantity || 0
-            ) + 1;
-
-    } else {
-
-        const ingredient =
-            food.ingridient ||
-            food.ingredient ||
-            '';
-
-
-        cart.push({
-
-            id:
-                food.id,
-
-            name:
-                food.name,
-
-            price:
-                food.price,
-
-            ingridient:
-                ingredient,
-
-            quantity:
-                1
-        });
-    }
-
-    recentlyAddedCartItemName =
-        food.name;
-
-    saveCart();
-
-    renderCart();
-
-    const cartSheet =
-        document.getElementById('cartSheet');
-
-    const cartButton =
-        document.querySelector('.cartbutton');
-
-    if (cartSheet && cartButton) {
-        cartSheet.classList.add('open');
-        cartSheet.classList.remove('expanded');
-        cartButton.setAttribute('aria-expanded', 'true');
-        cartSheet
-            .querySelector('.cart-sheet-handle')
-            ?.setAttribute('aria-label', 'Expand cart');
-    }
-
-    if (
-        button &&
-        'textContent' in button
-    ) {
-
-        const originalText =
-            button.textContent;
-
-
-        button.textContent =
-            '✓ Added';
-
-
-        button.disabled =
-            true;
-
-
-        setTimeout(() => {
-
-            if (
-                button &&
-                button.parentNode
-            ) {
-
-                button.textContent =
-                    originalText;
-
-                button.disabled =
-                    false;
-            }
-
-        }, 250);
-    }
+    openItemCustomization(event, button, onAdded);
 }
 
+function getCartCustomizationLabel(item) {
+    const choices = [
+        ...(Array.isArray(item.removedIngredients)
+            ? item.removedIngredients
+            : []),
+        ...(Array.isArray(item.adjustments)
+            ? item.adjustments
+            : []),
+        ...(Array.isArray(item.extras)
+            ? item.extras.filter(extra =>
+                extra && typeof extra === 'object'
+            ).map(extra =>
+                `${extra.name}${Number(extra.quantity) > 1 ? ` x${extra.quantity}` : ''}`
+            )
+            : [])
+    ];
+
+    return choices.join(', ');
+}
 
 /* ==========================================================================
    RENDER CART
@@ -3263,7 +3487,7 @@ if (orderNowButton) {
 
     cartSheetElement?.classList.toggle(
         'has-recently-added',
-        cart.some(item => item.name === recentlyAddedCartItemName)
+        cart.some(item => item.lineId === recentlyAddedCartLineId)
     );
 
 
@@ -3297,11 +3521,16 @@ if (orderNowButton) {
                     const itemName =
                         String(item.name ?? '');
 
+                    const lineId =
+                        String(item.lineId || item.name || '');
+
                     const note =
                         String(item.note || '').trim();
 
                     const isEditingNote =
-                        editingCartNoteName === itemName;
+                        editingCartLineId === lineId;
+                    const customizationLabel =
+                        getCartCustomizationLabel(item);
 
                     const menuItem =
                         menuItems.find(
@@ -3316,8 +3545,8 @@ if (orderNowButton) {
 
                     return `
                         <tr
-                            class="cart-item-row${itemName === recentlyAddedCartItemName ? ' is-recently-added' : ''}"
-                            data-cart-item-name="${escapeAttribute(itemName)}"
+                            class="cart-item-row${lineId === recentlyAddedCartLineId ? ' is-recently-added' : ''}"
+                            data-cart-item-id="${escapeAttribute(lineId)}"
                         >
 
                             <td>
@@ -3336,12 +3565,13 @@ if (orderNowButton) {
                                                 type="button"
                                                 class="cart-note-toggle"
                                                 data-action="edit-note"
-                                                data-name="${escapeAttribute(itemName)}"
+                                                data-line-id="${escapeAttribute(lineId)}"
                                                 aria-label="Add or edit note for ${escapeAttribute(itemName)}"
                                                 title="Add or edit item note"
                                             >✎</button>
                                         </div>
                                         <span class="cart-item-unit-price">${formatCustomerCurrency(itemPrice)}</span>
+                                        ${customizationLabel ? `<span class="cart-item-customization">${escapeHtml(customizationLabel)}</span>` : ''}
                                         ${note ? `<span class="cart-item-note">(${escapeHtml(note)})</span>` : ''}
                                         ${isEditingNote ? `
                                             <div class="cart-note-editor">
@@ -3354,8 +3584,8 @@ if (orderNowButton) {
                                                     placeholder="e.g. No sugar, extra spicy"
                                                 >
                                                 <div class="cart-note-actions">
-                                                    <button type="button" data-action="save-note" data-name="${escapeAttribute(itemName)}">Done</button>
-                                                    <button type="button" data-action="cancel-note" data-name="${escapeAttribute(itemName)}">Cancel</button>
+                                                    <button type="button" data-action="save-note" data-line-id="${escapeAttribute(lineId)}">Done</button>
+                                                    <button type="button" data-action="cancel-note" data-line-id="${escapeAttribute(lineId)}">Cancel</button>
                                                 </div>
                                             </div>
                                         ` : ''}
@@ -3371,7 +3601,7 @@ if (orderNowButton) {
                                         type="button"
                                         class="minus"
                                         data-action="decrease"
-                                        data-name="${escapeAttribute(itemName)}"
+                                        data-line-id="${escapeAttribute(lineId)}"
                                     >
                                         −
                                     </button>
@@ -3384,7 +3614,7 @@ if (orderNowButton) {
                                         type="button"
                                         class="plus"
                                         data-action="increase"
-                                        data-name="${escapeAttribute(itemName)}"
+                                        data-line-id="${escapeAttribute(lineId)}"
                                     >
                                         +
                                     </button>
@@ -3408,24 +3638,24 @@ if (orderNowButton) {
     cartBody.querySelectorAll('button[data-action]').forEach(button => {
         button.addEventListener('click', () => {
             const action = button.dataset.action;
-            const name = button.dataset.name;
+            const lineId = button.dataset.lineId;
 
-            if (!name) {
+            if (!lineId) {
                 return;
             }
 
             if (action === 'increase') {
-                increaseQuantity(name);
+                increaseQuantity(lineId);
                 return;
             }
 
             if (action === 'decrease') {
-                decreaseQuantity(name);
+                decreaseQuantity(lineId);
                 return;
             }
 
             if (action === 'edit-note') {
-                editingCartNoteName = name;
+                editingCartLineId = lineId;
                 renderCart();
                 cartBody.querySelector('.cart-note-input')?.focus();
                 return;
@@ -3436,21 +3666,21 @@ if (orderNowButton) {
                     button.closest('tr')?.querySelector('.cart-note-input');
 
                 const item =
-                    cart.find(currentItem => currentItem.name === name);
+                    cart.find(currentItem => currentItem.lineId === lineId);
 
                 if (!item || !noteInput) {
                     return;
                 }
 
                 item.note = noteInput.value.trim();
-                editingCartNoteName = null;
+                editingCartLineId = null;
                 saveCart();
                 renderCart();
                 return;
             }
 
             if (action === 'cancel-note') {
-                editingCartNoteName = null;
+                editingCartLineId = null;
                 renderCart();
             }
         });
@@ -3496,11 +3726,11 @@ if (orderNowButton) {
 
         const focusedRow =
             Array.from(
-                cartBody.querySelectorAll('tr[data-cart-item-name]')
+                cartBody.querySelectorAll('tr[data-cart-item-id]')
             ).find(
                 row =>
-                    row.dataset.cartItemName === recentlyAddedCartItemName
-            ) || cartBody.querySelector('tr[data-cart-item-name]');
+                    row.dataset.cartItemId === recentlyAddedCartLineId
+            ) || cartBody.querySelector('tr[data-cart-item-id]');
 
         const cartStyles =
             getComputedStyle(cartPanel);
@@ -3549,12 +3779,12 @@ function escapeJs(value) {
    QUANTITY
    ========================================================================== */
 
-function increaseQuantity(name) {
+function increaseQuantity(lineId) {
 
     const item =
         cart.find(
             currentItem =>
-                currentItem.name === name
+                currentItem.lineId === lineId
         );
 
 
@@ -3573,12 +3803,12 @@ function increaseQuantity(name) {
 }
 
 
-function decreaseQuantity(name) {
+function decreaseQuantity(lineId) {
 
     const item =
         cart.find(
             currentItem =>
-                currentItem.name === name
+                currentItem.lineId === lineId
         );
 
 
@@ -3598,7 +3828,7 @@ function decreaseQuantity(name) {
         cart =
             cart.filter(
                 currentItem =>
-                    currentItem.name !== name
+                    currentItem.lineId !== lineId
             );
     }
 
@@ -3614,8 +3844,8 @@ function clearCart() {
     }
 
     cart = [];
-    editingCartNoteName = null;
-    recentlyAddedCartItemName = null;
+    editingCartLineId = null;
+    recentlyAddedCartLineId = null;
     saveCart();
     renderCart();
 }
@@ -4116,8 +4346,18 @@ function renderOrderFormSummary() {
                 const name = String(item.name ?? '');
                 const note = String(item.note || '').trim();
                 const quantity = Math.max(0, Number(item.quantity) || 0);
-                const price = Math.max(0, Number(item.price) || 0);
+                const price = Math.max(
+                    0,
+                    Number(item.basePrice ?? item.price) || 0
+                );
                 const lineTotal = quantity * price;
+                const extras = Array.isArray(item.extras)
+                    ? item.extras.filter(extra =>
+                        extra && typeof extra === 'object'
+                    )
+                    : [];
+                const customizationLabel =
+                    getCartCustomizationLabel(item);
 
                 return `
                     <article class="order-form-item">
@@ -4125,10 +4365,21 @@ function renderOrderFormSummary() {
                             <strong>${escapeHtml(name)}</strong>
                             <span>${formatCustomerCurrency(lineTotal)}</span>
                         </div>
+                        ${extras.map(extra => `
+                            <div class="order-form-item-extra">
+                                <span>+ ${escapeHtml(extra.name)}</span>
+                                <span>${formatCustomerCurrency(
+                                    (Number(extra.price) || 0) *
+                                    (Number(extra.quantity) || 0) *
+                                    quantity
+                                )}</span>
+                            </div>
+                        `).join('')}
                         <div class="order-form-item-details">
                             Qty: ${formatCustomerNumber(quantity)}
                             - ${formatCustomerCurrency(price)} each
                         </div>
+                        ${customizationLabel ? `<p class="order-form-item-note">${escapeHtml(customizationLabel)}</p>` : ''}
                         ${note ? `<p class="order-form-item-note">Note: ${escapeHtml(note)}</p>` : ''}
                     </article>
                 `;
@@ -4291,11 +4542,23 @@ form.addEventListener('submit', async event => {
                     customer_address:
                         document.getElementById('orderCustomerAddress')?.value.trim() || '',
                     items: cart.map(item => ({
-    id: item.id,
-    name: item.name,
-    quantity: Number(item.quantity),
-    note: String(item.note || '').trim()
-}))
+                        id: item.id,
+                        name: item.name,
+                        quantity: Number(item.quantity),
+                        removedIngredients: Array.isArray(item.removedIngredients)
+                            ? item.removedIngredients
+                            : [],
+                        adjustments: Array.isArray(item.adjustments)
+                            ? item.adjustments
+                            : [],
+                        extras: Array.isArray(item.extras)
+                            ? item.extras.map(extra => ({
+                                name: extra.name,
+                                quantity: Number(extra.quantity)
+                            }))
+                            : [],
+                        note: String(item.note || '').trim()
+                    }))
                 })
             }
         );

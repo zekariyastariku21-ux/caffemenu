@@ -277,6 +277,7 @@ body.ca-lock { overflow: hidden; }
 .ca-items { margin: 12px 0 0; padding: 0; list-style: none; border-top: 1px dashed var(--ca-line); }
 .ca-items li { padding: 8px 0; border-bottom: 1px dashed var(--ca-line); }
 .ca-item-row { display: flex; justify-content: space-between; gap: 12px; }
+.ca-item-extra { padding-left: 12px; color: var(--ca-muted); font-size: 13px; }
 .ca-item-note { margin-top: 2px; color: var(--ca-muted); font-size: 12px; }
 .ca-total { display: flex; justify-content: space-between; margin-top: 10px; font-size: 16px; }
 

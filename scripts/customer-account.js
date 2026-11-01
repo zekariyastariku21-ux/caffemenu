@@ -613,11 +613,49 @@
     var items = (Array.isArray(order.items) ? order.items : []).map(function (item) {
       var qty = Number(item.quantity != null ? item.quantity : item.qty) || 1;
       var price = Number(item.price != null ? item.price : item.unit_price) || 0;
+      var extras = Array.isArray(item.extras)
+        ? item.extras.filter(function (extra) {
+          return extra && typeof extra === 'object';
+        })
+        : [];
+      var extrasTotal = extras.reduce(function (total, extra) {
+        return total + (Number(extra.price) || 0) * (Number(extra.quantity) || 0);
+      }, 0);
+      var basePrice = item.base_price != null
+        ? Number(item.base_price) || 0
+        : Math.max(0, price - extrasTotal);
+      var customization = [];
+      if (Array.isArray(item.removedIngredients)) {
+        customization = customization.concat(item.removedIngredients);
+      }
+      if (Array.isArray(item.adjustments)) {
+        customization = customization.concat(item.adjustments);
+      }
+      if (extras.length) {
+        customization = customization.concat(extras.map(function (extra) {
+          return String(extra.name || '') +
+            (Number(extra.quantity) > 1 ? ' x' + extra.quantity : '');
+        }));
+      }
       return h('li', null, [
         h('div', { class: 'ca-item-row' }, [
-          h('span', { text: qty + ' \u00D7 ' + String(item.name || '') }),
-          h('span', { text: money(price * qty) })
+          h('span', { text: String(item.name || '') }),
+          h('span', { text: money(basePrice * qty) })
         ]),
+        ...extras.map(function (extra) {
+          return h('div', { class: 'ca-item-row ca-item-extra' }, [
+            h('span', { text: '+ ' + String(extra.name || '') }),
+            h('span', {
+              text: money(
+                (Number(extra.price) || 0) *
+                (Number(extra.quantity) || 0) *
+                qty
+              )
+            })
+          ]);
+        }),
+        h('div', { class: 'ca-item-note', text: 'Qty: ' + qty + ' - ' + money(basePrice) + ' each' }),
+        customization.length ? h('div', { class: 'ca-item-note', text: customization.join(', ') }) : null,
         item.note ? h('div', { class: 'ca-item-note', text: 'Note: ' + item.note }) : null
       ]);
     });
