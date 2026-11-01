@@ -19,6 +19,10 @@ const OTP_RESEND_WAIT_S = 45;              // minimum gap between codes
 const OTP_MAX_PER_HOUR = 5;                // codes per phone per hour
 const OTP_MAX_ATTEMPTS = 5;                // wrong guesses per code
 const SESSION_DAYS = 30;                   // customer login lasts 30 days
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 100;
+const LOGIN_MAX_FAILS = 5;                 // wrong passwords before a temporary lock
+const LOGIN_LOCK_MINUTES = 15;
 
 /* ---------------- helpers ---------------- */
 
@@ -78,6 +82,51 @@ function bearerToken(req) {
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match ? match[1].trim() : '';
 }
+
+/* ---------------- passwords ---------------- */
+
+const COMMON_PASSWORDS = new Set([
+  '12345678', '123456789', '1234567890', '11111111', '00000000', '87654321',
+  'password', 'password1', 'qwertyui', 'qwerty123', 'abcd1234', 'iloveyou', 'welcome1'
+]);
+
+// Returns an error message, or '' when the password is acceptable.
+function validatePassword(password, confirm) {
+  if (password.length < PASSWORD_MIN) return `Password must be at least ${PASSWORD_MIN} characters.`;
+  if (password.length > PASSWORD_MAX) return `Password must be at most ${PASSWORD_MAX} characters.`;
+  if (confirm !== undefined && password !== confirm) return 'Passwords do not match.';
+  if (COMMON_PASSWORDS.has(password.toLowerCase()) || /^(.)\1+$/.test(password)) {
+    return 'That password is too easy to guess. Please choose another.';
+  }
+  return '';
+}
+
+function scryptAsync(password, salt, n) {
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(password.normalize('NFKC'), salt, 64, { N: n, r: 8, p: 1, maxmem: 128 * 1024 * 1024 },
+      (error, key) => (error ? reject(error) : resolve(key)));
+  });
+}
+
+async function hashPassword(password) {
+  const n = 16384;
+  const salt = crypto.randomBytes(16);
+  const key = await scryptAsync(password, salt, n);
+  return `scrypt$${n}$${salt.toString('hex')}$${key.toString('hex')}`;
+}
+
+async function verifyPassword(password, stored) {
+  const parts = String(stored || '').split('$');
+  if (parts.length !== 4 || parts[0] !== 'scrypt') return false;
+  const n = Number(parts[1]);
+  const expected = Buffer.from(parts[3], 'hex');
+  const key = await scryptAsync(password, Buffer.from(parts[2], 'hex'), n);
+  return key.length === expected.length && crypto.timingSafeEqual(key, expected);
+}
+
+// Used for unknown phone numbers so the response time does not reveal whether an account exists.
+let dummyHashPromise = null;
+const dummyHash = () => (dummyHashPromise = dummyHashPromise || hashPassword('not-a-real-password'));
 
 /* ---------------- code delivery: SMS + WhatsApp ---------------- */
 
@@ -161,7 +210,7 @@ async function sendWhatsapp(phone, code, text) {
 
   // Meta WhatsApp Cloud API: needs an approved "authentication" message template.
   if (provider === 'meta') {
-    const version = env('WHATSAPP_API_VERSION') || 'v21.0';
+    const version = env('WHATSAPP_API_VERSION') || 'v25.0';
     const components = [{ type: 'body', parameters: [{ type: 'text', text: code }] }];
     // Authentication templates carry a "copy code" button that also needs the code.
     if (env('WHATSAPP_TEMPLATE_BUTTON').toLowerCase() !== 'false') {
@@ -257,6 +306,17 @@ module.exports = function registerCustomerAccounts(app, deps) {
         expires_at TIMESTAMPTZ NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
+    `);
+
+    // Password login (added after the first version)
+    await pool.query(`
+      ALTER TABLE customer_accounts
+        ADD COLUMN IF NOT EXISTS password_hash TEXT,
+        ADD COLUMN IF NOT EXISTS failed_logins INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ
+    `);
+    await pool.query(`
+      ALTER TABLE customer_otps ADD COLUMN IF NOT EXISTS password_hash TEXT
     `);
 
     await pool.query(`
@@ -412,8 +472,10 @@ module.exports = function registerCustomerAccounts(app, deps) {
         });
       }
 
+      // OTP is only used to create an account ("signup") or to recover a password ("reset").
+      // Normal log-in uses phone + password (see /login).
       const mode = String(req.body?.mode || '').trim();
-      if (mode !== 'signup' && mode !== 'login') {
+      if (mode !== 'signup' && mode !== 'reset') {
         return res.status(400).json({ ok: false, message: 'Invalid request.' });
       }
 
@@ -433,6 +495,14 @@ module.exports = function registerCustomerAccounts(app, deps) {
         }
       }
 
+      // The (new) password is checked now and stored hashed with the code;
+      // it only takes effect once the phone number is confirmed.
+      const password = String(req.body?.password ?? '');
+      const passwordProblem = validatePassword(password, String(req.body?.confirm_password ?? ''));
+      if (passwordProblem) {
+        return res.status(400).json({ ok: false, code: 'bad_password', message: passwordProblem });
+      }
+
       const existing = await pool.query(
         `SELECT id FROM customer_accounts
           WHERE restaurant_id = $1 AND phone = $2
@@ -444,10 +514,10 @@ module.exports = function registerCustomerAccounts(app, deps) {
         return res.status(409).json({
           ok: false,
           code: 'account_exists',
-          message: 'This phone number already has an account. Please log in instead.'
+          message: 'This phone number already has an account. Please log in with your password.'
         });
       }
-      if (mode === 'login' && !existing.rows.length) {
+      if (mode === 'reset' && !existing.rows.length) {
         return res.status(404).json({
           ok: false,
           code: 'account_not_found',
@@ -506,12 +576,14 @@ module.exports = function registerCustomerAccounts(app, deps) {
         [restaurant.id, phone]
       );
 
+      const passwordHash = await hashPassword(password);
+
       const inserted = await pool.query(
         `INSERT INTO customer_otps
-           (restaurant_id, phone, purpose, full_name, code_hash, expires_at)
-         VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '5 minutes')
+           (restaurant_id, phone, purpose, full_name, code_hash, password_hash, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '5 minutes')
          RETURNING id`,
-        [restaurant.id, phone, mode, fullName, hashOtp(code, restaurant.id, phone)]
+        [restaurant.id, phone, mode, fullName, hashOtp(code, restaurant.id, phone), passwordHash]
       );
 
       // Housekeeping: drop codes older than a day.
@@ -584,12 +656,12 @@ module.exports = function registerCustomerAccounts(app, deps) {
       const phone = normalizePhone(req.body?.phone);
       const code = String(req.body?.code || '').replace(/\D/g, '');
 
-      if ((mode !== 'signup' && mode !== 'login') || !phone || code.length !== 6) {
+      if ((mode !== 'signup' && mode !== 'reset') || !phone || code.length !== 6) {
         return res.status(400).json({ ok: false, message: 'Enter the 6-digit code.' });
       }
 
       const otpResult = await pool.query(
-        `SELECT id, full_name, code_hash, attempts
+        `SELECT id, full_name, code_hash, password_hash, attempts
            FROM customer_otps
           WHERE restaurant_id = $1 AND phone = $2 AND purpose = $3
             AND consumed = FALSE AND expires_at > NOW()
@@ -628,6 +700,14 @@ module.exports = function registerCustomerAccounts(app, deps) {
         });
       }
 
+      if (!otp.password_hash) {
+        return res.status(400).json({
+          ok: false,
+          code: 'otp_expired',
+          message: 'Please start again and request a new code.'
+        });
+      }
+
       // Burn the code atomically so it can never be used twice.
       const burned = await pool.query(
         `UPDATE customer_otps SET consumed = TRUE
@@ -647,20 +727,21 @@ module.exports = function registerCustomerAccounts(app, deps) {
 
       if (mode === 'signup') {
         const created = await pool.query(
-          `INSERT INTO customer_accounts (restaurant_id, full_name, phone, last_login_at)
-           VALUES ($1, $2, $3, NOW())
+          `INSERT INTO customer_accounts (restaurant_id, full_name, phone, password_hash, last_login_at)
+           VALUES ($1, $2, $3, $4, NOW())
            ON CONFLICT (restaurant_id, phone)
            DO UPDATE SET last_login_at = NOW()
            RETURNING id, restaurant_id, full_name, phone, created_at`,
-          [restaurant.id, otp.full_name || 'Customer', phone]
+          [restaurant.id, otp.full_name || 'Customer', phone, otp.password_hash]
         );
         account = created.rows[0];
       } else {
         const found = await pool.query(
-          `UPDATE customer_accounts SET last_login_at = NOW()
+          `UPDATE customer_accounts
+              SET password_hash = $3, failed_logins = 0, locked_until = NULL, last_login_at = NOW()
             WHERE restaurant_id = $1 AND phone = $2
             RETURNING id, restaurant_id, full_name, phone, created_at`,
-          [restaurant.id, phone]
+          [restaurant.id, phone, otp.password_hash]
         );
         account = found.rows[0];
         if (!account) {
@@ -674,13 +755,124 @@ module.exports = function registerCustomerAccounts(app, deps) {
 
       return res.json({
         ok: true,
-        message: mode === 'signup' ? 'Your account is ready.' : 'Welcome back!',
+        message: mode === 'signup' ? 'Your account is ready.' : 'Your password was updated. You are logged in.',
         token: signSession(account),
         customer: publicCustomer(account)
       });
     } catch (error) {
       console.error('[customer:verify-otp] Failed:', error);
       return res.status(500).json({ ok: false, message: 'Unable to verify the code right now.' });
+    }
+  });
+
+  /* ================================================================
+     PUBLIC: log in with phone + password (no code needed)
+     ================================================================ */
+
+  app.post('/api/customer/:slug/login', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+
+    try {
+      const restaurant = await loadRestaurant(req.params.slug);
+      if (!restaurant) {
+        return res.status(404).json({ ok: false, message: 'Cafe not found.' });
+      }
+      if (!(await isSelfOrderingEnabled(restaurant.id))) {
+        return res.status(403).json({
+          ok: false,
+          code: 'self_ordering_disabled',
+          message: 'Customer accounts are not available for this cafe right now.'
+        });
+      }
+
+      const phone = normalizePhone(req.body?.phone);
+      const password = String(req.body?.password ?? '');
+      if (!phone || !password) {
+        return res.status(400).json({ ok: false, message: 'Enter your phone number and password.' });
+      }
+
+      const wrong = () => res.status(401).json({
+        ok: false,
+        code: 'bad_credentials',
+        message: 'Incorrect phone number or password.'
+      });
+
+      const found = await pool.query(
+        `SELECT id, restaurant_id, full_name, phone, created_at,
+                password_hash, failed_logins, locked_until
+           FROM customer_accounts
+          WHERE restaurant_id = $1 AND phone = $2
+          LIMIT 1`,
+        [restaurant.id, phone]
+      );
+      const account = found.rows[0];
+
+      if (password.length > PASSWORD_MAX) {
+        return wrong();
+      }
+
+      if (!account) {
+        await verifyPassword(password, await dummyHash());   // same timing as a real check
+        return wrong();
+      }
+
+      const lockedFor = account.locked_until ? new Date(account.locked_until).getTime() - Date.now() : 0;
+      if (lockedFor > 0) {
+        return res.status(429).json({
+          ok: false,
+          code: 'login_locked',
+          message: `Too many wrong attempts. Try again in ${Math.ceil(lockedFor / 60000)} minute(s), or tap "Forgot password?".`
+        });
+      }
+
+      if (!account.password_hash) {
+        return res.status(401).json({
+          ok: false,
+          code: 'password_not_set',
+          message: 'Please set a password for your account: tap "Forgot password?".'
+        });
+      }
+
+      if (!(await verifyPassword(password, account.password_hash))) {
+        const failed = await pool.query(
+          `UPDATE customer_accounts SET
+             failed_logins = CASE WHEN locked_until IS NOT NULL AND locked_until <= NOW() THEN 1 ELSE failed_logins + 1 END,
+             locked_until = CASE
+               WHEN (CASE WHEN locked_until IS NOT NULL AND locked_until <= NOW() THEN 1 ELSE failed_logins + 1 END) >= $2::int
+                 THEN NOW() + make_interval(mins => $3::int)
+               WHEN locked_until IS NOT NULL AND locked_until <= NOW() THEN NULL
+               ELSE locked_until END
+           WHERE id = $1
+           RETURNING locked_until`,
+          [account.id, LOGIN_MAX_FAILS, LOGIN_LOCK_MINUTES]
+        );
+        const lock = failed.rows[0]?.locked_until;
+        if (lock && new Date(lock).getTime() > Date.now()) {
+          return res.status(429).json({
+            ok: false,
+            code: 'login_locked',
+            message: `Too many wrong attempts. Try again in ${LOGIN_LOCK_MINUTES} minutes, or tap "Forgot password?".`
+          });
+        }
+        return wrong();
+      }
+
+      await pool.query(
+        `UPDATE customer_accounts
+            SET failed_logins = 0, locked_until = NULL, last_login_at = NOW()
+          WHERE id = $1`,
+        [account.id]
+      );
+
+      return res.json({
+        ok: true,
+        message: 'Welcome back!',
+        token: signSession(account),
+        customer: publicCustomer(account)
+      });
+    } catch (error) {
+      console.error('[customer:login] Failed:', error);
+      return res.status(500).json({ ok: false, message: 'Unable to log in right now.' });
     }
   });
 
@@ -845,3 +1037,6 @@ module.exports = function registerCustomerAccounts(app, deps) {
 
 module.exports.normalizePhone = normalizePhone;
 module.exports.availableChannels = availableChannels;
+module.exports.hashPassword = hashPassword;
+module.exports.verifyPassword = verifyPassword;
+module.exports.validatePassword = validatePassword;

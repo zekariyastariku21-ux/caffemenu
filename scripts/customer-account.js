@@ -260,7 +260,11 @@
   function openAuth(mode, notice) {
     state.view = 'auth';
     loadChannels();
-    state.auth = { mode: mode === 'signup' ? 'signup' : 'login', step: 'details', channel: '', phone: '', name: '', code: '', devOtp: '', resendAt: 0, busy: false, error: '', info: notice || '' };
+    state.auth = {
+      mode: mode === 'signup' || mode === 'reset' ? mode : 'login',
+      step: 'details', channel: '', phone: '', name: '', password: '', confirm: '', showPw: false,
+      code: '', devOtp: '', resendAt: 0, busy: false, sending: '', error: '', info: notice || ''
+    };
     renderAuth();
     showOverlay();
     setTimeout(function () {
@@ -278,14 +282,12 @@
     if (state.view !== 'auth') return;
     clearInterval(state.tick);
     var a = state.auth;
-    var body;
-
-    if (a.step === 'code') body = codeStep(a); else body = detailsStep(a);
-
+    var body = a.step === 'code' ? codeStep(a) : detailsStep(a);
     el.card.replaceChildren(closeButton(), body);
   }
 
   var CHANNEL_LABEL = { sms: 'SMS', whatsapp: 'WhatsApp' };
+  var PASSWORD_MIN = 8;
 
   function loadChannels() {
     if (state.channels !== null || state.channelsLoading) return;
@@ -296,52 +298,110 @@
       .then(function () {
         state.channelsLoading = false;
         var typing = document.activeElement && el.card && el.card.contains(document.activeElement) && document.activeElement.tagName === 'INPUT';
-        if (state.view === 'auth' && state.auth.step === 'details' && !typing) renderAuth();
+        if (state.view === 'auth' && state.auth.step === 'details' && state.auth.mode !== 'login' && !typing) renderAuth();
       });
   }
 
+  /* ----- form pieces ----- */
+
+  function field(id, label, attrs) {
+    return [h('label', { for: id, text: label }), h('input', Object.assign({ id: id, required: true }, attrs))];
+  }
+
+  function passwordFields(a, isNew) {
+    var type = a.showPw ? 'text' : 'password';
+    var out = field('caPassword', isNew ? (a.mode === 'reset' ? 'New password' : 'Password') : 'Password', {
+      type: type, autocomplete: isNew ? 'new-password' : 'current-password', maxlength: '100',
+      placeholder: isNew ? 'At least ' + PASSWORD_MIN + ' characters' : 'Your password', value: a.password,
+      oninput: function (e) { a.password = e.target.value; }
+    });
+    if (isNew) {
+      out = out.concat(field('caConfirm', 'Confirm password', {
+        type: type, autocomplete: 'new-password', maxlength: '100', placeholder: 'Type it again', value: a.confirm,
+        oninput: function (e) { a.confirm = e.target.value; }
+      }));
+    }
+    out.push(h('button', {
+      type: 'button', class: 'ca-link ca-showpw', 'aria-pressed': String(!!a.showPw),
+      onclick: function () { setAuth({ showPw: !a.showPw }); setTimeout(function () { var i = el.card.querySelector('#caPassword'); if (i) i.focus(); }, 20); },
+      text: a.showPw ? 'Hide password' : 'Show password'
+    }));
+    return out;
+  }
+
+  function passwordProblem(a) {
+    if (String(a.password || '').length < PASSWORD_MIN) return 'Password must be at least ' + PASSWORD_MIN + ' characters.';
+    if (a.password !== a.confirm) return 'Passwords do not match.';
+    return '';
+  }
+
+  function messages(a) {
+    return [
+      a.info ? h('p', { class: 'ca-info', role: 'status', text: a.info }) : null,
+      a.error ? h('p', { class: 'ca-error', role: 'alert', text: a.error }) : null
+    ];
+  }
+
   function detailsStep(a) {
-    var signup = a.mode === 'signup';
-
-    var nameInput = signup ? h('input', {
-      id: 'caName', type: 'text', autocomplete: 'name', maxlength: '120',
-      placeholder: 'Your full name', value: a.name, required: true,
-      oninput: function (e) { a.name = e.target.value; }
-    }) : null;
-
-    var phoneInput = h('input', {
-      id: 'caPhone', type: 'tel', inputmode: 'tel', autocomplete: 'tel', maxlength: '20',
-      placeholder: '09XXXXXXXX', value: a.phone, required: true,
-      oninput: function (e) { a.phone = e.target.value; }
+    var mode = a.mode;
+    var phoneInput = field('caPhone', 'Phone number', {
+      type: 'tel', inputmode: 'tel', autocomplete: mode === 'login' ? 'username' : 'tel', maxlength: '20',
+      placeholder: '09XXXXXXXX', value: a.phone, oninput: function (e) { a.phone = e.target.value; }
     });
 
-    var form = h('form', { class: 'ca-form', novalidate: true, onsubmit: function (e) { e.preventDefault(); sendCode(false); } }, [
-      signup ? h('label', { for: 'caName', text: 'Full name' }) : null,
-      nameInput,
-      h('label', { for: 'caPhone', text: 'Phone number' }),
-      phoneInput,
-      h('p', { class: 'ca-hint', text: channelHint() }),
-      a.info ? h('p', { class: 'ca-info', role: 'status', text: a.info }) : null,
-      a.error ? h('p', { class: 'ca-error', role: 'alert', text: a.error }) : null,
-      sendButtons(a)
-    ]);
+    var kids, onSubmit, title, sub;
 
-    return h('div', null, [
-      h('h2', { class: 'ca-title', text: signup ? 'Create your account' : 'Log in' }),
-      h('p', { class: 'ca-sub', text: signup ? 'Sign up once to order and track your orders.' : 'Welcome back. Log in to order and track your orders.' }),
-      h('div', { class: 'ca-switch', role: 'tablist' }, [
+    if (mode === 'login') {
+      title = 'Log in';
+      sub = 'Welcome back. Log in with your phone number and password.';
+      onSubmit = doLogin;
+      kids = [].concat(phoneInput, passwordFields(a, false), messages(a), [
+        h('button', { type: 'submit', class: 'ca-primary', disabled: a.busy, text: a.busy ? 'Logging in...' : 'Log in' }),
+        h('div', { class: 'ca-row' }, [
+          h('button', { type: 'button', class: 'ca-link', onclick: function () { setAuth({ mode: 'reset', password: '', confirm: '', error: '', info: '' }); }, text: 'Forgot password?' })
+        ])
+      ]);
+    } else if (mode === 'signup') {
+      title = 'Create your account';
+      sub = 'Sign up once to order and track your orders.';
+      onSubmit = function () { sendCode(false); };
+      kids = [].concat(
+        field('caName', 'Full name', { type: 'text', autocomplete: 'name', maxlength: '120', placeholder: 'Your full name', value: a.name, oninput: function (e) { a.name = e.target.value; } }),
+        phoneInput, passwordFields(a, true),
+        [h('p', { class: 'ca-hint', text: channelHint() })], messages(a), [sendButtons(a)]
+      );
+    } else {
+      title = 'Reset your password';
+      sub = 'Enter your phone number and a new password. We will send a code to confirm it is you.';
+      onSubmit = function () { sendCode(false); };
+      kids = [].concat(
+        phoneInput, passwordFields(a, true),
+        [h('p', { class: 'ca-hint', text: channelHint() })], messages(a), [sendButtons(a)],
+        [h('div', { class: 'ca-row' }, [
+          h('button', { type: 'button', class: 'ca-link', onclick: function () { setAuth({ mode: 'login', password: '', confirm: '', error: '', info: '' }); }, text: '\u2039 Back to log in' })
+        ])]
+      );
+    }
+
+    var form = h('form', { class: 'ca-form', novalidate: true, onsubmit: function (e) { e.preventDefault(); onSubmit(); } }, kids);
+
+    var nodes = [h('h2', { class: 'ca-title', text: title }), h('p', { class: 'ca-sub', text: sub })];
+    if (mode !== 'reset') {
+      var signup = mode === 'signup';
+      nodes.push(h('div', { class: 'ca-switch', role: 'tablist' }, [
         h('button', { type: 'button', role: 'tab', 'aria-selected': String(!signup), class: signup ? '' : 'on', onclick: function () { setAuth({ mode: 'login', error: '', info: '' }); }, text: 'Log in' }),
         h('button', { type: 'button', role: 'tab', 'aria-selected': String(signup), class: signup ? 'on' : '', onclick: function () { setAuth({ mode: 'signup', error: '', info: '' }); }, text: 'Create account' })
-      ]),
-      form
-    ]);
+      ]));
+    }
+    nodes.push(form);
+    return h('div', null, nodes);
   }
 
   function channelHint() {
     var ch = state.channels || [];
-    if (ch.length > 1) return 'Choose how you want to receive your 6-digit code.';
-    if (ch.length === 1) return 'We will send a 6-digit code by ' + CHANNEL_LABEL[ch[0]] + ' to confirm your number.';
-    return 'We will send you a 6-digit code to confirm your number.';
+    if (ch.length > 1) return 'We will confirm your phone number. Choose how you want to receive your 6-digit code.';
+    if (ch.length === 1) return 'We will send a 6-digit code by ' + CHANNEL_LABEL[ch[0]] + ' to confirm your phone number.';
+    return 'We will send you a 6-digit code to confirm your phone number.';
   }
 
   function sendButtons(a) {
@@ -390,16 +450,18 @@
     paintResend();
     state.tick = setInterval(paintResend, 1000);
 
+    var submitText = a.busy ? 'Checking...' : (a.mode === 'signup' ? 'Confirm & create account' : 'Confirm & set new password');
+
     var form = h('form', { class: 'ca-form', novalidate: true, onsubmit: function (e) { e.preventDefault(); verifyCode(codeInput.value); } }, [
       h('label', { for: 'caCode', text: '6-digit code' }),
       codeInput,
       a.devOtp ? h('p', { class: 'ca-dev', text: 'Test mode code: ' + a.devOtp }) : null,
       a.info ? h('p', { class: 'ca-info', role: 'status', text: a.info }) : null,
       a.error ? h('p', { class: 'ca-error', role: 'alert', text: a.error }) : null,
-      h('button', { type: 'submit', class: 'ca-primary', disabled: a.busy, text: a.busy ? 'Checking...' : (a.mode === 'signup' ? 'Confirm & create account' : 'Confirm & log in') }),
+      h('button', { type: 'submit', class: 'ca-primary', disabled: a.busy, text: submitText }),
       h('div', { class: 'ca-row' }, [
         resend,
-        h('button', { type: 'button', class: 'ca-link', onclick: function () { setAuth({ step: 'details', error: '', info: '', devOtp: '' }); }, text: 'Change number' })
+        h('button', { type: 'button', class: 'ca-link', onclick: function () { setAuth({ step: 'details', error: '', info: '', devOtp: '', code: '' }); }, text: 'Change number' })
       ]),
       switchBtns.length ? h('div', { class: 'ca-row' }, switchBtns) : null
     ]);
@@ -407,13 +469,52 @@
     setTimeout(function () { codeInput.focus(); }, 30);
 
     return h('div', null, [
-      h('h2', { class: 'ca-title', text: 'Enter the code' }),
+      h('h2', { class: 'ca-title', text: 'Confirm your phone number' }),
       h('p', { class: 'ca-sub' }, [
         a.channel === 'whatsapp' ? 'We sent a code to your WhatsApp ' : (a.channel === 'sms' ? 'We sent a code by SMS to ' : 'We sent a code to '),
         h('strong', { class: 'notranslate', translate: 'no', text: a.phone }), '.'
       ]),
       form
     ]);
+  }
+
+  /* ----- actions ----- */
+
+  // Shared by password log-in and by the OTP steps (sign-up / reset).
+  function finishLogin(data) {
+    saveSession(data.token, data.customer);
+    var cb = state.pending;
+    state.pending = null;
+    state.auth.password = state.auth.confirm = '';
+    closeOverlay();
+    renderButton();
+    startLive();
+    loadOrders().then(function () {
+      toast(data.message || 'You are logged in.');
+      if (typeof cb === 'function') cb();
+      else openAccount('active');
+    });
+  }
+
+  function doLogin() {
+    var a = state.auth;
+    if (a.busy) return;
+    var phone = String(a.phone || '').trim();
+    if (!phone) { setAuth({ error: 'Enter your phone number.', info: '' }); return; }
+    if (!a.password) { setAuth({ error: 'Enter your password.', info: '' }); return; }
+
+    setAuth({ busy: true, error: '', info: '' });
+
+    api('/login', { method: 'POST', noAuth: true, body: { phone: phone, password: a.password } })
+      .then(finishLogin)
+      .catch(function (err) {
+        if (err.code === 'self_ordering_disabled') { setEnabled(false); return; }
+        var patch = { busy: false, error: err.message, info: '', password: '' };
+        if (err.code === 'password_not_set') { patch.mode = 'reset'; patch.error = ''; patch.info = 'Your account needs a password. Choose one below and we will confirm your number by code.'; }
+        setAuth(patch);
+        var input = el.card.querySelector('#caPassword');
+        if (input) input.focus();
+      });
   }
 
   function sendCode(isResend, channel) {
@@ -426,10 +527,12 @@
 
     if (a.mode === 'signup' && name.length < 2) { setAuth({ error: 'Enter your full name.', info: '' }); return; }
     if (!phone) { setAuth({ error: 'Enter your phone number.', info: '' }); return; }
+    var problem = passwordProblem(a);
+    if (problem) { setAuth({ error: problem, info: '' }); return; }
 
     setAuth({ busy: true, sending: chosen, error: '', info: '' });
 
-    var payload = { mode: a.mode, full_name: name, phone: phone };
+    var payload = { mode: a.mode, full_name: name, phone: phone, password: a.password, confirm_password: a.confirm };
     if (chosen) payload.channel = chosen;
 
     api('/request-otp', { method: 'POST', noAuth: true, body: payload })
@@ -445,9 +548,9 @@
       })
       .catch(function (err) {
         var patch = { busy: false, error: err.message, info: '' };
-        // Friendly redirects between the two modes
-        if (err.code === 'account_exists') { patch.mode = 'login'; patch.error = ''; patch.info = 'This number already has an account. Tap "Send code" to log in.'; }
-        if (err.code === 'account_not_found') { patch.mode = 'signup'; patch.error = ''; patch.info = 'No account for this number yet. Enter your name to create one.'; }
+        // Friendly redirects between the modes
+        if (err.code === 'account_exists') { patch.mode = 'login'; patch.error = ''; patch.password = ''; patch.confirm = ''; patch.info = 'This number already has an account. Log in with your password, or tap "Forgot password?".'; }
+        if (err.code === 'account_not_found') { patch.mode = 'signup'; patch.error = ''; patch.info = 'No account for this number yet. Fill in the form to create one.'; }
         if (err.code === 'self_ordering_disabled') { setEnabled(false); return; }
         setAuth(patch);
       });
@@ -462,19 +565,7 @@
     setAuth({ busy: true, error: '', info: '' });
 
     api('/verify-otp', { method: 'POST', noAuth: true, body: { mode: a.mode, phone: a.phone, code: code } })
-      .then(function (data) {
-        saveSession(data.token, data.customer);
-        var cb = state.pending;
-        state.pending = null;
-        closeOverlay();
-        renderButton();
-        startLive();
-        loadOrders().then(function () {
-          toast(data.message || 'You are logged in.');
-          if (typeof cb === 'function') cb();
-          else openAccount('active');
-        });
-      })
+      .then(finishLogin)
       .catch(function (err) {
         if (err.code === 'self_ordering_disabled') { setEnabled(false); return; }
         setAuth({ busy: false, error: err.message, info: '', code: '' });

@@ -113,6 +113,9 @@ body.ca-lock { overflow: hidden; }
   color: var(--ca-text);
   box-shadow: 0 -8px 40px rgba(0, 0, 0, .3);
   animation: ca-up .22s ease-out;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 @keyframes ca-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 
@@ -339,3 +342,6 @@ body.ca-lock { overflow: hidden; }
 .ca-ch-whatsapp { background: #1fa855; }
 .ca-ch-whatsapp:hover:not(:disabled) { background: #168943; }
 .ca-switch-channel { color: #1a7f43; }
+
+/* ---------- password fields ---------- */
+.ca-showpw { align-self: flex-start; padding: 2px 0 4px; font-size: 13px; }
