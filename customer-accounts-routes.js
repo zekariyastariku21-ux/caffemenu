@@ -134,6 +134,7 @@ const env = name => String(process.env[name] || '').trim();
 
 function smsConfigured() {
   const provider = env('SMS_PROVIDER').toLowerCase();
+  if (provider === 'smsethiopia') return !!env('SMS_ETHIOPIA_API_KEY');
   if (provider === 'afromessage') return !!env('AFROMESSAGE_TOKEN');
   if (provider === 'twilio') return !!(env('TWILIO_ACCOUNT_SID') && env('TWILIO_AUTH_TOKEN') && env('TWILIO_FROM'));
   return false;
@@ -167,6 +168,20 @@ async function postJson(url, headers, body, label) {
 
 async function sendSms(phone, text) {
   const provider = env('SMS_PROVIDER').toLowerCase();
+
+  if (provider === 'smsethiopia') {
+    const { response, data } = await postJson(
+      'https://smsethiopia.com/api/sms/send',
+      { KEY: env('SMS_ETHIOPIA_API_KEY'), 'Content-Type': 'application/json' },
+      JSON.stringify({ msisdn: phone.replace(/^\+/, ''), text })
+    );
+
+    if (!response.ok || !(String(data.status || '').toLowerCase() === 'success' || data.sent === true)) {
+      const reason = String(data.message || data.error || data.description || 'Unknown provider error').slice(0, 200);
+      throw new Error('SMSEthiopia rejected SMS (HTTP ' + response.status + '): ' + reason);
+    }
+    return;
+  }
 
   if (provider === 'afromessage') {
     const payload = { to: phone, message: text };
