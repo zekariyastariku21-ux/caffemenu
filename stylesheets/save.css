@@ -405,7 +405,7 @@ body {
 
 #ownerDashboardModal .admin-panel,
 #adminPanelModal .admin-panel {
-    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 40px);
 
     overflow-y: auto;
     overflow-x: hidden;
@@ -2711,7 +2711,7 @@ html[dir="rtl"] .container .foodd {
 
     width: min(94%, 650px);
 
-    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 40px);
 
     overflow-y: auto;
 
@@ -3476,7 +3476,7 @@ html body {
 
         padding: 18px;
 
-        max-height: calc(100vh - 20px);
+        max-height: calc(100dvh - 20px);
 
         border-radius: 18px;
     }
@@ -3711,7 +3711,7 @@ html body {
     flex-direction: column;
     gap: 12px;
     width: min(760px, calc(100vw - 32px));
-    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
     margin: 0;
     padding: 22px;
     overflow-y: auto;
@@ -5385,3 +5385,34 @@ body.item-customization-open {
         font-size: 18px;
     }
 }
+
+/* ===== Mobile popup fix ===== */
+.customer-day-special-overlay,
+.item-customization-overlay,
+.order-form-overlay,
+.cc-overlay {
+  position: fixed !important;
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+  width: 100% !important;
+  height: 100dvh !important;
+  overscroll-behavior: contain;
+}
+.cc-card { max-height: 90dvh !important; }
+@media (max-width: 768px) {
+  .customer-day-special-overlay,
+  .item-customization-overlay,
+  .order-form-overlay,
+  .cc-overlay {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+body.popup-open {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+/* ===== Stacking order: customize/order popups above Day Special ===== */
+.customer-day-special-overlay { z-index: 99999 !important; }
+.cc-overlay { z-index: 100000 !important; }
+.item-customization-overlay { z-index: 100010 !important; }
+.order-form-overlay { z-index: 100020 !important; }

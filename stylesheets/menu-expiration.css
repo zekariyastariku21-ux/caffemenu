@@ -54,7 +54,7 @@
 
 .menu-expiration-dialog {
     width: min(520px, 100%);
-    max-height: min(760px, calc(100vh - 44px));
+    max-height: min(760px, calc(100dvh - 44px));
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -227,7 +227,7 @@
     }
 
     .menu-expiration-dialog {
-        max-height: calc(100vh - 20px);
+        max-height: calc(100dvh - 20px);
         border-radius: 19px;
     }
 

@@ -21,7 +21,7 @@ html {
 body {
     margin: 0;
     padding: 0 0 110px;
-    min-height: 100vh;
+    min-height: 100dvh;
 
     background:
         linear-gradient(
@@ -94,7 +94,7 @@ body {
 
 .dashboard-page {
     width: 100%;
-    min-height: 100vh;
+    min-height: 100dvh;
 
     padding:
         24px
@@ -1130,7 +1130,7 @@ body.admin-loading-active {
 .profile-card,
 #profileModal .modal-card {
     width: min(760px, 100%);
-    max-height: calc(100vh - 44px);
+    max-height: calc(100dvh - 44px);
 
     display: flex;
     flex-direction: column;
@@ -1783,7 +1783,7 @@ body.admin-loading-active {
 
 .day-special-modal {
     width: min(780px, 100%);
-    max-height: calc(100vh - 44px);
+    max-height: calc(100dvh - 44px);
 
     display: flex;
     flex-direction: column;
@@ -2656,7 +2656,7 @@ body.admin-loading-active {
     }
 
     .profile-modal {
-        max-height: calc(100vh - 20px);
+        max-height: calc(100dvh - 20px);
 
         border-radius: 15px;
     }
@@ -2770,7 +2770,7 @@ body.admin-loading-active {
     }
 
     .day-special-modal {
-        max-height: calc(100vh - 20px);
+        max-height: calc(100dvh - 20px);
 
         border-radius: 15px;
     }

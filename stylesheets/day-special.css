@@ -85,7 +85,7 @@ body.customer-day-special-open {
     width: min(920px, 100%);
     max-width: 920px;
 
-    max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
 
     height: auto;
 
@@ -275,7 +275,7 @@ body.customer-day-special-open {
 .customer-day-special-list {
     flex: 0 1 auto;
     min-height: 0;
-    max-height: calc(100vh - 48px - 66px - 80px);
+    max-height: calc(100dvh - 48px - 66px - 80px);
     overflow-y: auto !important;
 }
 
@@ -793,7 +793,7 @@ body.customer-day-special-open {
         max-width: 100%;
 
         max-height:
-            calc(100vh - 32px);
+            calc(100dvh - 32px);
 
         height: auto;
 
@@ -833,7 +833,7 @@ body.customer-day-special-open {
     .customer-day-special-list {
     flex: 0 1 auto;
     min-height: 0;
-    max-height: calc(100vh - 48px - 66px - 80px);
+    max-height: calc(100dvh - 48px - 66px - 80px);
     overflow-y: auto !important;
 }
 
@@ -911,7 +911,7 @@ body.customer-day-special-open {
     .customer-day-special-multiple-modal {
 
         max-height:
-            calc(100vh - 20px);
+            calc(100dvh - 20px);
 
         height: auto;
 
@@ -954,7 +954,7 @@ body.customer-day-special-open {
     .customer-day-special-list {
     flex: 0 1 auto;
     min-height: 0;
-    max-height: calc(100vh - 48px - 66px - 80px);
+    max-height: calc(100dvh - 48px - 66px - 80px);
     overflow-y: auto !important;
 }
 
@@ -1080,7 +1080,7 @@ body.customer-day-special-open {
     .customer-day-special-multiple-modal {
 
         max-height:
-            calc(100vh - 14px);
+            calc(100dvh - 14px);
 
         border-radius: 14px;
     }
@@ -1103,7 +1103,7 @@ body.customer-day-special-open {
     .customer-day-special-list {
     flex: 0 1 auto;
     min-height: 0;
-    max-height: calc(100vh - 48px - 66px - 80px);
+    max-height: calc(100dvh - 48px - 66px - 80px);
     overflow-y: auto !important;
 }
 
@@ -1226,14 +1226,14 @@ body.customer-day-special-open {
     display: flex;
     flex-direction: column;
     height: min(90vh, 900px);
-    max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
     min-height: 0;
 }
 
 .customer-day-special-list {
     flex: 0 1 auto;
     min-height: 0;
-    max-height: calc(100vh - 48px - 66px - 80px);
+    max-height: calc(100dvh - 48px - 66px - 80px);
     overflow-y: auto !important;
 }
 
@@ -1247,7 +1247,7 @@ body.customer-day-special-open {
     display: flex !important;
     flex-direction: column !important;
     height: auto !important;
-    max-height: calc(100vh - 48px) !important;
+    max-height: calc(100dvh - 48px) !important;
     min-height: 0 !important;
     overflow: hidden !important;
 }
