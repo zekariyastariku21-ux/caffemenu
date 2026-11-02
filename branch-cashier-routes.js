@@ -9,13 +9,66 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
         CREATE TABLE IF NOT EXISTS restaurant_branch_pins (
           branch_id INTEGER PRIMARY KEY REFERENCES restaurant_payment_branches(id) ON DELETE CASCADE,
           restaurant_id INTEGER NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
-          pin_salt TEXT NOT NULL,
-          pin_hash TEXT NOT NULL,
+          pin_salt TEXT,
+          pin_hash TEXT,
+          pin_ciphertext TEXT,
+          pin_iv TEXT,
+          pin_auth_tag TEXT,
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-      `).catch(function (e) { tableReady = null; throw e; });
+      `).then(function () {
+        return pool.query(`
+          ALTER TABLE restaurant_branch_pins
+            ALTER COLUMN pin_salt DROP NOT NULL,
+            ALTER COLUMN pin_hash DROP NOT NULL,
+            ADD COLUMN IF NOT EXISTS pin_ciphertext TEXT,
+            ADD COLUMN IF NOT EXISTS pin_iv TEXT,
+            ADD COLUMN IF NOT EXISTS pin_auth_tag TEXT
+        `);
+      }).catch(function (e) { tableReady = null; throw e; });
     }
     return tableReady;
+  }
+
+  function pinEncryptionKey() {
+    if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required to encrypt cashier PINs.');
+    // Keep JWT_SECRET stable so saved PINs remain decryptable.
+    return crypto.createHash('sha256')
+      .update('caffemenu:branch-cashier-pin:v1\0')
+      .update(process.env.JWT_SECRET)
+      .digest();
+  }
+
+  function encryptPin(pin) {
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', pinEncryptionKey(), iv);
+    const ciphertext = Buffer.concat([cipher.update(pin, 'utf8'), cipher.final()]);
+    return {
+      ciphertext: ciphertext.toString('base64'),
+      iv: iv.toString('base64'),
+      authTag: cipher.getAuthTag().toString('base64')
+    };
+  }
+
+  function decryptPin(setting) {
+    const decipher = crypto.createDecipheriv(
+      'aes-256-gcm',
+      pinEncryptionKey(),
+      Buffer.from(setting.pin_iv, 'base64')
+    );
+    decipher.setAuthTag(Buffer.from(setting.pin_auth_tag, 'base64'));
+    const pin = Buffer.concat([
+      decipher.update(Buffer.from(setting.pin_ciphertext, 'base64')),
+      decipher.final()
+    ]).toString('utf8');
+    if (!/^\d{6,12}$/.test(pin)) throw new Error('Stored cashier PIN is invalid.');
+    return pin;
+  }
+
+  function compareEncryptedPin(pin, setting) {
+    const storedPin = decryptPin(setting);
+    return pin.length === storedPin.length &&
+      crypto.timingSafeEqual(Buffer.from(pin), Buffer.from(storedPin));
   }
 
   function cashierGuard(req, res, next) { return deps().requireCashier(req, res, next); }
@@ -71,7 +124,9 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
       }
       await ensureTable();
       const branches = await pool.query(`
-        SELECT b.id, b.name, (p.branch_id IS NOT NULL) AS configured
+        SELECT b.id, b.name,
+          (p.branch_id IS NOT NULL) AS configured,
+          p.pin_ciphertext, p.pin_iv, p.pin_auth_tag
         FROM restaurant_payment_branches b
         LEFT JOIN restaurant_branch_pins p ON p.branch_id = b.id
         WHERE b.restaurant_id = $1 AND b.order_now_enabled = TRUE
@@ -79,7 +134,22 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
       const shared = await pool.query(
         'SELECT 1 FROM restaurant_cashier_settings WHERE restaurant_id = $1', [restaurant.id]);
       res.set('Cache-Control', 'no-store');
-      return res.json({ ok: true, branches: branches.rows, shared_configured: shared.rows.length > 0 });
+      return res.json({
+        ok: true,
+        branches: branches.rows.map(function (branch) {
+          const currentPin = branch.pin_ciphertext
+            ? decryptPin(branch)
+            : null;
+          return {
+            id: branch.id,
+            name: branch.name,
+            configured: branch.configured,
+            current_pin: currentPin,
+            needs_reset: Boolean(branch.configured && !currentPin)
+          };
+        }),
+        shared_configured: shared.rows.length > 0
+      });
     } catch (error) {
       console.error('[branch-pins:list] Failed:', error);
       return res.status(500).json({ ok: false, message: 'Unable to load branch PIN settings.' });
@@ -109,15 +179,19 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
       if (!branch.rows.length) return res.status(404).json({ ok: false, message: 'Branch not found.' });
 
       await ensureTable();
-      const salt = crypto.randomBytes(16).toString('hex');
-      const hash = deps().hashCashierPin(pin, salt);
+      const encrypted = encryptPin(pin);
       await pool.query(`
-        INSERT INTO restaurant_branch_pins (branch_id, restaurant_id, pin_salt, pin_hash, updated_at)
-        VALUES ($1, $2, $3, $4, NOW())
+        INSERT INTO restaurant_branch_pins
+          (branch_id, restaurant_id, pin_salt, pin_hash, pin_ciphertext, pin_iv, pin_auth_tag, updated_at)
+        VALUES ($1, $2, NULL, NULL, $3, $4, $5, NOW())
         ON CONFLICT (branch_id) DO UPDATE SET
-          pin_salt = EXCLUDED.pin_salt,
-          pin_hash = EXCLUDED.pin_hash,
-          updated_at = NOW()`, [branchId, restaurant.id, salt, hash]);
+          pin_salt = NULL,
+          pin_hash = NULL,
+          pin_ciphertext = EXCLUDED.pin_ciphertext,
+          pin_iv = EXCLUDED.pin_iv,
+          pin_auth_tag = EXCLUDED.pin_auth_tag,
+          updated_at = NOW()`,
+        [branchId, restaurant.id, encrypted.ciphertext, encrypted.iv, encrypted.authTag]);
       clearAttempts(restaurant.id);
       res.set('Cache-Control', 'no-store');
       return res.json({ ok: true, message: 'Branch cashier PIN saved.' });
@@ -158,7 +232,8 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
 
       await ensureTable();
       let setting = (await pool.query(
-        'SELECT pin_salt, pin_hash FROM restaurant_branch_pins WHERE branch_id = $1', [branch.id])).rows[0];
+        `SELECT pin_salt, pin_hash, pin_ciphertext, pin_iv, pin_auth_tag
+         FROM restaurant_branch_pins WHERE branch_id = $1`, [branch.id])).rows[0];
       if (!setting) {
         setting = (await pool.query(
           'SELECT pin_salt, pin_hash FROM restaurant_cashier_settings WHERE restaurant_id = $1',
@@ -172,8 +247,12 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
         });
       }
 
-      const valid = /^\d{6,12}$/.test(pin) &&
-        d.safeCompareCashierPin(pin, setting.pin_salt, setting.pin_hash);
+      const valid = /^\d{6,12}$/.test(pin) && (
+        setting.pin_ciphertext
+          ? compareEncryptedPin(pin, setting)
+          : Boolean(setting.pin_salt && setting.pin_hash) &&
+            d.safeCompareCashierPin(pin, setting.pin_salt, setting.pin_hash)
+      );
 
       if (!valid) {
         const failures = ((attempt && attempt.failures) || 0) + 1;

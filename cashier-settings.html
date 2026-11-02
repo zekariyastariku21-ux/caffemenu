@@ -5,82 +5,213 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CaffeMenu | Cashier PIN</title>
   <style>
-    :root{color-scheme:dark;--bg:#17120f;--panel:#241b16;--gold:#d8ad62;--cream:#f8f0df;--muted:#b9aa98;--line:#49372b}
+    :root{color-scheme:dark;--bg:#17120f;--panel:#241b16;--gold:#d8ad62;--cream:#f8f0df;--muted:#b9aa98;--line:#49372b;--green:#9dc9a4}
     *{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at top,#392719,var(--bg) 65%);font-family:Arial,sans-serif;color:var(--cream);display:grid;place-items:center;padding:22px}
-    main{width:min(100%,480px);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 18px 60px #0005}
+    main{width:min(100%,820px);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 18px 60px #0005}
     h1{margin:0 0 8px;font-size:25px}p{color:var(--muted);line-height:1.5}.eyebrow{color:var(--gold);font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase}
-    label{display:block;margin:22px 0 8px;font-weight:bold}input,select{width:100%;padding:14px;border:1px solid var(--line);border-radius:10px;background:#130f0d;color:var(--cream)}
-    input{font-size:18px;letter-spacing:4px}select{font-size:16px}
-    button{width:100%;margin-top:16px;border:0;border-radius:10px;padding:14px;background:var(--gold);color:#24170c;font-size:15px;font-weight:bold;cursor:pointer}button.secondary{background:transparent;color:var(--cream);border:1px solid var(--line)}
-    #message{min-height:24px;color:var(--gold);font-size:14px}#branchStatus{font-size:13px;margin:8px 0 0}.row{display:flex;gap:10px}.row button{flex:1}small{color:var(--muted)}
+    .pin-section{margin-top:25px}.pin-section h2{margin:0 0 12px;font-size:18px}.pin-section-description{margin:0 0 14px;font-size:13px}
+    .pin-form{border:1px solid var(--line);border-radius:14px;padding:18px;background:#1c1511}.pin-form label{display:block;margin:14px 0 7px;font-size:14px;font-weight:bold}.pin-form label:first-child{margin-top:0}.pin-form select,.pin-input-wrap input{width:100%;padding:13px;border:1px solid var(--line);border-radius:10px;background:#130f0d;color:var(--cream);font-size:16px}.pin-input-wrap{display:flex;gap:8px}.pin-input-wrap input{min-width:0;flex:1;font-size:17px;letter-spacing:4px}
+    button.save-pin,.row button,.edit-pin,.toggle-visibility,.explain-pin,.cancel-edit{border:1px solid var(--line);border-radius:9px;padding:10px 13px;background:#130f0d;color:var(--cream);font-size:13px;font-weight:bold;cursor:pointer}
+    button.save-pin{border:0;background:var(--gold);color:#24170c}.pin-form .save-pin{width:100%;margin-top:14px;padding:13px}.toggle-visibility,.explain-pin{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:44px}.toggle-visibility svg,.explain-pin svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.pin-form button:disabled,.row button:disabled{opacity:.6;cursor:wait}
+    .branch-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}.branch-table{width:100%;border-collapse:collapse;text-align:left}.branch-table th,.branch-table td{padding:13px 15px;border-bottom:1px solid var(--line);vertical-align:middle}.branch-table th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}.branch-table tbody tr:last-child td{border-bottom:0}.branch-name{font-weight:bold;overflow-wrap:anywhere}.masked-pin{font-family:monospace;letter-spacing:3px;white-space:nowrap}.legacy-pin{color:var(--muted);font-size:12px}.edit-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.edit-fields label{display:block;margin:0 0 7px;font-size:13px;font-weight:bold}.edit-fields .pin-input-wrap{margin-bottom:10px}.edit-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}.edit-row td{background:#1c1511}.edit-row[hidden]{display:none}.cancel-edit{background:transparent}.row{display:flex;gap:10px;margin-top:18px}.row button{flex:1}.row button.secondary{background:transparent}
+    #message{min-height:24px;color:var(--gold);font-size:14px}#sharedNote{margin:14px 0 0;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:13px}small{color:var(--muted)}
+    @media(max-width:640px){main{padding:21px}.row{flex-direction:column}.row button{width:100%}.branch-table,.branch-table tbody,.branch-table tr,.branch-table td{display:block;width:100%}.branch-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.branch-table tbody tr.data-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:13px;border-bottom:1px solid var(--line)}.branch-table tbody tr:last-child{border-bottom:0}.branch-table td{padding:0;border:0}.branch-table td:nth-child(1){grid-column:1;grid-row:1}.branch-table td:nth-child(2){grid-column:1;grid-row:2}.branch-table td:nth-child(3){grid-column:2;grid-row:2}.branch-table td:nth-child(4){grid-column:2;grid-row:1}.branch-table td:nth-child(4) .edit-pin{white-space:nowrap}.branch-table tr.edit-row{padding:0}.branch-table .edit-row td{padding:14px}.edit-fields{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
 <main>
   <div class="eyebrow">CaffeMenu - Restaurant admin</div>
   <h1>Cashier PIN</h1>
-  <p id="restaurantLabel">Set a separate PIN for each branch. Cashiers choose their branch and enter its PIN. The PIN must be 6&ndash;12 digits.</p>
-  <form id="pinForm">
-    <label for="branchSelect">Branch</label>
-    <select id="branchSelect" required><option value="">Loading branches...</option></select>
-    <p id="branchStatus"></p>
-    <label for="pin">New PIN for this branch</label>
-    <input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6,12}" minlength="6" maxlength="12" required>
-    <label for="confirmPin">Confirm PIN</label>
-    <input id="confirmPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6,12}" minlength="6" maxlength="12" required>
-    <button type="submit">Save Branch PIN</button>
-  </form>
+  <p id="restaurantLabel">Set a new PIN for branches that do not have one, or edit the PIN for a configured branch.</p>
+  <section id="newPinSection" class="pin-section" hidden>
+    <h2>Set PIN for a branch</h2>
+    <p class="pin-section-description">Choose a branch without a PIN and create a 6&ndash;12 digit PIN.</p>
+    <form id="newPinForm" class="pin-form">
+      <label for="newPinBranch">Branch</label>
+      <select id="newPinBranch" required></select>
+      <label for="newPin">New PIN</label>
+      <div class="pin-input-wrap" id="newPinWrap"></div>
+      <label for="newPinConfirm">Confirm PIN</label>
+      <div class="pin-input-wrap" id="newPinConfirmWrap"></div>
+      <button type="submit" class="save-pin">Save Branch PIN</button>
+    </form>
+  </section>
+  <section id="configuredSection" class="pin-section" hidden>
+    <h2>Branches with PINs</h2>
+    <p class="pin-section-description">Use the eye button to show or hide a saved PIN. Choose Edit to change it.</p>
+    <div class="branch-table-wrap">
+      <table class="branch-table">
+        <thead><tr><th scope="col">Branch</th><th scope="col">Current PIN</th><th scope="col">PIN visibility</th><th scope="col">Edit</th></tr></thead>
+        <tbody id="configuredBranches"></tbody>
+      </table>
+    </div>
+  </section>
+  <p id="emptyBranches" hidden>No branches yet. Add branches in Profile to set cashier PINs.</p>
   <p id="message" role="status"></p>
   <div class="row">
     <button type="button" class="secondary" id="backBtn">Back to Admin</button>
     <button type="button" class="secondary" id="loginLink">Cashier Sign In</button>
   </div>
-  <p><small id="sharedNote"></small></p>
-  <p><small>Only a restaurant administrator can set or change these PINs. They are stored as salted hashes and are never shown again.</small></p>
+  <p id="sharedNote" hidden></p>
+  <p><small>Only restaurant administrators can manage these PINs. They are encrypted while stored. PINs set before encrypted storage was enabled must be set again before they can be shown here.</small></p>
 </main>
 <script>
 (function(){
   const params=new URLSearchParams(location.search);
   const slug=(params.get('restaurant')||'').trim();
-  const form=document.getElementById('pinForm');
   const message=document.getElementById('message');
-  const select=document.getElementById('branchSelect');
-  const status=document.getElementById('branchStatus');
+  const newPinSection=document.getElementById('newPinSection');
+  const configuredSection=document.getElementById('configuredSection');
+  const newPinForm=document.getElementById('newPinForm');
+  const newPinBranch=document.getElementById('newPinBranch');
+  const configuredBranches=document.getElementById('configuredBranches');
+  const emptyBranches=document.getElementById('emptyBranches');
+  const sharedNote=document.getElementById('sharedNote');
   let branches=[];
-  if(!slug){message.textContent='Restaurant not identified. Return to the admin panel and try again.';form.querySelector('button').disabled=true;return;}
-  function renderStatus(){
-    const b=branches.find(x=>String(x.id)===select.value);
-    status.textContent=!b?'':(b.configured?'This branch has its own PIN. Saving a new PIN will replace it.':'No PIN set for this branch yet.');
+  if(!slug){message.textContent='Restaurant not identified. Return to the admin panel and try again.';return;}
+  const newPinField=makePinField('newPin','New PIN');
+  const newPinConfirmField=makePinField('newPinConfirm','Confirm PIN');
+  document.getElementById('newPinWrap').appendChild(newPinField.wrap);
+  document.getElementById('newPinConfirmWrap').appendChild(newPinConfirmField.wrap);
+  function makeVisibilityIcon(hidden){
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 24 24');
+    svg.setAttribute('aria-hidden','true');
+    const eye=document.createElementNS(svg.namespaceURI,'path');
+    eye.setAttribute('d','M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z');
+    const pupil=document.createElementNS(svg.namespaceURI,'circle');
+    pupil.setAttribute('cx','12');pupil.setAttribute('cy','12');pupil.setAttribute('r','3');
+    svg.append(eye,pupil);
+    if(hidden){
+      const slash=document.createElementNS(svg.namespaceURI,'path');
+      slash.setAttribute('d','M3 3l18 18');
+      svg.appendChild(slash);
+    }
+    return svg;
   }
-  async function load(keep){
-    const r=await fetch('/api/admin/branch-pins/'+encodeURIComponent(slug),{credentials:'same-origin',cache:'no-store'});
-    const d=await r.json();
-    if(!r.ok)throw new Error(d.message||'Unable to load branches.');
-    branches=Array.isArray(d.branches)?d.branches:[];
-    select.replaceChildren(new Option(branches.length?'Select a branch':'No branches yet - add branches in Profile',''));
-    branches.forEach(b=>select.appendChild(new Option(b.name+(b.configured?' \u2713':''),String(b.id))));
-    if(keep&&branches.some(b=>String(b.id)===keep))select.value=keep;
-    document.getElementById('sharedNote').textContent=d.shared_configured?'Branches without their own PIN still accept the old shared PIN until you set one.':'';
-    renderStatus();
+  function makeVisibilityToggle(input){
+    const toggle=document.createElement('button');
+    toggle.type='button';toggle.className='toggle-visibility';toggle.setAttribute('aria-label','Show PIN');toggle.setAttribute('aria-pressed','false');
+    toggle.appendChild(makeVisibilityIcon(true));
+    toggle.addEventListener('click',function(){
+      const show=input.type==='password';
+      input.type=show?'text':'password';
+      toggle.setAttribute('aria-label',show?'Hide PIN':'Show PIN');
+      toggle.setAttribute('aria-pressed',String(show));
+      toggle.replaceChildren(makeVisibilityIcon(!show));
+      input.focus();
+    });
+    return toggle;
   }
-  load('').catch(e=>{message.textContent=e.message;form.querySelector('button').disabled=true;});
-  select.addEventListener('change',renderStatus);
-  form.addEventListener('submit',async e=>{
-    e.preventDefault();
-    if(!select.value){message.textContent='Select a branch.';return;}
-    const pin=document.getElementById('pin').value;
-    if(!/^[0-9]{6,12}$/.test(pin)){message.textContent='Enter 6\u201312 digits.';return;}
-    if(pin!==document.getElementById('confirmPin').value){message.textContent='The PINs do not match.';return;}
-    const button=form.querySelector('button');button.disabled=true;message.textContent='Saving\u2026';
-    const keep=select.value;
+  function makePinField(id,labelText){
+    const input=document.createElement('input');input.id=id;input.type='password';input.inputMode='numeric';input.autocomplete='new-password';input.pattern='[0-9]{6,12}';input.minLength=6;input.maxLength=12;input.required=true;
+    input.setAttribute('aria-label',labelText);
+    const wrap=document.createElement('div');wrap.className='pin-input-wrap';wrap.append(input,makeVisibilityToggle(input));
+    return {input,wrap};
+  }
+  function makeCurrentPinToggle(pinDisplay,pin){
+    const button=document.createElement('button');button.type='button';button.className='toggle-visibility';
+    button.setAttribute('aria-label','Show current PIN');button.setAttribute('aria-pressed','false');
+    button.appendChild(makeVisibilityIcon(true));
+    button.addEventListener('click',function(){
+      const show=button.getAttribute('aria-pressed')!=='true';
+      pinDisplay.textContent=show?pin:'••••••';
+      button.setAttribute('aria-pressed',String(show));
+      button.setAttribute('aria-label',show?'Hide current PIN':'Show current PIN');
+      button.replaceChildren(makeVisibilityIcon(!show));
+    });
+    return button;
+  }
+  async function savePin(branchId,pin,confirmPin,button,branchName){
+    if(!/^[0-9]{6,12}$/.test(pin.value)){message.textContent='Enter a PIN containing 6–12 digits.';pin.focus();return;}
+    if(pin.value!==confirmPin.value){message.textContent='The PINs do not match.';confirmPin.focus();return;}
+    button.disabled=true;message.textContent='Saving PIN…';
+    let saved=false;
     try{
-      const r=await fetch('/api/admin/branch-pins/'+encodeURIComponent(slug)+'/'+encodeURIComponent(keep),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin}),cache:'no-store'});
-      const d=await r.json();if(!r.ok)throw new Error(d.message||'Unable to save PIN.');
-      document.getElementById('pin').value='';document.getElementById('confirmPin').value='';
-      await load(keep);
-      message.textContent='Branch PIN saved successfully.';
-    }catch(err){message.textContent=err.message;}finally{button.disabled=false;}
+      const response=await fetch('/api/admin/branch-pins/'+encodeURIComponent(slug)+'/'+encodeURIComponent(branchId),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:pin.value}),cache:'no-store'});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.message||'Unable to save PIN.');
+      saved=true;pin.value='';confirmPin.value='';
+      await loadBranches();
+      message.textContent='PIN saved for '+branchName+'.';
+    }catch(error){message.textContent=saved?'PIN saved, but the branch list could not refresh: '+error.message:error.message;}finally{button.disabled=false;}
+  }
+  function renderNewPinForm(unconfigured){
+    newPinForm.reset();
+    newPinBranch.replaceChildren(new Option('Select a branch',''));
+    unconfigured.forEach(function(branch){newPinBranch.appendChild(new Option(branch.name,String(branch.id)));});
+    newPinSection.hidden=!unconfigured.length;
+  }
+  function renderConfiguredBranches(configured){
+    configuredBranches.replaceChildren();
+    configuredSection.hidden=!configured.length;
+    configured.forEach(function(branch){
+      const row=document.createElement('tr');row.className='data-row';
+      const nameCell=document.createElement('td');nameCell.className='branch-name';nameCell.textContent=branch.name;
+      const pinCell=document.createElement('td');
+      const pinDisplay=document.createElement('span');pinDisplay.className='masked-pin';
+      const hasCurrentPin=typeof branch.current_pin==='string';
+      pinDisplay.textContent=hasCurrentPin?'••••••':'Set again';
+      if(!hasCurrentPin)pinDisplay.classList.add('legacy-pin');
+      pinCell.appendChild(pinDisplay);
+      const toggleCell=document.createElement('td');
+      const pinToggle=makeCurrentPinToggle(pinDisplay,branch.current_pin);
+      pinToggle.disabled=!hasCurrentPin;
+      if(!hasCurrentPin){
+        pinToggle.setAttribute('aria-label','Set this PIN again to enable show and hide');
+      }
+      toggleCell.appendChild(pinToggle);
+      const editCell=document.createElement('td');
+      const editButton=document.createElement('button');editButton.type='button';editButton.className='edit-pin';editButton.textContent=hasCurrentPin?'Edit':'Set PIN';editCell.appendChild(editButton);
+      const editRow=document.createElement('tr');editRow.className='edit-row';editRow.hidden=true;
+      const editCellFull=document.createElement('td');editCellFull.colSpan=4;
+      const editForm=document.createElement('form');editForm.className='pin-form';
+      const fields=document.createElement('div');fields.className='edit-fields';
+      const pinLabel=document.createElement('label');pinLabel.textContent='New PIN';
+      const confirmLabel=document.createElement('label');confirmLabel.textContent='Confirm new PIN';
+      const pinId='edit-pin-'+branch.id,confirmId='edit-pin-confirm-'+branch.id;
+      const pinField=makePinField(pinId,'New PIN for '+branch.name);pinLabel.htmlFor=pinId;
+      const confirmField=makePinField(confirmId,'Confirm new PIN for '+branch.name);confirmLabel.htmlFor=confirmId;
+      const pinColumn=document.createElement('div');pinColumn.append(pinLabel,pinField.wrap);
+      const confirmColumn=document.createElement('div');confirmColumn.append(confirmLabel,confirmField.wrap);
+      fields.append(pinColumn,confirmColumn);
+      const actions=document.createElement('div');actions.className='edit-actions';
+      const cancel=document.createElement('button');cancel.type='button';cancel.className='cancel-edit';cancel.textContent='Cancel';
+      const save=document.createElement('button');save.type='submit';save.className='save-pin';save.textContent='Save PIN';
+      actions.append(cancel,save);editForm.append(fields,actions);editCellFull.appendChild(editForm);editRow.appendChild(editCellFull);
+      editButton.addEventListener('click',function(){editRow.hidden=false;editButton.hidden=true;pinField.input.focus();});
+      cancel.addEventListener('click',function(){editForm.reset();editRow.hidden=true;editButton.hidden=false;});
+      editForm.addEventListener('submit',function(event){
+        event.preventDefault();
+        savePin(branch.id,pinField.input,confirmField.input,save,branch.name);
+      });
+      row.append(nameCell,pinCell,toggleCell,editCell);
+      configuredBranches.append(row,editRow);
+    });
+  }
+  function renderBranches(){
+    const unconfigured=branches.filter(function(branch){return !branch.configured;});
+    const configured=branches.filter(function(branch){return branch.configured;});
+    emptyBranches.hidden=branches.length>0;
+    renderNewPinForm(unconfigured);
+    renderConfiguredBranches(configured);
+  }
+  async function loadBranches(){
+    const response=await fetch('/api/admin/branch-pins/'+encodeURIComponent(slug),{credentials:'same-origin',cache:'no-store'});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.message||'Unable to load branches.');
+    branches=Array.isArray(data.branches)?data.branches:[];
+    sharedNote.textContent=data.shared_configured?'Branches without their own PIN still accept the old shared PIN until you set one.':'';
+    sharedNote.hidden=!data.shared_configured;
+    renderBranches();
+  }
+  newPinForm.addEventListener('submit',function(event){
+    event.preventDefault();
+    const branch=branches.find(function(item){return String(item.id)===newPinBranch.value;});
+    if(!branch){message.textContent='Select a branch.';newPinBranch.focus();return;}
+    savePin(branch.id,newPinField.input,newPinConfirmField.input,newPinForm.querySelector('.save-pin'),branch.name);
   });
+  loadBranches().catch(function(error){message.textContent=error.message;});
   document.getElementById('backBtn').addEventListener('click',()=>location.href='/cafe-dashboard');
   document.getElementById('loginLink').addEventListener('click',()=>location.href='/'+encodeURIComponent(slug)+'/cashier-login');
 })();
