@@ -31,18 +31,39 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
     return tableReady;
   }
 
-  function pinEncryptionKey() {
-    if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required to encrypt cashier PINs.');
-    // Keep JWT_SECRET stable so saved PINs remain decryptable.
+  function pinEncryptionKey(secret) {
     return crypto.createHash('sha256')
       .update('caffemenu:branch-cashier-pin:v1\0')
-      .update(process.env.JWT_SECRET)
+      .update(secret)
       .digest();
+  }
+
+  function activePinEncryptionKey() {
+    const secret = process.env.CASHIER_PIN_ENCRYPTION_KEY || process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('CASHIER_PIN_ENCRYPTION_KEY or JWT_SECRET is required to encrypt cashier PINs.');
+    }
+    return pinEncryptionKey(secret);
+  }
+
+  function pinDecryptionKeys() {
+    const secrets = [
+      process.env.CASHIER_PIN_ENCRYPTION_KEY,
+      process.env.JWT_SECRET
+    ].filter(Boolean);
+    if (!secrets.length) {
+      throw new Error('CASHIER_PIN_ENCRYPTION_KEY or JWT_SECRET is required to decrypt cashier PINs.');
+    }
+    return secrets.reduce(function (keys, secret) {
+      const key = pinEncryptionKey(secret);
+      if (!keys.some(function (existing) { return existing.equals(key); })) keys.push(key);
+      return keys;
+    }, []);
   }
 
   function encryptPin(pin) {
     const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv('aes-256-gcm', pinEncryptionKey(), iv);
+    const cipher = crypto.createCipheriv('aes-256-gcm', activePinEncryptionKey(), iv);
     const ciphertext = Buffer.concat([cipher.update(pin, 'utf8'), cipher.final()]);
     return {
       ciphertext: ciphertext.toString('base64'),
@@ -52,16 +73,26 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
   }
 
   function decryptPin(setting) {
-    const decipher = crypto.createDecipheriv(
-      'aes-256-gcm',
-      pinEncryptionKey(),
-      Buffer.from(setting.pin_iv, 'base64')
-    );
-    decipher.setAuthTag(Buffer.from(setting.pin_auth_tag, 'base64'));
-    const pin = Buffer.concat([
-      decipher.update(Buffer.from(setting.pin_ciphertext, 'base64')),
-      decipher.final()
-    ]).toString('utf8');
+    let pin = null;
+    const iv = Buffer.from(setting.pin_iv, 'base64');
+    const ciphertext = Buffer.from(setting.pin_ciphertext, 'base64');
+    const authTag = Buffer.from(setting.pin_auth_tag, 'base64');
+    for (const key of pinDecryptionKeys()) {
+      try {
+        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(authTag);
+        pin = Buffer.concat([
+          decipher.update(ciphertext),
+          decipher.final()
+        ]).toString('utf8');
+        break;
+      } catch (error) {
+        // Try the legacy JWT_SECRET-derived key before reporting a key mismatch.
+      }
+    }
+    if (pin === null) {
+      throw new Error('Unable to decrypt cashier PIN. Verify CASHIER_PIN_ENCRYPTION_KEY is unchanged or reset the branch PIN.');
+    }
     if (!/^\d{6,12}$/.test(pin)) throw new Error('Stored cashier PIN is invalid.');
     return pin;
   }
@@ -138,15 +169,25 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
       return res.json({
         ok: true,
         branches: branches.rows.map(function (branch) {
-          const currentPin = branch.pin_ciphertext
-            ? decryptPin(branch)
-            : null;
+          let currentPin = null;
+          let needsReset = Boolean(branch.configured && !branch.pin_ciphertext);
+          if (branch.pin_ciphertext) {
+            try {
+              currentPin = decryptPin(branch);
+            } catch (error) {
+              console.error(
+                '[branch-pins:list] Unable to decrypt PIN for branch %s. Verify CASHIER_PIN_ENCRYPTION_KEY is unchanged or reset this branch PIN.',
+                branch.id
+              );
+              needsReset = true;
+            }
+          }
           return {
             id: branch.id,
             name: branch.name,
             configured: branch.configured,
             current_pin: currentPin,
-            needs_reset: Boolean(branch.configured && !currentPin)
+            needs_reset: needsReset
           };
         }),
         shared_configured: shared.rows.length > 0
