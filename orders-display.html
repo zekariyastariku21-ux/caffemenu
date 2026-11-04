@@ -384,7 +384,27 @@ main {
 .delete-confirm-spinner { display: inline-block; width: 18px; height: 18px; margin-right: 9px; vertical-align: middle; border: 2px solid rgba(248,240,223,.3); border-top-color: var(--gold); border-radius: 50%; animation: delete-spin .8s linear infinite; }
 .delete-confirm-spinner[hidden] { display: none; }
 @keyframes delete-spin { to { transform: rotate(360deg); } }
-@media (max-width: 520px) { .admin-tools-bar { flex-wrap: wrap; justify-content: flex-end; } }
+@media (max-width: 520px) {
+  main > header { position: relative; }
+  .admin-title-group {
+    flex: 1 1 100%;
+    min-width: 0;
+    padding-right: 52px;
+  }
+  .admin-title-group > div { min-width: 0; }
+  #adminMenuButton {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+  .admin-tools-bar {
+    position: static;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: 100%;
+  }
+  .admin-menu { top: 50px; right: 0; }
+}
 </style>
 </head>
 <body>
