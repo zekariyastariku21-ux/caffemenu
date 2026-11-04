@@ -1,0 +1,247 @@
+/* =========================================================
+   company-pro.css
+   Simple, professional look. Load AFTER company.css.
+   Remove the <link> to this file to go back to the old look.
+========================================================= */
+
+:root {
+    --pro-ink: #1f2933;
+    --pro-muted: #5f6b7a;
+    --pro-line: #e3e6ea;
+    --pro-bg: #f6f7f9;
+    --pro-card: #ffffff;
+    --pro-brand: #6b422c;
+    --pro-brand-dark: #4f301f;
+    --pro-radius: 8px;
+}
+
+body {
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    background: var(--pro-bg) !important;
+    color: var(--pro-ink);
+}
+
+/* ---------- Header ---------- */
+.main-header {
+    background: #ffffff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 1px solid var(--pro-line);
+    box-shadow: none;
+}
+
+.company-logo {
+    border: 1px solid var(--pro-line);
+    border-radius: var(--pro-radius);
+    box-shadow: none;
+}
+
+.company-logo:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.brand-text h1 {
+    font-family: "Segoe UI", system-ui, Arial, sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: none;
+    color: var(--pro-ink);
+}
+
+.brand-text h1::after {
+    width: 32px;
+    background: var(--pro-brand);
+}
+
+.brand-text p {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    text-transform: none;
+    color: var(--pro-muted);
+}
+
+.info-item > a:first-child span,
+.social-icons a {
+    background: var(--pro-bg);
+    box-shadow: none;
+}
+
+.info-item strong,
+.info-item div > a {
+    color: var(--pro-ink);
+}
+
+.info-item small {
+    color: var(--pro-muted);
+}
+
+/* ---------- Buttons ---------- */
+.admin-btn,
+.slide-content button,
+.client-directory-menu-button {
+    background: var(--pro-brand);
+    border-radius: 6px;
+    box-shadow: none;
+    transition: background 0.2s ease;
+}
+
+.admin-btn:hover,
+.slide-content button:hover,
+.client-directory-menu-button:hover {
+    background: var(--pro-brand-dark);
+    transform: none;
+    box-shadow: none;
+}
+
+.header-menu-panel {
+    border: 1px solid var(--pro-line);
+    border-radius: var(--pro-radius);
+    box-shadow: 0 8px 24px rgba(31, 41, 51, 0.12);
+}
+
+/* ---------- Intro and slider ---------- */
+.clients-intro h2 {
+    color: var(--pro-ink);
+    font-weight: 700;
+}
+
+.clients-intro p {
+    color: var(--pro-muted);
+}
+
+.hero-slider {
+    border-radius: var(--pro-radius);
+    box-shadow: none;
+    border: 1px solid var(--pro-line);
+}
+
+/* ---------- Client directory ---------- */
+.client-directory-heading h2 {
+    color: var(--pro-ink);
+}
+
+.client-directory-search {
+    background: var(--pro-card);
+    border: 1px solid var(--pro-line);
+    border-radius: 6px;
+    box-shadow: none;
+}
+
+.client-directory-search:focus-within {
+    border-color: var(--pro-brand);
+}
+
+.client-directory-card {
+    background: var(--pro-card);
+    border: 1px solid var(--pro-line);
+    border-radius: var(--pro-radius);
+    box-shadow: none;
+}
+
+.client-directory-card:hover {
+    transform: none;
+    border-color: #c9b8ab;
+    box-shadow: 0 4px 14px rgba(31, 41, 51, 0.08);
+}
+
+.client-directory-card-heading h3 {
+    color: var(--pro-ink);
+}
+
+.client-directory-detail strong {
+    color: var(--pro-muted);
+}
+
+.client-directory-detail a {
+    color: var(--pro-brand);
+}
+
+/* ---------- Stats ---------- */
+.stat-card {
+    background: var(--pro-card);
+    border: 1px solid var(--pro-line);
+    border-radius: var(--pro-radius);
+    box-shadow: none;
+}
+
+.stat-eyebrow {
+    letter-spacing: 0.3px;
+    text-transform: none;
+    color: var(--pro-muted);
+}
+
+.stat-card h2 {
+    color: var(--pro-brand);
+}
+
+/* ---------- How it works and before/after ---------- */
+.how-it-works,
+.menu-before-after {
+    background: var(--pro-card);
+    border: 1px solid var(--pro-line);
+    border-radius: var(--pro-radius);
+    box-shadow: none;
+}
+
+.how-it-works-eyebrow {
+    letter-spacing: 0.3px;
+    text-transform: none;
+    color: var(--pro-brand);
+}
+
+.how-it-works-heading h2,
+.menu-before-after h2,
+.how-it-works-step h3 {
+    color: var(--pro-ink);
+}
+
+.how-it-works-step {
+    background: var(--pro-bg);
+    border: 1px solid var(--pro-line);
+    border-radius: var(--pro-radius);
+    box-shadow: none;
+}
+
+.how-it-works-step p,
+.how-it-works-heading > p:last-child,
+.menu-before-after-description {
+    color: var(--pro-muted);
+}
+
+/* ---------- Company content ---------- */
+.company-content-item {
+    background: var(--pro-card);
+    border: 1px solid var(--pro-line);
+    border-radius: var(--pro-radius);
+    box-shadow: none;
+}
+
+/* ---------- Footer ---------- */
+.company-footer {
+    background: #ffffff;
+    border-top: 1px solid var(--pro-line);
+    color: var(--pro-muted);
+}
+
+.company-footer-name {
+    color: var(--pro-ink);
+}
+
+.company-footer-nav a {
+    color: var(--pro-muted);
+}
+
+.company-footer-nav a:hover {
+    color: var(--pro-brand);
+}
+
+/* ---------- Keyboard focus ---------- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--pro-brand);
+    outline-offset: 2px;
+}
