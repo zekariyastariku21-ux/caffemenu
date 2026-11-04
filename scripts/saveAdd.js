@@ -3,6 +3,7 @@ let editingCartLineId = null;
 let recentlyAddedCartLineId = null;
 
 let currentCategory = 'all';
+let selfOrderingEnabled = false;
 
 let searchTerm = '';
 
@@ -2034,9 +2035,9 @@ function isExtraItemsCategory(category) {
     );
 }
 
-function getCustomerMenuCategories() {
+function getCustomerMenuCategories(includeExtraItems = !selfOrderingEnabled) {
     return getOrderedMenuCategories().filter(
-        category => !isExtraItemsCategory(category)
+        category => includeExtraItems || !isExtraItemsCategory(category)
     );
 }
 
@@ -2158,7 +2159,7 @@ function renderItems() {
     } else {
 
         items =
-            !isExtraItemsCategory(currentCategory) &&
+            (!isExtraItemsCategory(currentCategory) || !selfOrderingEnabled) &&
             Array.isArray(
                 foods[currentCategory]
             )
@@ -2378,7 +2379,7 @@ function getDaySpecialItems() {
 
     const specials = [];
 
-    getCustomerMenuCategories().forEach(category => {
+    getCustomerMenuCategories(false).forEach(category => {
 
         const categoryItems =
             Array.isArray(foods[category])
@@ -3396,6 +3397,78 @@ function addToCart(
         return;
     }
 
+    if (!selfOrderingEnabled) {
+        const name = button.dataset?.name;
+        const food = Object.values(foods)
+            .filter(Array.isArray)
+            .flat()
+            .find(item => item && item.name === name);
+
+        if (!food || food.available === false || food.isAvailable === false) {
+            showToast(
+                food ? 'This item is currently unavailable.' : 'This item is no longer available.',
+                'error'
+            );
+            return;
+        }
+
+        const item = {
+            id: food.id,
+            lineId: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+            name: food.name,
+            price: Number(food.price || 0),
+            basePrice: Number(food.price || 0),
+            ingridient: food.ingridient || food.ingredient || '',
+            removedIngredients: [],
+            adjustments: [],
+            extras: [],
+            note: '',
+            quantity: 1
+        };
+        const matchingItem = cart.find(current =>
+            current.name === item.name &&
+            !(current.removedIngredients || []).length &&
+            !(current.adjustments || []).length &&
+            !(current.extras || []).length &&
+            !String(current.note || '').trim()
+        );
+
+        if (matchingItem) {
+            matchingItem.quantity = Number(matchingItem.quantity || 0) + 1;
+            item.lineId = matchingItem.lineId;
+        } else {
+            cart.push(item);
+        }
+
+        recentlyAddedCartLineId = item.lineId;
+        saveCart();
+        renderCart();
+        const cartSheet = document.getElementById('cartSheet');
+        const cartButton = document.querySelector('.cartbutton');
+        if (cartSheet && cartButton) {
+            cartSheet.classList.add('open');
+            cartSheet.classList.remove('expanded');
+            cartButton.setAttribute('aria-expanded', 'true');
+            cartSheet.querySelector('.cart-sheet-handle')
+                ?.setAttribute('aria-label', 'Expand cart');
+        }
+
+        if (onAdded) {
+            onAdded();
+        } else if (button && 'textContent' in button) {
+            const originalText = button.textContent;
+            button.textContent = '✓ Added';
+            button.disabled = true;
+            setTimeout(() => {
+                if (button.parentNode) {
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }
+            }, 250);
+        }
+        return;
+    }
+
     openItemCustomization(event, button, onAdded);
 }
 
@@ -3437,6 +3510,8 @@ function renderCart() {
 
     const clearCartButton =
     document.getElementById('clearCartButton');
+    const clearCartConfirmDialog =
+    document.getElementById('clearCartConfirmDialog');
 
 const orderNowButton =
     document.getElementById('orderNowButton');
@@ -3561,19 +3636,21 @@ if (orderNowButton) {
                                     <div class="cart-item-details">
                                         <div class="cart-item-heading">
                                             <span class="cart-item-name">${escapeHtml(itemName)}</span>
-                                            <button
-                                                type="button"
-                                                class="cart-note-toggle"
-                                                data-action="edit-note"
-                                                data-line-id="${escapeAttribute(lineId)}"
-                                                aria-label="Add or edit note for ${escapeAttribute(itemName)}"
-                                                title="Add or edit item note"
-                                            >✎</button>
+                                            ${selfOrderingEnabled ? `
+                                                <button
+                                                    type="button"
+                                                    class="cart-note-toggle"
+                                                    data-action="edit-note"
+                                                    data-line-id="${escapeAttribute(lineId)}"
+                                                    aria-label="Add or edit note for ${escapeAttribute(itemName)}"
+                                                    title="Add or edit item note"
+                                                >✎</button>
+                                            ` : ''}
                                         </div>
                                         <span class="cart-item-unit-price">${formatCustomerCurrency(itemPrice)}</span>
-                                        ${customizationLabel ? `<span class="cart-item-customization">${escapeHtml(customizationLabel)}</span>` : ''}
-                                        ${note ? `<span class="cart-item-note">(${escapeHtml(note)})</span>` : ''}
-                                        ${isEditingNote ? `
+                                        ${selfOrderingEnabled && customizationLabel ? `<span class="cart-item-customization">${escapeHtml(customizationLabel)}</span>` : ''}
+                                        ${selfOrderingEnabled && note ? `<span class="cart-item-note">(${escapeHtml(note)})</span>` : ''}
+                                        ${selfOrderingEnabled && isEditingNote ? `
                                             <div class="cart-note-editor">
                                                 <input
                                                     type="text"
@@ -3899,10 +3976,17 @@ function setupCartButton() {
     cartButton.dataset.cartReady =
         'true';
 
-    clearCartButton?.addEventListener(
-        'click',
-        clearCart
-    );
+    clearCartButton?.addEventListener('click', () => {
+        if (cart.length && clearCartConfirmDialog && !clearCartConfirmDialog.open) {
+            clearCartConfirmDialog.returnValue = '';
+            clearCartConfirmDialog.showModal();
+        }
+    });
+    clearCartConfirmDialog?.addEventListener('close', () => {
+        if (clearCartConfirmDialog.returnValue === 'confirm') {
+            clearCart();
+        }
+    });
     document.getElementById('orderNowButton')?.addEventListener('click', () => {
         if (cart.length === 0) return;
         if (window.CustomerAccount && !window.CustomerAccount.isLoggedIn()) {
@@ -4688,10 +4772,23 @@ async function loadCustomerTelebirrSetting() {
             orderNowButton.hidden = data?.ok === false || data?.order_now_enabled === false;
         }
 
+        selfOrderingEnabled =
+            data?.ok === true &&
+            data?.self_ordering_enabled !== false;
+        if (
+            selfOrderingEnabled &&
+            isExtraItemsCategory(currentCategory)
+        ) {
+            currentCategory = 'all';
+        }
+        renderItems();
+        renderCategoryButtons();
+        renderCart();
+
         // Login / account button follows the super-admin Self-Ordering switch.
         if (window.CustomerAccount) {
             window.CustomerAccount.setEnabled(
-                data?.ok === true && data?.self_ordering_enabled !== false
+                selfOrderingEnabled
             );
         }
 
@@ -4702,6 +4799,13 @@ async function loadCustomerTelebirrSetting() {
         if (paymentButton) paymentButton.hidden = !enabled;
         if (telebirrOption) telebirrOption.hidden = !enabled;
     } catch (error) {
+        selfOrderingEnabled = false;
+        if (isExtraItemsCategory(currentCategory)) {
+            currentCategory = 'all';
+        }
+        renderItems();
+        renderCategoryButtons();
+        renderCart();
         console.error(
             '[payment-settings] Unable to load cafe setting:',
             error

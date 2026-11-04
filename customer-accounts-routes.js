@@ -349,6 +349,15 @@ module.exports = function registerCustomerAccounts(app, deps) {
       CREATE INDEX IF NOT EXISTS idx_customer_orders_account
       ON customer_orders (customer_account_id, created_at DESC)
     `);
+
+    await pool.query(`
+      UPDATE admin_removed_orders AS removed
+      SET customer_account_id = account.id
+      FROM customer_accounts AS account
+      WHERE removed.customer_account_id IS NULL
+        AND account.restaurant_id = removed.restaurant_id
+        AND account.phone = removed.customer_phone
+    `);
   }
 
   /* ---------- restaurant + super-admin switch ---------- */
@@ -905,14 +914,29 @@ module.exports = function registerCustomerAccounts(app, deps) {
 
     try {
       const result = await pool.query(
-        `SELECT
-           (SELECT COUNT(*)::int FROM customer_orders AS earlier
-             WHERE earlier.restaurant_id = customer_orders.restaurant_id
-               AND earlier.id <= customer_orders.id) AS display_number,
-           id, status, created_at, preparing_at, ready_at, completed_at,
-           branch_name, order_type, table_number, customer_address, items, total
-         FROM customer_orders
-         WHERE restaurant_id = $1 AND customer_account_id = $2
+        `SELECT display_number, id, status, created_at, preparing_at, ready_at,
+                completed_at, branch_name, order_type, table_number,
+                customer_address, items, total, removed_at
+         FROM (
+           SELECT
+             (SELECT COUNT(*)::int FROM customer_orders AS earlier
+               WHERE earlier.restaurant_id = customer_orders.restaurant_id
+                 AND earlier.id <= customer_orders.id) AS display_number,
+             id, status, created_at, preparing_at, ready_at, completed_at,
+             branch_name, order_type, table_number, customer_address, items,
+             total, NULL::timestamptz AS removed_at
+           FROM customer_orders
+           WHERE restaurant_id = $1 AND customer_account_id = $2
+
+           UNION ALL
+
+           SELECT display_number, original_order_id AS id, 'deleted' AS status,
+                  created_at, preparing_at, ready_at, completed_at, branch_name,
+                  order_type, table_number, customer_address, items, total,
+                  removed_at
+           FROM admin_removed_orders
+           WHERE restaurant_id = $1 AND customer_account_id = $2
+         ) AS customer_orders
          ORDER BY created_at DESC, id DESC
          LIMIT 100`,
         [req.restaurant.id, req.customer.id]
@@ -941,6 +965,15 @@ module.exports = function registerCustomerAccounts(app, deps) {
     return Number.isSafeInteger(value) && value > 0 ? value : null;
   }
 
+  function isValidDate(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return false;
+    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    return date.getUTCFullYear() === Number(match[1]) &&
+      date.getUTCMonth() === Number(match[2]) - 1 &&
+      date.getUTCDate() === Number(match[3]);
+  }
+
   app.get('/api/admin/branches/:slug', requireRestaurantAdmin, async (req, res) => {
     try {
       const restaurant = await getAdminRestaurant(req, res);
@@ -967,6 +1000,12 @@ module.exports = function registerCustomerAccounts(app, deps) {
       if (!restaurant) return;
 
       const branchId = branchFilter(req);
+      const fromDate = String(req.query.from_date || '').trim() || null;
+      const toDate = String(req.query.to_date || '').trim() || null;
+      if ((fromDate && !isValidDate(fromDate)) || (toDate && !isValidDate(toDate)) ||
+          (fromDate && toDate && fromDate > toDate)) {
+        return res.status(400).json({ ok: false, message: 'Choose a valid date range.' });
+      }
 
       const result = await pool.query(
         `SELECT a.id, a.full_name, a.phone, a.created_at, a.last_login_at,
@@ -978,15 +1017,25 @@ module.exports = function registerCustomerAccounts(app, deps) {
                   ON o.customer_account_id = a.id
                  AND ($2::int IS NULL OR o.branch_id = $2::int)
           WHERE a.restaurant_id = $1
+            AND ($3::date IS NULL OR (a.created_at AT TIME ZONE $4)::date >= $3::date)
+            AND ($5::date IS NULL OR (a.created_at AT TIME ZONE $4)::date <= $5::date)
           GROUP BY a.id
          HAVING ($2::int IS NULL OR COUNT(o.id) > 0)
           ORDER BY a.created_at DESC, a.id DESC`,
-        [restaurant.id, branchId]
+        [restaurant.id, branchId, fromDate, 'Africa/Addis_Ababa', toDate]
       );
 
       const totalResult = await pool.query(
-        'SELECT COUNT(*)::int AS total FROM customer_accounts WHERE restaurant_id = $1',
-        [restaurant.id]
+        `SELECT COUNT(*)::int AS total
+           FROM customer_accounts a
+          WHERE a.restaurant_id = $1
+            AND ($3::date IS NULL OR (a.created_at AT TIME ZONE $4)::date >= $3::date)
+            AND ($5::date IS NULL OR (a.created_at AT TIME ZONE $4)::date <= $5::date)
+            AND ($2::int IS NULL OR EXISTS (
+              SELECT 1 FROM customer_orders o
+               WHERE o.customer_account_id = a.id AND o.branch_id = $2::int
+            ))`,
+        [restaurant.id, branchId, fromDate, 'Africa/Addis_Ababa', toDate]
       );
 
       res.set('Cache-Control', 'no-store');

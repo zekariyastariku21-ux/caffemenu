@@ -159,7 +159,7 @@ main {
 </style>
 </head>
 <body>
-<header><div><h1 id="restaurantName">Cashier Orders</h1><small>Manage order status</small></div><div class="header-buttons"><button id="refreshBtn" class="primary">Refresh</button> <button id="logoutBtn">Sign Out</button></div></header>
+<header><div><h1 id="restaurantName">Cashier Orders</h1><strong>Today's orders</strong><small id="lastUpdated"></small></div><div class="header-buttons"><button id="refreshBtn" class="primary">Refresh</button> <button id="logoutBtn">Sign Out</button></div></header>
 <nav class="order-status-filters" aria-label="Filter orders">
   <button type="button" class="order-filter pending-filter" data-filter="pending" aria-pressed="false">
     Pending <span class="order-count" data-count="pending">0</span>
@@ -175,7 +175,7 @@ main {
   </button>
 </nav>
 
-<main><div class="toolbar"><div><strong>Recent orders</strong><div class="muted">Showing the latest 100 orders for this restaurant.</div></div><small id="lastUpdated"></small></div><p id="message" role="status"></p><section id="orders" class="orders"></section></main>
+<main><p id="message" role="status"></p><section id="orders" class="orders"></section></main>
 <script src="/scripts/order-alerts.js?v=1" data-mode="cashier"></script>
 <script>
 (function(){
@@ -218,7 +218,7 @@ main {
          : timeA-timeB||(Number(a.id)||0)-(Number(b.id)||0);
      });
      ordersNode.replaceChildren();
-     if(!list.length){ordersNode.append(el('div','empty','No customer orders yet.'));message.textContent='';}
+     if(!list.length){ordersNode.append(el('div','empty','No customer orders placed today.'));message.textContent='';}
      else{
        list.forEach(order=>{
          const card=el('article','order'),top=el('div','order-top'),heading=el('div','');

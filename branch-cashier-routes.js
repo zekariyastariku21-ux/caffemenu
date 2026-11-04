@@ -1,5 +1,6 @@
 'use strict';
 const crypto = require('crypto');
+const ADMIN_DAY_TZ = 'Africa/Addis_Ababa';
 
 module.exports = function registerBranchCashierRoutes(app, pool, requireRestaurantAdmin, deps) {
   let tableReady = null;
@@ -319,10 +320,12 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
       const orders = await pool.query(
         `SELECT ${ORDER_COLUMNS}
          FROM customer_orders
-         WHERE restaurant_id = $1 AND branch_id = $2
+         WHERE restaurant_id = $1
+           AND branch_id = $2
+           AND (created_at AT TIME ZONE $3)::date = (NOW() AT TIME ZONE $3)::date
          ORDER BY created_at DESC, id DESC
-         LIMIT 100`,
-        [req.cashier.restaurant_id, branch.id]);
+        `,
+        [req.cashier.restaurant_id, branch.id, ADMIN_DAY_TZ]);
       res.set('Cache-Control', 'no-store');
       return res.json({
         ok: true,
@@ -389,10 +392,12 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
       const orders = await pool.query(
         `SELECT ${ORDER_COLUMNS}
          FROM customer_orders
-         WHERE restaurant_id = $1 AND branch_id = $2
+         WHERE restaurant_id = $1
+           AND branch_id = $2
+           AND (created_at AT TIME ZONE $3)::date = (NOW() AT TIME ZONE $3)::date
          ORDER BY created_at DESC, id DESC
-         LIMIT 100`,
-        [restaurant.id, branch.id]);
+        `,
+        [restaurant.id, branch.id, ADMIN_DAY_TZ]);
       res.set('Cache-Control', 'no-store');
       return res.json({
         ok: true,

@@ -140,7 +140,10 @@
   /* ---------------- header button ---------------- */
 
   function activeOrders() {
-    return state.orders.filter(function (o) { return String(o.status || '').toLowerCase() !== 'completed'; });
+    return state.orders.filter(function (o) {
+      var status = String(o.status || '').toLowerCase();
+      return status !== 'completed' && status !== 'deleted';
+    });
   }
 
   function renderButton() {
@@ -585,6 +588,12 @@
 
   function trackerFor(order) {
     var status = String(order.status || 'pending').toLowerCase();
+    if (status === 'deleted') {
+      return h('div', { class: 'ca-track ca-track-deleted', role: 'status' }, [
+        h('p', { class: 'ca-track-note', text: 'Your order has been deleted by the cafe.' })
+      ]);
+    }
+
     var index = 0;
     STEPS.forEach(function (s, i) { if (s.key === status) index = i; });
 
@@ -666,9 +675,12 @@
     return h('article', { class: 'ca-order ca-status-' + status }, [
       h('div', { class: 'ca-order-head' }, [
         h('strong', { text: 'Order #' + (order.display_number != null ? order.display_number : order.id) }),
-        h('span', { class: 'ca-pill', text: status.charAt(0).toUpperCase() + status.slice(1) })
+        h('span', { class: 'ca-pill', text: status === 'deleted' ? 'Deleted' : status.charAt(0).toUpperCase() + status.slice(1) })
       ]),
       h('p', { class: 'ca-order-meta', text: when(order.created_at) }),
+      status === 'deleted' && order.removed_at
+        ? h('p', { class: 'ca-order-meta', text: 'Deleted: ' + when(order.removed_at) })
+        : null,
       h('p', { class: 'ca-order-meta', text: where.filter(Boolean).join(' \u00B7 ') }),
       order.customer_address ? h('p', { class: 'ca-order-meta', text: 'Address: ' + order.customer_address }) : null,
       withTracker ? trackerFor(order) : null,
@@ -681,7 +693,10 @@
     if (state.view !== 'account') return;
     var c = state.customer || {};
     var active = activeOrders();
-    var past = state.orders.filter(function (o) { return String(o.status || '').toLowerCase() === 'completed'; });
+    var past = state.orders.filter(function (o) {
+      var status = String(o.status || '').toLowerCase();
+      return status === 'completed' || status === 'deleted';
+    });
 
     var list;
     if (!state.ordersLoaded) {
@@ -728,7 +743,23 @@
     if (!isLoggedIn()) return Promise.resolve();
     return api('/orders')
       .then(function (data) {
-        state.orders = data.orders || [];
+        var previousOrders = Object.create(null);
+        state.orders.forEach(function (order) {
+          previousOrders[String(order.id)] = String(order.status || '').toLowerCase();
+        });
+        var orders = data.orders || [];
+        if (state.ordersLoaded) {
+          orders.forEach(function (order) {
+            if (
+              String(order.status || '').toLowerCase() === 'deleted' &&
+              previousOrders[String(order.id)] &&
+              previousOrders[String(order.id)] !== 'deleted'
+            ) {
+              toast('Your order has been deleted by the cafe.', 'error');
+            }
+          });
+        }
+        state.orders = orders;
         state.ordersLoaded = true;
         renderButton();
         renderAccount();

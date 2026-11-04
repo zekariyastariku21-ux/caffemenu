@@ -4,13 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cafe Menu</title>
-  <link rel="stylesheet" href="stylesheets/save.css?v=3">
+  <link rel="stylesheet" href="stylesheets/save.css?v=4">
   <link rel="stylesheet" href="stylesheets/day-special.css">
   <link rel="stylesheet" href="stylesheets/menu-expiration.css?v=20261013a">
-  <link rel="stylesheet" href="stylesheets/customer-account.css?v=7">
+  <link rel="stylesheet" href="stylesheets/customer-account.css?v=8">
 </head>
 
 <body>
+
+  <dialog id="clearCartConfirmDialog" class="cart-clear-confirm-dialog" aria-labelledby="clearCartConfirmTitle" aria-describedby="clearCartConfirmMessage">
+    <form method="dialog" class="cart-clear-confirm-card">
+      <div class="cart-clear-confirm-icon" aria-hidden="true">!</div>
+      <h2 id="clearCartConfirmTitle">Clear your cart?</h2>
+      <p id="clearCartConfirmMessage">All items will be removed from your cart. This can't be undone.</p>
+      <div class="cart-clear-confirm-actions">
+        <button type="submit" value="cancel" class="cart-clear-cancel">Keep items</button>
+        <button type="submit" value="confirm" class="cart-clear-confirm-submit">Clear all</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- PROFESSIONAL SUPER ADMIN NOTIFICATION -->
   <div id="ownerTopNotification" class="owner-top-notification">
@@ -459,8 +471,8 @@
 
 
   <script src="scripts/menu-expiration.js?v=20261013a"></script>
-  <script src="scripts/customer-account.js?v=7"></script>
-  <script src="scripts/saveAdd.js?v=20261101c"></script>
+  <script src="scripts/customer-account.js?v=8"></script>
+  <script src="scripts/saveAdd.js?v=20261104-clear-cart-confirm"></script>
   <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 
 <script src="scripts/customer-contacts.js?v=1"></script>

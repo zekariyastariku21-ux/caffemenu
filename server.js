@@ -394,6 +394,69 @@ async function ensureDatabaseStructure() {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_order_delete_pins (
+        user_id BIGINT PRIMARY KEY,
+        salt TEXT NOT NULL,
+        pin_hash TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_removed_orders (
+        id BIGSERIAL PRIMARY KEY,
+        original_order_id BIGINT NOT NULL,
+        display_number BIGINT NOT NULL,
+        restaurant_id INTEGER NOT NULL
+          REFERENCES restaurants(id) ON DELETE CASCADE,
+        customer_account_id BIGINT,
+        branch_id INTEGER,
+        branch_name TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL,
+        preparing_at TIMESTAMPTZ,
+        ready_at TIMESTAMPTZ,
+        completed_at TIMESTAMPTZ,
+        customer_name TEXT NOT NULL,
+        customer_phone TEXT NOT NULL,
+        order_type TEXT NOT NULL,
+        table_number TEXT NOT NULL DEFAULT '',
+        customer_address TEXT NOT NULL DEFAULT '',
+        items JSONB NOT NULL,
+        total NUMERIC(12,2) NOT NULL,
+        removed_by BIGINT,
+        removed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      ALTER TABLE admin_removed_orders
+        ADD COLUMN IF NOT EXISTS display_number BIGINT,
+        ADD COLUMN IF NOT EXISTS customer_account_id BIGINT
+    `);
+
+    await pool.query(`
+      UPDATE admin_removed_orders
+      SET display_number = original_order_id
+      WHERE display_number IS NULL
+    `);
+
+    await pool.query(`
+      ALTER TABLE admin_removed_orders
+        ALTER COLUMN display_number SET NOT NULL
+    `);
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_admin_removed_orders_restaurant_removed
+      ON admin_removed_orders (restaurant_id, removed_at DESC)
+    `);
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_admin_removed_orders_restaurant_branch_date
+      ON admin_removed_orders (restaurant_id, branch_id, removed_at DESC)
+    `);
+
+    await pool.query(`
       ALTER TABLE customer_orders
         ADD COLUMN IF NOT EXISTS preparing_at TIMESTAMPTZ,
         ADD COLUMN IF NOT EXISTS ready_at TIMESTAMPTZ,
@@ -2538,6 +2601,15 @@ function adminBranchFilter(req) {
   return Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
+function isValidAdminDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return date.getUTCFullYear() === Number(match[1]) &&
+    date.getUTCMonth() === Number(match[2]) - 1 &&
+    date.getUTCDate() === Number(match[3]);
+}
+
 const ADMIN_DAY_TZ = 'Africa/Addis_Ababa';
 const ADMIN_ORDER_COLUMNS = `
   (SELECT COUNT(*)::int FROM customer_orders AS earlier
@@ -2550,26 +2622,250 @@ const mapAdminOrder = order => ({
   items: Array.isArray(order.items) ? order.items : []
 });
 
+function hashAdminOrderDeletePin(pin, salt) {
+  return crypto.scryptSync(pin, salt, 64).toString('hex');
+}
+
+function isValidAdminOrderDeletePin(pin) {
+  return typeof pin === 'string' && /^\d{4,12}$/.test(pin);
+}
+
+app.get('/api/admin/order-delete-pin/:slug', requireRestaurantAdmin, async (req, res) => {
+  try {
+    const restaurant = await getAdminRestaurant(req, res);
+    if (!restaurant) return;
+    const result = await pool.query(
+      'SELECT 1 FROM admin_order_delete_pins WHERE user_id = $1 LIMIT 1',
+      [req.user.id]
+    );
+    res.set('Cache-Control', 'no-store');
+    return res.json({ ok: true, configured: result.rows.length > 0 });
+  } catch (error) {
+    console.error('[admin:order-delete-pin:get] Failed:', error);
+    return res.status(500).json({ ok: false, message: 'Unable to check delete PIN settings.' });
+  }
+});
+
+app.put('/api/admin/order-delete-pin/:slug', requireRestaurantAdmin, async (req, res) => {
+  try {
+    const restaurant = await getAdminRestaurant(req, res);
+    if (!restaurant) return;
+    const pin = req.body?.pin;
+    if (!isValidAdminOrderDeletePin(pin)) {
+      return res.status(400).json({ ok: false, message: 'PIN must contain 4 to 12 digits.' });
+    }
+
+    const salt = crypto.randomBytes(16);
+    const pinHash = hashAdminOrderDeletePin(pin, salt);
+    await pool.query(
+      `INSERT INTO admin_order_delete_pins (user_id, salt, pin_hash)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id) DO UPDATE
+         SET salt = EXCLUDED.salt,
+             pin_hash = EXCLUDED.pin_hash,
+             updated_at = NOW()`,
+      [req.user.id, salt.toString('hex'), pinHash]
+    );
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({ ok: true, configured: true, message: 'Delete PIN saved.' });
+  } catch (error) {
+    console.error('[admin:order-delete-pin:save] Failed:', error);
+    return res.status(500).json({ ok: false, message: 'Unable to save delete PIN.' });
+  }
+});
+
 app.delete('/api/admin/orders/:slug/:orderId', requireRestaurantAdmin, async (req, res) => {
   try {
     const restaurant = await getAdminRestaurant(req, res);
     if (!restaurant) return;
+    const pin = req.body?.pin;
+    if (!isValidAdminOrderDeletePin(pin)) {
+      return res.status(400).json({ ok: false, message: 'Enter your delete PIN.' });
+    }
+    const pinResult = await pool.query(
+      'SELECT salt, pin_hash FROM admin_order_delete_pins WHERE user_id = $1 LIMIT 1',
+      [req.user.id]
+    );
+    if (!pinResult.rows.length) {
+      return res.status(403).json({ ok: false, code: 'delete_pin_not_configured', message: 'Set your delete PIN before deleting orders.' });
+    }
+    const { salt, pin_hash: expectedHash } = pinResult.rows[0];
+    const actualHash = Buffer.from(hashAdminOrderDeletePin(pin, Buffer.from(salt, 'hex')), 'hex');
+    const savedHash = Buffer.from(expectedHash, 'hex');
+    if (actualHash.length !== savedHash.length || !crypto.timingSafeEqual(actualHash, savedHash)) {
+      return res.status(401).json({ ok: false, code: 'invalid_delete_pin', message: 'Delete PIN is incorrect.' });
+    }
+
     const id = Number(req.params.orderId);
     if (!Number.isSafeInteger(id) || id < 1) {
       return res.status(400).json({ ok: false, message: 'Invalid order ID.' });
     }
-    const removed = await pool.query(
-      'DELETE FROM customer_orders WHERE id = $1 AND restaurant_id = $2 RETURNING id',
-      [id, restaurant.id]
-    );
-    if (!removed.rows.length) {
+
+    const client = await pool.connect();
+    let orderRemoved = false;
+    try {
+      await client.query('BEGIN');
+      const orderResult = await client.query(
+        `SELECT id, restaurant_id, customer_account_id, branch_id, branch_name, status, created_at,
+                preparing_at, ready_at, completed_at, customer_name,
+                customer_phone, order_type, table_number, customer_address,
+                items, total
+         FROM customer_orders
+         WHERE id = $1 AND restaurant_id = $2
+         FOR UPDATE`,
+        [id, restaurant.id]
+      );
+      if (!orderResult.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ ok: false, message: 'Order not found for this restaurant.' });
+      }
+
+      const order = orderResult.rows[0];
+      const displayNumberResult = await client.query(
+        `SELECT COUNT(*)::int AS display_number
+         FROM customer_orders
+         WHERE restaurant_id = $1 AND id <= $2`,
+        [restaurant.id, order.id]
+      );
+      order.display_number = displayNumberResult.rows[0].display_number;
+      await client.query(
+        `INSERT INTO admin_removed_orders (
+           original_order_id, display_number, restaurant_id, customer_account_id,
+           branch_id, branch_name, status,
+           created_at, preparing_at, ready_at, completed_at, customer_name,
+           customer_phone, order_type, table_number, customer_address, items,
+           total, removed_by, removed_at
+         )
+         VALUES (
+           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+           $17, $18, $19, NOW()
+         )`,
+        [
+          order.id, order.display_number, order.restaurant_id,
+          order.customer_account_id, order.branch_id, order.branch_name,
+          order.status, order.created_at,
+          order.preparing_at, order.ready_at, order.completed_at,
+          order.customer_name, order.customer_phone, order.order_type,
+          order.table_number, order.customer_address,
+          JSON.stringify(order.items), order.total, req.user.id
+        ]
+      );
+      await client.query(
+        'DELETE FROM customer_orders WHERE id = $1 AND restaurant_id = $2',
+        [id, restaurant.id]
+      );
+      await client.query('COMMIT');
+      orderRemoved = true;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    if (!orderRemoved) {
       return res.status(404).json({ ok: false, message: 'Order not found for this restaurant.' });
     }
-    broadcastOrderEvent(restaurant.slug, 'deleted');
+    broadcastOrderEvent(restaurant.slug, 'deleted', { order_id: id });
     return res.json({ ok: true, message: 'Order deleted.' });
   } catch (error) {
     console.error('[admin:orders:delete] Failed:', error);
     return res.status(500).json({ ok: false, message: 'Unable to delete the order right now.' });
+  }
+});
+
+app.get('/api/admin/removed-orders/:slug', requireRestaurantAdmin, async (req, res) => {
+  try {
+    const restaurant = await getAdminRestaurant(req, res);
+    if (!restaurant) return;
+
+    const fromDate = String(req.query.from_date || '').trim();
+    const toDate = String(req.query.to_date || '').trim();
+    if ((fromDate && !isValidAdminDate(fromDate)) || (toDate && !isValidAdminDate(toDate))) {
+      return res.status(400).json({ ok: false, message: 'Choose valid start and end dates.' });
+    }
+    if (fromDate && toDate && fromDate > toDate) {
+      return res.status(400).json({ ok: false, message: 'The start date must be on or before the end date.' });
+    }
+
+    const status = String(req.query.status || '').trim().toLowerCase();
+    const allowedStatuses = new Set(['pending', 'preparing', 'ready', 'completed']);
+    if (status && !allowedStatuses.has(status)) {
+      return res.status(400).json({ ok: false, message: 'Choose a valid order status.' });
+    }
+
+    const orderType = String(req.query.order_type || '').trim().toLowerCase();
+    const allowedOrderTypes = new Set(['dine-in', 'delivery', 'pickup']);
+    if (orderType && !allowedOrderTypes.has(orderType)) {
+      return res.status(400).json({ ok: false, message: 'Choose a valid order type.' });
+    }
+
+    const search = String(req.query.search || '').trim().slice(0, 120);
+    const pageValue = Number(req.query.page || 1);
+    const page = Number.isSafeInteger(pageValue) && pageValue > 0 ? pageValue : 1;
+    const pageSize = 50;
+    const params = [
+      restaurant.id,
+      adminBranchFilter(req),
+      fromDate || null,
+      toDate || null,
+      status || null,
+      orderType || null,
+      search ? `%${search.replace(/[!%_]/g, '!$&')}%` : null,
+      ADMIN_DAY_TZ
+    ];
+    const filters = `
+      restaurant_id = $1
+      AND ($2::int IS NULL OR branch_id = $2::int)
+      AND ($3::date IS NULL OR removed_at >= ($3::date::timestamp AT TIME ZONE $8))
+      AND ($4::date IS NULL OR removed_at < (($4::date + 1)::timestamp AT TIME ZONE $8))
+      AND ($5::text IS NULL OR status = $5::text)
+      AND ($6::text IS NULL OR order_type = $6::text)
+      AND (
+        $7::text IS NULL
+        OR original_order_id::text ILIKE $7::text ESCAPE '!'
+        OR display_number::text ILIKE $7::text ESCAPE '!'
+        OR customer_name ILIKE $7::text ESCAPE '!'
+        OR customer_phone ILIKE $7::text ESCAPE '!'
+        OR customer_address ILIKE $7::text ESCAPE '!'
+      )
+    `;
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM admin_removed_orders
+       WHERE ${filters}`,
+      params
+    );
+    const total = Number(countResult.rows[0]?.total) || 0;
+    const pageCount = Math.max(1, Math.ceil(total / pageSize));
+    const currentPage = Math.min(page, pageCount);
+    const result = await pool.query(
+      `SELECT original_order_id, display_number, branch_id, branch_name, status, created_at,
+              preparing_at, ready_at, completed_at, customer_name,
+              customer_phone, order_type, table_number, customer_address,
+              items, total, removed_at
+       FROM admin_removed_orders
+       WHERE ${filters}
+       ORDER BY removed_at DESC, id DESC
+       LIMIT $9 OFFSET $10`,
+      [...params, pageSize, (currentPage - 1) * pageSize]
+    );
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      ok: true,
+      orders: result.rows.map(order => ({
+        ...order,
+        id: order.original_order_id,
+        total: Number(order.total),
+        items: Array.isArray(order.items) ? order.items : []
+      })),
+      pagination: { page: currentPage, page_size: pageSize, total, page_count: pageCount }
+    });
+  } catch (error) {
+    console.error('[admin:removed-orders] Failed:', error);
+    return res.status(500).json({ ok: false, message: 'Unable to load removed orders right now.' });
   }
 });
 
@@ -2595,6 +2891,113 @@ app.get('/api/admin/order-history/:slug', requireRestaurantAdmin, async (req, re
   } catch (error) {
     console.error('[admin:order-history] Failed:', error);
     return res.status(500).json({ ok: false, message: 'Unable to load order history right now.' });
+  }
+});
+
+app.get('/api/admin/order-report/:slug', requireRestaurantAdmin, async (req, res) => {
+  try {
+    const restaurant = await getAdminRestaurant(req, res);
+    if (!restaurant) return;
+
+    const fromDate = String(req.query.from_date || '').trim();
+    const toDate = String(req.query.to_date || '').trim();
+    if (!isValidAdminDate(fromDate) || !isValidAdminDate(toDate) || fromDate > toDate) {
+      return res.status(400).json({ ok: false, message: 'Choose a valid date range.' });
+    }
+
+    const result = await pool.query(
+      `WITH daily_orders AS (
+         SELECT
+           (created_at AT TIME ZONE $2)::date AS report_date,
+           total,
+           COALESCE((
+             SELECT SUM(
+               CASE
+                 WHEN COALESCE(item->>'quantity', item->>'qty') ~ '^[0-9]+([.][0-9]+)?$'
+                   THEN CASE
+                     WHEN COALESCE(item->>'quantity', item->>'qty')::numeric > 0
+                       THEN COALESCE(item->>'quantity', item->>'qty')::numeric
+                     ELSE 1
+                   END
+                 ELSE 1
+               END
+             )
+             FROM jsonb_array_elements(
+               CASE WHEN jsonb_typeof(items) = 'array' THEN items ELSE '[]'::jsonb END
+             ) AS order_item(item)
+           ), 0) AS sold_items
+         FROM customer_orders
+         WHERE restaurant_id = $1
+           AND (created_at AT TIME ZONE $2)::date BETWEEN $3::date AND $4::date
+           AND ($5::int IS NULL OR branch_id = $5::int)
+       )
+       SELECT report_date::text AS date,
+              COUNT(*)::int AS order_count,
+              COALESCE(SUM(total), 0) AS total_sales,
+              COALESCE(SUM(sold_items), 0) AS sold_items
+         FROM daily_orders
+        GROUP BY report_date
+        ORDER BY report_date ASC`,
+      [restaurant.id, ADMIN_DAY_TZ, fromDate, toDate, adminBranchFilter(req)]
+    );
+    const itemsResult = await pool.query(
+      `SELECT
+         COALESCE(
+           NULLIF(BTRIM(item->>'name'), ''),
+           NULLIF(BTRIM(item->>'item_name'), ''),
+           NULLIF(BTRIM(item->>'title'), ''),
+           'Menu item'
+         ) AS item_name,
+         SUM(
+           CASE
+             WHEN COALESCE(item->>'quantity', item->>'qty') ~ '^[0-9]+([.][0-9]+)?$'
+               THEN CASE
+                 WHEN COALESCE(item->>'quantity', item->>'qty')::numeric > 0
+                   THEN COALESCE(item->>'quantity', item->>'qty')::numeric
+                 ELSE 1
+               END
+             ELSE 1
+           END
+         ) AS quantity_sold
+       FROM customer_orders AS order_record
+       CROSS JOIN LATERAL jsonb_array_elements(
+         CASE WHEN jsonb_typeof(order_record.items) = 'array'
+           THEN order_record.items ELSE '[]'::jsonb END
+       ) AS order_item(item)
+       WHERE order_record.restaurant_id = $1
+         AND (order_record.created_at AT TIME ZONE $2)::date BETWEEN $3::date AND $4::date
+         AND ($5::int IS NULL OR order_record.branch_id = $5::int)
+       GROUP BY item_name
+       ORDER BY quantity_sold DESC, item_name ASC`,
+      [restaurant.id, ADMIN_DAY_TZ, fromDate, toDate, adminBranchFilter(req)]
+    );
+    const daily = result.rows.map(row => ({
+      ...row,
+      order_count: Number(row.order_count),
+      total_sales: Number(row.total_sales),
+      sold_items: Number(row.sold_items)
+    }));
+    const items = itemsResult.rows.map(row => ({
+      item_name: row.item_name,
+      quantity_sold: Number(row.quantity_sold)
+    }));
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      ok: true,
+      from_date: fromDate,
+      to_date: toDate,
+      totals: daily.reduce((totals, day) => ({
+        order_count: totals.order_count + day.order_count,
+        total_sales: totals.total_sales + day.total_sales,
+        sold_items: totals.sold_items + day.sold_items
+      }), { order_count: 0, total_sales: 0, sold_items: 0 }),
+      daily,
+      items
+    });
+  } catch (error) {
+    console.error('[admin:order-report] Failed:', error);
+    return res.status(500).json({ ok: false, message: 'Unable to load the sales report right now.' });
   }
 });
 
@@ -3193,10 +3596,11 @@ app.get(
            total
          FROM customer_orders
          WHERE restaurant_id = $1
-           AND ($2::int IS NULL OR branch_id = $2::int)
+           AND (created_at AT TIME ZONE $2)::date = (NOW() AT TIME ZONE $2)::date
+           AND ($3::int IS NULL OR branch_id = $3::int)
          ORDER BY created_at DESC, id DESC
-         LIMIT 100`,
-        [restaurant.id, adminBranchFilter(req)]
+        `,
+        [restaurant.id, ADMIN_DAY_TZ, adminBranchFilter(req)]
       );
 
       return res.json({
@@ -3560,9 +3964,10 @@ app.get('/api/cashier/orders/:slug', requireCashier, async (req, res) => {
               items, total
        FROM customer_orders
        WHERE restaurant_id = $1
+         AND (created_at AT TIME ZONE $2)::date = (NOW() AT TIME ZONE $2)::date
        ORDER BY created_at DESC, id DESC
-       LIMIT 100`,
-      [req.cashier.restaurant_id]
+      `,
+      [req.cashier.restaurant_id, ADMIN_DAY_TZ]
     );
 
     res.set('Cache-Control', 'no-store');

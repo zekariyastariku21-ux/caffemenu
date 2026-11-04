@@ -42,6 +42,9 @@
     border-bottom: 1px solid var(--line);
   }
 
+  .admin-title-group { display: flex; align-items: center; gap: 12px; }
+  #branchSelectButton { width: 42px; height: 42px; padding: 0; border-radius: 50%; color: var(--gold); font-size: 24px; line-height: 1; }
+
   h1 { margin: 0; font-size: 22px; letter-spacing: .2px; }
   h3 { color: var(--gold); font-size: 17px; margin: 16px 0 0; }
 
@@ -333,7 +336,8 @@ main {
 .admin-overlay-head h2 { margin: 0; color: var(--gold); }
 #adminOverlayClose { font-size: 28px; line-height: 1; padding: 4px 14px; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--cream); }
 .admin-date-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
-.admin-date-bar button, .admin-date-bar input, .admin-search, .admin-detail-btn { padding: 9px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--cream); font-size: 15px; cursor: pointer; }
+.admin-date-bar button, .admin-date-bar input, .admin-date-bar select, .admin-search, .admin-detail-btn { padding: 9px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--cream); font-size: 15px; cursor: pointer; }
+.admin-date-bar label { color: var(--muted); font-size: 14px; font-weight: bold; }
 .admin-search { width: 100%; box-sizing: border-box; margin-bottom: 14px; cursor: text; }
 .admin-summary { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; color: var(--cream); }
 .admin-overlay .order { border: 1px solid var(--line); background: var(--panel); border-radius: 14px; padding: 16px; margin-bottom: 12px; color: var(--cream); }
@@ -347,13 +351,78 @@ main {
 .admin-detail-btn { color: var(--gold); border-color: #80643b; white-space: nowrap; }
 .admin-branch-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; }
 .admin-branch-bar label { color: var(--muted); font-size: 14px; font-weight: bold; }
-.admin-branch-bar select { min-width: 190px; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: #302116; color: var(--cream); font-size: 15px; }
+.admin-branch-bar select, .admin-branch-bar input { min-width: 190px; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: #302116; color: var(--cream); font-size: 15px; }
+.admin-report-table-wrap { overflow-x: auto; }
+.admin-report-table { width: 100%; border-collapse: collapse; background: var(--panel); }
+.admin-report-table th, .admin-report-table td { padding: 11px 12px; border: 1px solid var(--line); text-align: left; }
+.admin-report-table th { color: var(--gold); }
 .admin-delete-btn { padding: 8px 12px; border-radius: 10px; border: 1px solid #8b3a3a; background: transparent; color: #ff8c8c; cursor: pointer; font-size: 14px; }
 .admin-delete-btn:hover { background: rgba(255,90,90,.12); }
+.delete-confirm-dialog { width: min(440px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--cream); box-shadow: 0 24px 70px rgba(0,0,0,.65); }
+.delete-confirm-dialog::backdrop { background: rgba(0,0,0,.72); backdrop-filter: blur(3px); }
+.delete-confirm-content { padding: 24px; }
+.delete-confirm-content h2 { margin: 0 0 10px; color: var(--cream); font-size: 21px; }
+.delete-confirm-content p { margin: 0; color: var(--muted); line-height: 1.6; }
+.delete-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.delete-confirm-actions button { min-width: 100px; }
+.delete-confirm-cancel { background: transparent; }
+.delete-confirm-submit { border-color: #b94b4b; background: #a93636; color: #fff; }
+.delete-confirm-submit:hover { background: #c14343; }
+.delete-pin-field { display: flex; gap: 8px; margin-top: 18px; }
+.delete-pin-field input { flex: 1; min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: #17120f; color: var(--cream); font: inherit; letter-spacing: .18em; }
+.delete-pin-field input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+.delete-pin-toggle { min-width: 74px; }
+.delete-pin-error { min-height: 20px; margin-top: 7px !important; color: #ff9a9a !important; font-size: 13px; }
+.delete-pin-dialog { width: min(440px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--cream); box-shadow: 0 24px 70px rgba(0,0,0,.65); }
+.delete-pin-dialog::backdrop { background: rgba(0,0,0,.72); backdrop-filter: blur(3px); }
+.delete-pin-content { padding: 24px; }
+.delete-pin-content h2 { margin: 0 0 10px; }
+.delete-pin-content > p { margin: 0; color: var(--muted); line-height: 1.5; }
+.delete-pin-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.delete-pin-actions button { min-width: 100px; }
+.delete-pin-save { background: var(--gold); color: #24170c; border-color: var(--gold); }
+.delete-confirm-spinner { display: inline-block; width: 18px; height: 18px; margin-right: 9px; vertical-align: middle; border: 2px solid rgba(248,240,223,.3); border-top-color: var(--gold); border-radius: 50%; animation: delete-spin .8s linear infinite; }
+.delete-confirm-spinner[hidden] { display: none; }
+@keyframes delete-spin { to { transform: rotate(360deg); } }
 @media (max-width: 520px) { .admin-tools-bar { flex-wrap: wrap; justify-content: flex-end; } }
 </style>
 </head>
 <body>
+<dialog id="deleteConfirmDialog" class="delete-confirm-dialog" aria-labelledby="deleteConfirmTitle" aria-describedby="deleteConfirmMessage">
+  <form id="deleteConfirmForm" class="delete-confirm-content">
+    <h2 id="deleteConfirmTitle">Delete this order?</h2>
+    <p id="deleteConfirmMessage">This action cannot be undone.</p>
+    <label class="delete-pin-field" for="deleteConfirmPin">
+      <input id="deleteConfirmPin" type="password" inputmode="numeric" pattern="[0-9]{4,12}" maxlength="12" autocomplete="off" placeholder="Enter your 4-12 digit PIN" aria-label="Delete PIN">
+      <button type="button" class="delete-pin-toggle" data-pin-toggle="deleteConfirmPin" aria-pressed="false">Show</button>
+    </label>
+    <p id="deleteConfirmPinError" class="delete-pin-error" role="alert"></p>
+    <div id="deleteConfirmProgress" class="muted" role="status" hidden><span class="delete-confirm-spinner" aria-hidden="true"></span>Deleting order, please wait...</div>
+    <div class="delete-confirm-actions">
+      <button type="button" id="deleteConfirmCancel" class="delete-confirm-cancel">Cancel</button>
+      <button type="button" id="deleteConfirmSubmit" class="delete-confirm-submit">Delete order</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="deletePinSetupDialog" class="delete-pin-dialog" aria-labelledby="deletePinSetupTitle">
+  <form id="deletePinSetupForm" class="delete-pin-content">
+    <h2 id="deletePinSetupTitle">Set your delete PIN</h2>
+    <p>Set a personal 4-12 digit PIN. You’ll need it along with the confirmation prompt to delete orders.</p>
+    <label class="delete-pin-field" for="deletePinSetupInput">
+      <input id="deletePinSetupInput" type="password" inputmode="numeric" pattern="[0-9]{4,12}" maxlength="12" autocomplete="new-password" placeholder="New PIN" required>
+      <button type="button" class="delete-pin-toggle" data-pin-toggle="deletePinSetupInput" aria-pressed="false">Show</button>
+    </label>
+    <label class="delete-pin-field" for="deletePinConfirmInput">
+      <input id="deletePinConfirmInput" type="password" inputmode="numeric" pattern="[0-9]{4,12}" maxlength="12" autocomplete="new-password" placeholder="Confirm PIN" required>
+      <button type="button" class="delete-pin-toggle" data-pin-toggle="deletePinConfirmInput" aria-pressed="false">Show</button>
+    </label>
+    <p id="deletePinSetupError" class="delete-pin-error" role="alert"></p>
+    <div class="delete-pin-actions">
+      <button type="button" id="deletePinSetupCancel">Cancel</button>
+      <button type="submit" class="delete-pin-save">Save PIN</button>
+    </div>
+  </form>
+</dialog>
 <div id="adminOverlay" class="admin-overlay" hidden>
   <div class="admin-overlay-inner">
     <div class="admin-overlay-head">
@@ -365,9 +434,12 @@ main {
 </div>
 <main>
   <header>
-    <div>
-      <h1>Customer Orders</h1>
-      <p id="restaurantName" class="muted">Loading restaurant...</p>
+    <div class="admin-title-group">
+      <button id="branchSelectButton" type="button" aria-label="Select branch" aria-expanded="false" aria-controls="branchPicker">&#10140;</button>
+      <div>
+        <h1 id="selectedBranchName">Loading cafe...</h1>
+        <p id="restaurantName" class="muted" hidden></p>
+      </div>
     </div>
     <div class="admin-tools-bar">
       <button id="refreshButton" type="button">Refresh orders</button>
@@ -375,8 +447,10 @@ main {
       <div id="adminMenu" class="admin-menu" hidden>
         <button type="button" data-admin-view="live">&#128203; Live Orders</button>
         <button type="button" data-admin-view="history">&#128197; Order History</button>
-        <button type="button" data-admin-view="customers">&#128101; Customers</button>
+        <button type="button" data-admin-view="removed">&#128465; Removed Orders</button>
+        <button type="button" data-admin-view="report">&#128200; Sales Report</button>
         <button type="button" data-admin-view="accounts">&#128100; Customer Accounts</button>
+        <button type="button" data-admin-action="delete-pin">Set / Change Delete PIN</button>
       </div>
     </div>
   </header>
@@ -395,7 +469,6 @@ main {
   </button>
 </nav>
 
-  <div id="branchPicker"></div>
   <p id="message" role="status">Loading orders...</p>
   <section id="orders" aria-live="polite"></section>
 </main>
@@ -410,6 +483,7 @@ main {
 
   const message = document.getElementById('message');
   const ordersContainer = document.getElementById('orders');
+  const branchSelectButton = document.getElementById('branchSelectButton');
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -421,6 +495,19 @@ main {
   function formatDate(value) {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
+  }
+
+  function formatRemovedDate(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZone: 'Africa/Addis_Ababa'
+    });
   }
 
   function statusActionMarkup(order) {
@@ -445,7 +532,6 @@ main {
       return;
     }
 
-    if (!sessionStorage.getItem('orderBranchId')) { message.textContent = 'Select a branch to view its orders.'; ordersContainer.replaceChildren(); return; }
     message.textContent = 'Loading orders...';
 
     try {
@@ -460,6 +546,9 @@ main {
       }
 
       document.getElementById('restaurantName').textContent = data.restaurant.name;
+      window.dispatchEvent(new CustomEvent('adminRestaurantNameLoaded', {
+        detail: { name: data.restaurant.name }
+      }));
       const statusOrder = { pending: 0, preparing: 1, ready: 2, completed: 3 };
       const orders = (Array.isArray(data.orders) ? [...data.orders] : []).sort((a, b) => {
         const statusA = String(a.status || 'pending').toLowerCase();
@@ -484,12 +573,12 @@ main {
       });
 
       if (!orders.length) {
-        message.textContent = 'No orders have been placed yet.';
-        ordersContainer.innerHTML = '<div class="empty">New customer orders will appear here.</div>';
+        message.textContent = 'No orders have been placed today.';
+        ordersContainer.innerHTML = '<div class="empty">New customer orders placed today will appear here.</div>';
         return;
       }
 
-      message.textContent = `${orders.length} recent order(s).`;
+      message.textContent = `${orders.length} order(s) placed today.`;
       ordersContainer.innerHTML = orders.map(order => {
         const items = Array.isArray(order.items) ? order.items : [];
         const itemMarkup = items.map(item => {
@@ -614,6 +703,23 @@ const adminMenu = document.getElementById('adminMenu');
 const adminOverlay = document.getElementById('adminOverlay');
 const adminOverlayTitle = document.getElementById('adminOverlayTitle');
 const adminOverlayBody = document.getElementById('adminOverlayBody');
+const deleteConfirmDialog = document.getElementById('deleteConfirmDialog');
+const deleteConfirmForm = document.getElementById('deleteConfirmForm');
+const deleteConfirmCancel = document.getElementById('deleteConfirmCancel');
+const deleteConfirmSubmit = document.getElementById('deleteConfirmSubmit');
+const deleteConfirmPin = document.getElementById('deleteConfirmPin');
+const deleteConfirmPinError = document.getElementById('deleteConfirmPinError');
+const deleteConfirmTitle = document.getElementById('deleteConfirmTitle');
+const deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
+const deleteConfirmProgress = document.getElementById('deleteConfirmProgress');
+const deleteConfirmActions = deleteConfirmDialog.querySelector('.delete-confirm-actions');
+const deletePinSetupDialog = document.getElementById('deletePinSetupDialog');
+const deletePinSetupForm = document.getElementById('deletePinSetupForm');
+const deletePinSetupInput = document.getElementById('deletePinSetupInput');
+const deletePinConfirmInput = document.getElementById('deletePinConfirmInput');
+const deletePinSetupError = document.getElementById('deletePinSetupError');
+let deleteInProgress = false;
+let deletePinSaving = false;
 let adminView = 'live';
 let historyDate = '';
 let customerCache = [];
@@ -628,6 +734,17 @@ let currentAccount = null;
 let accountCache = [];
 let accountSearch = '';
 let accountTotal = 0;
+let accountFromDate = '';
+let accountToDate = '';
+let reportFromDate = '';
+let reportToDate = '';
+let removedFromDate = '';
+let removedToDate = '';
+let removedSearch = '';
+let removedStatus = '';
+let removedOrderType = '';
+let removedPage = 1;
+let removedRequestId = 0;
 
 async function ensureAdminBranches() {
   if (adminBranches) return;
@@ -637,9 +754,12 @@ async function ensureAdminBranches() {
   } catch (e) { adminBranches = []; }
   if (adminBranchId && !adminBranches.some(b => String(b.id) === String(adminBranchId))) adminBranchId = '';
 }
-function branchFilterMarkup() {
-  if (!adminBranches || !adminBranches.length) return '';
-  return `<div class="admin-branch-bar"><label for="adminBranchSelect">Branch</label><select id="adminBranchSelect"><option value="">All branches</option>${adminBranches.map(b => `<option value="${escapeHtml(b.id)}"${String(b.id) === String(adminBranchId) ? ' selected' : ''}>${escapeHtml(b.name)}</option>`).join('')}</select></div>`;
+function branchFilterMarkup(extraMarkup = '') {
+  if ((!adminBranches || !adminBranches.length) && !extraMarkup) return '';
+  const branchSelect = adminBranches && adminBranches.length
+    ? `<label for="adminBranchSelect">Branch</label><select id="adminBranchSelect"><option value="">All branches</option>${adminBranches.map(b => `<option value="${escapeHtml(b.id)}"${String(b.id) === String(adminBranchId) ? ' selected' : ''}>${escapeHtml(b.name)}</option>`).join('')}</select>`
+    : '';
+  return `<div class="admin-branch-bar">${branchSelect}${extraMarkup}</div>`;
 }
 function branchQuery(prefix) { return adminBranchId ? prefix + 'branch_id=' + encodeURIComponent(adminBranchId) : ''; }
 function onBranchFilterChange(value) {
@@ -648,6 +768,8 @@ function onBranchFilterChange(value) {
   if (adminView === 'history') showHistory();
   else if (adminView === 'customers') showCustomers();
   else if (adminView === 'accounts') showAccounts();
+  else if (adminView === 'report') showSalesReport();
+  else if (adminView === 'removed') showRemovedOrders();
   else if (adminView === 'customer-detail' && currentCustomer) showCustomerOrders(currentCustomer.key, currentCustomer.name);
   else if (adminView === 'account-detail' && currentAccount) showAccountOrders(currentAccount.id, currentAccount.name);
 }
@@ -658,7 +780,11 @@ async function adminRequest(url, options) {
     headers: Object.assign({ Authorization: `Bearer ${token}` }, opts.headers || {})
   }));
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || data.ok !== true) throw new Error(data.message || 'Request failed.');
+  if (!response.ok || data.ok !== true) {
+    const error = new Error(data.message || 'Request failed.');
+    error.code = data.code;
+    throw error;
+  }
   return data;
 }
 function pad2(n) { return String(n).padStart(2, '0'); }
@@ -670,7 +796,7 @@ function shiftDate(value, days) {
 }
 function formatMoney(value) { return (Math.round((Number(value) || 0) * 100) / 100) + ' ETB'; }
 
-function historyOrderMarkup(order) {
+function historyOrderMarkup(order, isRemoved = false) {
   const items = Array.isArray(order.items) ? order.items : [];
   const itemsHtml = items.map(item => {
     const qty = Number(item.quantity ?? item.qty) || 1;
@@ -700,6 +826,7 @@ function historyOrderMarkup(order) {
   return `<article class="order">
     <div class="order-head"><strong>Order #${escapeHtml(order.display_number ?? order.id)}</strong><span class="status">${escapeHtml(order.status)}</span></div>
     <p class="muted">${escapeHtml(formatDate(order.created_at))}</p>
+    ${isRemoved ? `<p class="muted"><strong>Deleted:</strong> ${escapeHtml(formatRemovedDate(order.removed_at))} (EAT)</p>` : ''}
     <table class="order-contact-table"><tbody><tr>
       <td>${escapeHtml(order.customer_name)}</td>
       <td>${escapeHtml(order.customer_phone || '')}</td>
@@ -709,7 +836,7 @@ function historyOrderMarkup(order) {
     ${order.customer_address ? `<p><strong>Address:</strong> ${escapeHtml(order.customer_address)}</p>` : ''}
     <ul class="admin-item-list">${itemsHtml}</ul>
     <h3>Total: ${formatMoney(order.total)}</h3>
-    ${deleteButtonMarkup(order)}
+    ${isRemoved ? '' : deleteButtonMarkup(order)}
   </article>`;
 }
 
@@ -751,6 +878,133 @@ async function loadHistory() {
         <div class="muted">Pending ${counts.pending} &middot; Preparing ${counts.preparing} &middot; Ready ${counts.ready} &middot; Completed ${counts.completed}</div></div>`
       + orders.map(historyOrderMarkup).join('');
   } catch (e) { box.innerHTML = `<p class="muted">${escapeHtml(e.message || 'Unable to load history.')}</p>`; }
+}
+
+async function showSalesReport() {
+  adminView = 'report';
+  adminOverlayTitle.textContent = 'Sales Report';
+  if (!reportFromDate) reportFromDate = todayString();
+  if (!reportToDate) reportToDate = todayString();
+  await ensureAdminBranches();
+  if (adminView !== 'report') return;
+  adminOverlayBody.innerHTML = branchFilterMarkup(
+    `<label for="reportFromDateInput">From</label><input type="date" id="reportFromDateInput" value="${escapeHtml(reportFromDate)}">
+     <label for="reportToDateInput">To</label><input type="date" id="reportToDateInput" value="${escapeHtml(reportToDate)}">
+     <button type="button" data-report-run>Run report</button>`
+  ) + `<div id="reportResult"><p class="muted">Loading...</p></div>`;
+  await loadSalesReport();
+}
+
+async function loadSalesReport() {
+  const box = document.getElementById('reportResult');
+  if (!box) return;
+  if (!reportFromDate || !reportToDate || reportFromDate > reportToDate) {
+    box.innerHTML = '<p class="muted">Choose a valid start and end date.</p>';
+    return;
+  }
+  box.innerHTML = '<p class="muted">Loading report...</p>';
+  try {
+    const params = new URLSearchParams({
+      from_date: reportFromDate,
+      to_date: reportToDate
+    });
+    if (adminBranchId) params.set('branch_id', adminBranchId);
+    const data = await adminRequest(`/api/admin/order-report/${encodeURIComponent(slug)}?${params}`);
+    if (adminView !== 'report') return;
+    const totals = data.totals || { order_count: 0, total_sales: 0, sold_items: 0 };
+    const daily = Array.isArray(data.daily) ? data.daily : [];
+    const items = Array.isArray(data.items) ? data.items : [];
+    box.innerHTML = `<div class="admin-summary"><strong>${formatMoney(totals.total_sales)}</strong> total sales
+      &middot; <strong>${escapeHtml(totals.sold_items)}</strong> items sold
+      &middot; <strong>${escapeHtml(totals.order_count)}</strong> orders</div>
+      <h3>Daily totals</h3>` +
+      (daily.length ? `<div class="admin-report-table-wrap"><table class="admin-report-table">
+        <thead><tr><th>Date</th><th>Sales</th><th>Items sold</th><th>Orders</th></tr></thead>
+        <tbody>${daily.map(day => `<tr><td>${escapeHtml(day.date)}</td><td>${formatMoney(day.total_sales)}</td>
+          <td>${escapeHtml(day.sold_items)}</td><td>${escapeHtml(day.order_count)}</td></tr>`).join('')}</tbody>
+      </table></div>` : '<div class="empty">No orders in this date range.</div>') +
+      `<h3>Sold items</h3>` +
+      (items.length ? `<div class="admin-report-table-wrap"><table class="admin-report-table">
+        <thead><tr><th>Item</th><th>Quantity sold</th></tr></thead>
+        <tbody>${items.map(item => `<tr><td>${escapeHtml(item.item_name)}</td><td>${escapeHtml(item.quantity_sold)}</td></tr>`).join('')}</tbody>
+      </table></div>` : '<div class="empty">No sold items in this date range.</div>');
+  } catch (e) {
+    box.innerHTML = `<p class="muted">${escapeHtml(e.message || 'Unable to load the sales report.')}</p>`;
+  }
+}
+
+async function showRemovedOrders() {
+  adminView = 'removed';
+  adminOverlayTitle.textContent = 'Removed Orders';
+  await ensureAdminBranches();
+  if (adminView !== 'removed') return;
+  const removedFilters = `
+    <label for="removedFromDateInput">Deleted from</label><input type="date" id="removedFromDateInput" value="${escapeHtml(removedFromDate)}">
+    <label for="removedToDateInput">Deleted to</label><input type="date" id="removedToDateInput" value="${escapeHtml(removedToDate)}">`;
+  adminOverlayBody.innerHTML = branchFilterMarkup(removedFilters) +
+    `<div class="admin-date-bar">
+      <label for="removedSearchInput">Search</label>
+      <input type="search" id="removedSearchInput" class="admin-search" placeholder="Order #, customer, phone or address" value="${escapeHtml(removedSearch)}">
+      <label for="removedStatusSelect">Status</label>
+      <select id="removedStatusSelect">
+        <option value="">All statuses</option>
+        <option value="pending"${removedStatus === 'pending' ? ' selected' : ''}>Pending</option>
+        <option value="preparing"${removedStatus === 'preparing' ? ' selected' : ''}>Preparing</option>
+        <option value="ready"${removedStatus === 'ready' ? ' selected' : ''}>Ready</option>
+        <option value="completed"${removedStatus === 'completed' ? ' selected' : ''}>Completed</option>
+      </select>
+      <label for="removedOrderTypeSelect">Order type</label>
+      <select id="removedOrderTypeSelect">
+        <option value="">All types</option>
+        <option value="dine-in"${removedOrderType === 'dine-in' ? ' selected' : ''}>Dine-in</option>
+        <option value="delivery"${removedOrderType === 'delivery' ? ' selected' : ''}>Delivery</option>
+        <option value="pickup"${removedOrderType === 'pickup' ? ' selected' : ''}>Pickup</option>
+      </select>
+      <button type="button" data-removed-run>Apply filters</button>
+      <button type="button" data-removed-clear>Clear filters</button>
+    </div>
+    <div id="removedOrdersResult"><p class="muted">Loading...</p></div>`;
+  removedPage = 1;
+  await loadRemovedOrders();
+}
+
+async function loadRemovedOrders() {
+  const box = document.getElementById('removedOrdersResult');
+  if (!box) return;
+  if (removedFromDate && removedToDate && removedFromDate > removedToDate) {
+    box.innerHTML = '<p class="muted">The start date must be on or before the end date.</p>';
+    return;
+  }
+  const requestId = ++removedRequestId;
+  box.innerHTML = '<p class="muted">Loading removed orders...</p>';
+  try {
+    const params = new URLSearchParams({ page: String(removedPage) });
+    if (adminBranchId) params.set('branch_id', adminBranchId);
+    if (removedFromDate) params.set('from_date', removedFromDate);
+    if (removedToDate) params.set('to_date', removedToDate);
+    if (removedSearch.trim()) params.set('search', removedSearch.trim());
+    if (removedStatus) params.set('status', removedStatus);
+    if (removedOrderType) params.set('order_type', removedOrderType);
+    const data = await adminRequest(`/api/admin/removed-orders/${encodeURIComponent(slug)}?${params}`);
+    if (adminView !== 'removed' || requestId !== removedRequestId) return;
+    const orders = Array.isArray(data.orders) ? data.orders : [];
+    const pagination = data.pagination || { page: 1, page_count: 1, total: orders.length };
+    removedPage = Number(pagination.page) || 1;
+    const pager = pagination.page_count > 1
+      ? `<div class="admin-date-bar">
+          <button type="button" data-removed-page="${pagination.page - 1}"${pagination.page <= 1 ? ' disabled' : ''}>Previous</button>
+          <span class="muted">Page ${pagination.page} of ${pagination.page_count}</span>
+          <button type="button" data-removed-page="${pagination.page + 1}"${pagination.page >= pagination.page_count ? ' disabled' : ''}>Next</button>
+        </div>`
+      : '';
+    box.innerHTML = `<div class="admin-summary"><strong>${escapeHtml(pagination.total)}</strong> removed order(s)</div>` +
+      (orders.length ? orders.map(order => historyOrderMarkup(order, true)).join('') : '<div class="empty">No removed orders match these filters.</div>') +
+      pager;
+  } catch (error) {
+    if (adminView === 'removed' && requestId === removedRequestId) {
+      box.innerHTML = `<p class="muted">${escapeHtml(error.message || 'Unable to load removed orders.')}</p>`;
+    }
+  }
 }
 
 async function showCustomers() {
@@ -810,9 +1064,16 @@ async function showAccounts() {
   adminOverlayBody.innerHTML = '<p class="muted">Loading...</p>';
   await ensureAdminBranches();
   if (adminView !== 'accounts') return;
-  adminOverlayBody.innerHTML = branchFilterMarkup() + `<input type="search" id="accountSearchInput" class="admin-search" placeholder="Search name or phone" value="${escapeHtml(accountSearch)}"><div id="accountResult"><p class="muted">Loading...</p></div>`;
+  const accountDateFilters = `<label for="accountFromDateInput">From</label><input type="date" id="accountFromDateInput" value="${escapeHtml(accountFromDate)}">
+    <label for="accountToDateInput">To</label><input type="date" id="accountToDateInput" value="${escapeHtml(accountToDate)}">`;
+  adminOverlayBody.innerHTML = branchFilterMarkup(accountDateFilters) + `<input type="search" id="accountSearchInput" class="admin-search" placeholder="Search name or phone" value="${escapeHtml(accountSearch)}"><div id="accountResult"><p class="muted">Loading...</p></div>`;
   try {
-    const data = await adminRequest(`/api/admin/customer-accounts/${encodeURIComponent(slug)}${branchQuery('?')}`);
+    const params = new URLSearchParams();
+    if (adminBranchId) params.set('branch_id', adminBranchId);
+    if (accountFromDate) params.set('from_date', accountFromDate);
+    if (accountToDate) params.set('to_date', accountToDate);
+    const query = params.toString();
+    const data = await adminRequest(`/api/admin/customer-accounts/${encodeURIComponent(slug)}${query ? '?' + query : ''}`);
     if (adminView !== 'accounts') return;
     accountCache = data.accounts || [];
     accountTotal = Number(data.total_accounts) || 0;
@@ -828,7 +1089,7 @@ function renderAccounts() {
   const q = accountSearch.trim().toLowerCase();
   const list = accountCache.filter(a => !q || [a.full_name, a.phone].join(' ').toLowerCase().includes(q));
   if (!list.length) { box.innerHTML = `<div class="empty">${accountTotal ? 'No accounts found.' : 'No customer accounts have been created yet.'}</div>`; return; }
-  box.innerHTML = `<p class="muted">${list.length} account(s)${adminBranchId ? ' with orders at this branch' : ''} &middot; ${accountTotal} created in total</p>` + list.map(a => `
+  box.innerHTML = `<p class="muted">${list.length} account(s)${adminBranchId ? ' with orders at this branch' : ''} &middot; ${accountTotal} matching account(s)</p>` + list.map(a => `
     <article class="order admin-customer">
       <div class="admin-customer-main">
         <strong>${escapeHtml(a.full_name || 'Unknown')}</strong>
@@ -855,10 +1116,134 @@ async function showAccountOrders(id, name) {
   } catch (e) { box.innerHTML = `<p class="muted">${escapeHtml(e.message || 'Unable to load orders.')}</p>`; }
 }
 
-async function deleteOrder(id, number) {
-  if (!window.confirm(`Delete order #${number}? This cannot be undone.`)) return;
+function confirmDeleteOrder(number) {
+  deleteConfirmTitle.textContent = 'Delete this order?';
+  deleteConfirmMessage.textContent = `Are you sure you want to permanently delete order #${number}? This action cannot be undone.`;
+  deleteConfirmMessage.hidden = false;
+  deleteConfirmPin.value = '';
+  deleteConfirmPinError.textContent = '';
+  deleteConfirmProgress.hidden = true;
+  deleteConfirmActions.hidden = false;
+  deleteConfirmDialog.returnValue = '';
+  return new Promise(resolve => {
+    deleteConfirmDialog.addEventListener('close', () => {
+      resolve({
+        confirmed: deleteConfirmDialog.returnValue === 'confirm',
+        pin: deleteConfirmPin.value
+      });
+    }, { once: true });
+    deleteConfirmDialog.showModal();
+    deleteConfirmPin.focus();
+  });
+}
+
+function approveOrderDeletion(event) {
+  if (event) event.preventDefault();
+  if (!/^\d{4,12}$/.test(deleteConfirmPin.value)) {
+    deleteConfirmPinError.textContent = 'Enter your 4-12 digit delete PIN.';
+    deleteConfirmPin.focus();
+    return;
+  }
+  deleteConfirmDialog.close('confirm');
+}
+
+deleteConfirmCancel.addEventListener('click', () => deleteConfirmDialog.close('cancel'));
+deleteConfirmSubmit.addEventListener('click', approveOrderDeletion);
+deleteConfirmForm.addEventListener('submit', approveOrderDeletion);
+deleteConfirmPin.addEventListener('keydown', event => {
+  if (event.key === 'Enter') approveOrderDeletion(event);
+});
+
+function openDeletePinSetup(message) {
+  deletePinSetupForm.reset();
+  deletePinSetupError.textContent = message || '';
+  deletePinSetupDialog.showModal();
+  deletePinSetupInput.focus();
+}
+
+deletePinSetupForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const pin = deletePinSetupInput.value;
+  if (!/^\d{4,12}$/.test(pin)) {
+    deletePinSetupError.textContent = 'PIN must contain 4 to 12 digits.';
+    deletePinSetupInput.focus();
+    return;
+  }
+  if (pin !== deletePinConfirmInput.value) {
+    deletePinSetupError.textContent = 'The PIN entries do not match.';
+    deletePinConfirmInput.focus();
+    return;
+  }
+
+  const submitButton = deletePinSetupForm.querySelector('button[type="submit"]');
+  deletePinSaving = true;
+  submitButton.disabled = true;
+  deletePinSetupError.textContent = 'Saving PIN...';
   try {
-    await adminRequest(`/api/admin/orders/${encodeURIComponent(slug)}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    await adminRequest(`/api/admin/order-delete-pin/${encodeURIComponent(slug)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin })
+    });
+    deletePinSetupDialog.close('saved');
+  } catch (error) {
+    deletePinSetupError.textContent = error.message || 'Unable to save delete PIN.';
+  } finally {
+    deletePinSaving = false;
+    submitButton.disabled = false;
+  }
+});
+
+document.getElementById('deletePinSetupCancel').addEventListener('click', () => {
+  deletePinSetupDialog.close('cancel');
+});
+deletePinSetupDialog.addEventListener('cancel', event => {
+  if (deletePinSaving) event.preventDefault();
+});
+document.addEventListener('click', event => {
+  const toggle = event.target.closest('button[data-pin-toggle]');
+  if (!toggle) return;
+  const input = document.getElementById(toggle.dataset.pinToggle);
+  if (!input) return;
+  const showing = input.type === 'password';
+  input.type = showing ? 'text' : 'password';
+  toggle.textContent = showing ? 'Hide' : 'Show';
+  toggle.setAttribute('aria-pressed', String(showing));
+});
+
+function showDeletingOrder(number) {
+  deleteInProgress = true;
+  deleteConfirmTitle.textContent = 'Deleting order...';
+  deleteConfirmMessage.textContent = `Order #${number} is being deleted.`;
+  deleteConfirmProgress.hidden = false;
+  deleteConfirmActions.hidden = true;
+  deleteConfirmDialog.showModal();
+}
+
+function hideDeletingOrder() {
+  deleteInProgress = false;
+  deleteConfirmDialog.close();
+  deleteConfirmTitle.textContent = 'Delete this order?';
+  deleteConfirmMessage.hidden = false;
+  deleteConfirmProgress.hidden = true;
+  deleteConfirmActions.hidden = false;
+}
+
+deleteConfirmDialog.addEventListener('cancel', event => {
+  if (deleteInProgress) event.preventDefault();
+});
+
+async function deleteOrder(id, number) {
+  const confirmation = await confirmDeleteOrder(number);
+  if (!confirmation.confirmed) return;
+  showDeletingOrder(number);
+  let deleteError = null;
+  try {
+    await adminRequest(`/api/admin/orders/${encodeURIComponent(slug)}/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: confirmation.pin })
+    });
     await loadOrders();
     message.textContent = `Order #${number} deleted.`;
     if (!adminOverlay.hidden) {
@@ -866,19 +1251,40 @@ async function deleteOrder(id, number) {
       else if (adminView === 'customer-detail' && currentCustomer) await showCustomerOrders(currentCustomer.key, currentCustomer.name);
       else if (adminView === 'account-detail' && currentAccount) await showAccountOrders(currentAccount.id, currentAccount.name);
     }
-  } catch (e) { window.alert(e.message || 'Unable to delete the order.'); }
+  } catch (e) {
+    deleteError = e;
+  } finally {
+    hideDeletingOrder();
+  }
+  if (deleteError) {
+    if (deleteError.code === 'delete_pin_not_configured') {
+      openDeletePinSetup('Set your PIN before deleting orders, then try again.');
+    } else {
+      window.alert(deleteError.message || 'Unable to delete the order.');
+    }
+  }
 }
 
 adminMenuButton.addEventListener('click', e => { e.stopPropagation(); setMenu(adminMenu.hidden); });
 document.addEventListener('click', e => { if (!adminMenu.hidden && !adminMenu.contains(e.target)) setMenu(false); });
 adminMenu.addEventListener('click', e => {
+  const action = e.target.closest('button[data-admin-action]');
+  if (action?.dataset.adminAction === 'delete-pin') {
+    setMenu(false);
+    openDeletePinSetup();
+    return;
+  }
   const b = e.target.closest('button[data-admin-view]');
   if (!b) return;
   setMenu(false);
   const view = b.dataset.adminView;
   if (view === 'live') { if (!adminOverlay.hidden) closeOverlay(); return; }
   openOverlay();
-  if (view === 'history') showHistory(); else if (view === 'accounts') showAccounts(); else showCustomers();
+  if (view === 'history') showHistory();
+  else if (view === 'removed') showRemovedOrders();
+  else if (view === 'report') showSalesReport();
+  else if (view === 'accounts') showAccounts();
+  else showCustomers();
 });
 document.getElementById('adminOverlayClose').addEventListener('click', closeOverlay);
 document.addEventListener('keydown', e => {
@@ -887,11 +1293,22 @@ document.addEventListener('keydown', e => {
 });
 ordersContainer.addEventListener('click', e => {
   const del = e.target.closest('button[data-delete-order]');
-  if (del) deleteOrder(del.dataset.deleteOrder, del.dataset.orderNumber);
+  if (del) {
+    del.disabled = true;
+    deleteOrder(del.dataset.deleteOrder, del.dataset.orderNumber)
+      .catch(error => window.alert(error.message || 'Unable to delete the order.'))
+      .finally(() => { del.disabled = false; });
+  }
 });
 adminOverlay.addEventListener('click', e => {
   const del = e.target.closest('button[data-delete-order]');
-  if (del) { deleteOrder(del.dataset.deleteOrder, del.dataset.orderNumber); return; }
+  if (del) {
+    del.disabled = true;
+    deleteOrder(del.dataset.deleteOrder, del.dataset.orderNumber)
+      .catch(error => window.alert(error.message || 'Unable to delete the order.'))
+      .finally(() => { del.disabled = false; });
+    return;
+  }
   const shift = e.target.closest('button[data-history-shift]');
   if (shift) {
     historyDate = shiftDate(historyDate || todayString(), Number(shift.dataset.historyShift));
@@ -909,16 +1326,77 @@ adminOverlay.addEventListener('click', e => {
   const acct = e.target.closest('button[data-account-id]');
   if (acct) { showAccountOrders(acct.dataset.accountId, acct.dataset.accountName); return; }
   if (e.target.closest('button[data-account-back]')) showAccounts();
+  if (e.target.closest('button[data-report-run]')) {
+    reportFromDate = document.getElementById('reportFromDateInput')?.value || '';
+    reportToDate = document.getElementById('reportToDateInput')?.value || '';
+    loadSalesReport();
+  }
+  if (e.target.closest('button[data-removed-run]')) {
+    removedFromDate = document.getElementById('removedFromDateInput')?.value || '';
+    removedToDate = document.getElementById('removedToDateInput')?.value || '';
+    removedSearch = document.getElementById('removedSearchInput')?.value || '';
+    removedStatus = document.getElementById('removedStatusSelect')?.value || '';
+    removedOrderType = document.getElementById('removedOrderTypeSelect')?.value || '';
+    removedPage = 1;
+    loadRemovedOrders();
+    return;
+  }
+  if (e.target.closest('button[data-removed-clear]')) {
+    removedFromDate = '';
+    removedToDate = '';
+    removedSearch = '';
+    removedStatus = '';
+    removedOrderType = '';
+    removedPage = 1;
+    adminBranchId = '';
+    sessionStorage.setItem('adminBranchFilter', '');
+    showRemovedOrders();
+    return;
+  }
+  const removedPageButton = e.target.closest('button[data-removed-page]');
+  if (removedPageButton && !removedPageButton.disabled) {
+    removedPage = Number(removedPageButton.dataset.removedPage) || 1;
+    loadRemovedOrders();
+  }
 });
 adminOverlay.addEventListener('change', e => {
   if (e.target.id === 'adminBranchSelect') { onBranchFilterChange(e.target.value); return; }
   if (e.target.id === 'historyDateInput' && e.target.value) { historyDate = e.target.value; loadHistory(); }
+  if (e.target.id === 'accountFromDateInput') { accountFromDate = e.target.value; showAccounts(); }
+  if (e.target.id === 'accountToDateInput') { accountToDate = e.target.value; showAccounts(); }
+  if (e.target.id === 'reportFromDateInput') reportFromDate = e.target.value;
+  if (e.target.id === 'reportToDateInput') reportToDate = e.target.value;
+  if (e.target.id === 'removedFromDateInput') {
+    removedFromDate = e.target.value;
+    removedPage = 1;
+    loadRemovedOrders();
+  }
+  if (e.target.id === 'removedToDateInput') {
+    removedToDate = e.target.value;
+    removedPage = 1;
+    loadRemovedOrders();
+  }
+  if (e.target.id === 'removedStatusSelect') {
+    removedStatus = e.target.value;
+    removedPage = 1;
+    loadRemovedOrders();
+  }
+  if (e.target.id === 'removedOrderTypeSelect') {
+    removedOrderType = e.target.value;
+    removedPage = 1;
+    loadRemovedOrders();
+  }
 });
 adminOverlay.addEventListener('input', e => {
   if (e.target.id === 'customerSearchInput') { customerSearch = e.target.value; renderCustomers(); }
   if (e.target.id === 'accountSearchInput') { accountSearch = e.target.value; renderAccounts(); }
+  if (e.target.id === 'removedSearchInput') removedSearch = e.target.value;
 });
   loadOrders();
+  if (new URLSearchParams(location.search).get('view') === 'removed') {
+    openOverlay();
+    showRemovedOrders();
+  }
 })();
 </script>
 <script>

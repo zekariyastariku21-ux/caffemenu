@@ -273,6 +273,7 @@ body.ca-lock { overflow: hidden; }
 .ca-status-preparing .ca-pill { background: #fff3d6; color: #8a5a00; }
 .ca-status-ready .ca-pill { background: #dff5e7; color: var(--ca-ok); }
 .ca-status-completed .ca-pill { background: #eee; color: #555; }
+.ca-status-deleted .ca-pill { background: #fde4e4; color: #a12626; }
 
 .ca-items { margin: 12px 0 0; padding: 0; list-style: none; border-top: 1px dashed var(--ca-line); }
 .ca-items li { padding: 8px 0; border-bottom: 1px dashed var(--ca-line); }
@@ -284,6 +285,8 @@ body.ca-lock { overflow: hidden; }
 /* ---------- tracker ---------- */
 
 .ca-track { margin: 14px 0 4px; padding: 12px; border-radius: 12px; background: var(--ca-soft); }
+.ca-track-deleted { border: 1px solid #efb5b5; background: #fff2f2; }
+.ca-track-deleted .ca-track-note { color: #a12626; }
 .ca-steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0; }
 .ca-steps li {
   position: relative;

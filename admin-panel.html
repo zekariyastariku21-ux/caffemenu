@@ -72,6 +72,14 @@
 
                 <button
                     type="button"
+                    id="removedOrdersBtn"
+                    class="profile-btn"
+                >
+                    Removed Orders
+                </button>
+
+                <button
+                    type="button"
                     id="logoutBtn"
                     class="logout-btn"
                 >
@@ -724,6 +732,27 @@
         }
 
         window.location.href = '/orders-display.html';
+    });
+})();
+</script>
+<script>
+(function () {
+    const button = document.getElementById('removedOrdersBtn');
+    if (!button) return;
+
+    button.addEventListener('click', function () {
+        const slug = (
+            localStorage.getItem('adminRestaurantSlug') ||
+            localStorage.getItem('selectedRestaurantSlug') ||
+            ''
+        ).trim();
+
+        if (!slug) {
+            alert('Restaurant not identified. Please log in again.');
+            return;
+        }
+
+        window.location.href = '/orders-display.html?view=removed';
     });
 })();
 </script>
