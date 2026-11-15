@@ -335,23 +335,9 @@ async function ensureDatabaseStructure() {
         id SERIAL PRIMARY KEY,
         restaurant_id INTEGER NOT NULL UNIQUE
           REFERENCES restaurants(id) ON DELETE CASCADE,
-        telebirr_enabled BOOLEAN NOT NULL DEFAULT FALSE,
         order_now_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-        merchant_name TEXT NOT NULL DEFAULT '',
-        merchant_code TEXT NOT NULL DEFAULT '',
-        merchant_app_id TEXT NOT NULL DEFAULT '',
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
-    `);
-
-    await pool.query(`
-      ALTER TABLE restaurant_payment_settings
-      ADD COLUMN IF NOT EXISTS fabric_app_id TEXT NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS app_secret_encrypted TEXT NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS private_key_encrypted TEXT NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS environment TEXT NOT NULL DEFAULT 'sandbox',
-      ADD COLUMN IF NOT EXISTS notify_url TEXT NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS return_url TEXT NOT NULL DEFAULT ''
     `);
 
     await pool.query(`
@@ -361,9 +347,6 @@ async function ensureDatabaseStructure() {
           REFERENCES restaurants(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         order_now_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-        merchant_name TEXT NOT NULL DEFAULT '',
-        merchant_code TEXT NOT NULL DEFAULT '',
-        merchant_app_id TEXT NOT NULL DEFAULT '',
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
         UNIQUE (restaurant_id, name)
@@ -481,16 +464,6 @@ async function ensureDatabaseStructure() {
       )
     `);
 
-
-    await pool.query(`
-      ALTER TABLE restaurant_payment_branches
-      ADD COLUMN IF NOT EXISTS fabric_app_id TEXT NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS app_secret_encrypted TEXT NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS private_key_encrypted TEXT NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS environment TEXT NOT NULL DEFAULT 'sandbox',
-      ADD COLUMN IF NOT EXISTS notify_url TEXT NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS return_url TEXT NOT NULL DEFAULT ''
-    `);
 
     await pool.query(`
       ALTER TABLE restaurant_payment_settings
@@ -1647,6 +1620,7 @@ app.put(
 
 
 require('./contacts-routes')(app, pool, requireRestaurantAdmin);
+const telebirrModule = require('./telebirr-routes')(app, pool, requireRestaurantAdmin, () => ({ isSuperAdminRole, customerAccounts, broadcastOrderEvent }));
 require('./branch-cashier-routes')(app, pool, requireRestaurantAdmin, () => ({
   jwt, isSuperAdminRole, requireCashier, hashCashierPin, safeCompareCashierPin, cashierCookieOptions,
   applyCustomerOrderStatus, cashierPinAttempts, CASHIER_PIN_MAX_ATTEMPTS, CASHIER_PIN_LOCK_MS, CASHIER_SESSION_MS
@@ -1951,13 +1925,12 @@ app.get('/api/public/payment-settings/:slug', async (req, res) => {
     if (restaurantResult.rows.length === 0) {
       return res.status(404).json({
         ok: false,
-        telebirr_enabled: false,
         order_now_enabled: false
       });
     }
 
     const settingsResult = await pool.query(`
-      SELECT telebirr_enabled, order_now_enabled, super_admin_order_now_enabled
+      SELECT order_now_enabled, super_admin_order_now_enabled
       FROM restaurant_payment_settings
       WHERE restaurant_id = $1
       LIMIT 1
@@ -1965,8 +1938,6 @@ app.get('/api/public/payment-settings/:slug', async (req, res) => {
 
     return res.json({
       ok: true,
-      telebirr_enabled:
-        settingsResult.rows[0]?.telebirr_enabled === true,
       order_now_enabled:
         settingsResult.rows.length === 0 ||
         (settingsResult.rows[0]?.order_now_enabled !== false &&
@@ -1979,7 +1950,6 @@ app.get('/api/public/payment-settings/:slug', async (req, res) => {
     console.error('[public-payment-settings] Error:', error);
     return res.status(500).json({
       ok: false,
-      telebirr_enabled: false,
       order_now_enabled: false
     });
   }
@@ -3232,6 +3202,19 @@ app.post('/api/orders/:slug', async (req, res) => {
       });
     }
 
+    // Payment method must be one this branch allows (set by the admin in Profile).
+    const payMethods = await telebirrModule.branchMethods(branchResult.rows[0].id);
+    let paymentMethod = String((req.body && req.body.payment_method) || '').trim().toLowerCase();
+    if (!paymentMethod) paymentMethod = payMethods.cash ? 'cash' : 'telebirr';
+    if (!['cash', 'telebirr'].includes(paymentMethod) || !payMethods[paymentMethod]) {
+      return res.status(400).json({
+        ok: false,
+        message: (!payMethods.cash && !payMethods.telebirr)
+          ? 'Payment is not set up for this branch yet. Please choose another branch.'
+          : 'That payment method is not available for this branch.'
+      });
+    }
+
     // Flatten the category-based menu.
     const isExtraItemsCategory = category =>
       /^extras?(?:\s+items?)?$/i.test(String(category || '').trim());
@@ -3463,6 +3446,19 @@ app.post('/api/orders/:slug', async (req, res) => {
 
     const total = totalCents / 100;
 
+    // Telebirr: hold the order until the payment is verified. It is created only after payment.
+    if (paymentMethod === 'telebirr') {
+      const pending = await telebirrModule.createPending({
+        restaurantId: restaurant.id,
+        branchId: branchResult.rows[0].id,
+        branchName: branchResult.rows[0].name,
+        customerName, customerPhone, orderType, tableNumber, customerAddress,
+        items: savedItems, total,
+        customerAccountId: customerAccount.id
+      });
+      return res.status(202).json({ ok: true, pending_payment: true, payment_id: pending.id, total });
+    }
+
     // Persist the order. No payment endpoint is called.
     const insertResult = await pool.query(
       `INSERT INTO customer_orders (
@@ -3496,6 +3492,7 @@ app.post('/api/orders/:slug', async (req, res) => {
     );
 
     const order = insertResult.rows[0];
+    await pool.query('UPDATE customer_orders SET payment_method = $1 WHERE id = $2', [paymentMethod, order.id]);
 
     const displayNumberResult = await pool.query(
       'SELECT COUNT(*)::int AS display_number FROM customer_orders WHERE restaurant_id = $1 AND id <= $2',

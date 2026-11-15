@@ -4792,12 +4792,6 @@ async function loadCustomerTelebirrSetting() {
             );
         }
 
-        const enabled =
-            data?.ok === true &&
-            data?.telebirr_enabled === true;
-
-        if (paymentButton) paymentButton.hidden = !enabled;
-        if (telebirrOption) telebirrOption.hidden = !enabled;
     } catch (error) {
         selfOrderingEnabled = false;
         if (isExtraItemsCategory(currentCategory)) {

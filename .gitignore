@@ -1,5 +1,4 @@
 .env
-node_modules/.env
 
 node_modules/
 *.bak
@@ -7,3 +6,7 @@ node_modules/
 YOURFILE.py
 
 .env*
+.env.*
+*.corrupted-by-ps*
+backup-*/
+mojibake-*/
