@@ -351,6 +351,18 @@ module.exports = function registerCustomerAccounts(app, deps) {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS customer_hidden_order_history (
+        restaurant_id INTEGER NOT NULL
+          REFERENCES restaurants(id) ON DELETE CASCADE,
+        customer_account_id BIGINT NOT NULL
+          REFERENCES customer_accounts(id) ON DELETE CASCADE,
+        order_id BIGINT NOT NULL,
+        hidden_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (restaurant_id, customer_account_id, order_id)
+      )
+    `);
+
+    await pool.query(`
       UPDATE admin_removed_orders AS removed
       SET customer_account_id = account.id
       FROM customer_accounts AS account
@@ -927,6 +939,13 @@ module.exports = function registerCustomerAccounts(app, deps) {
              total, NULL::timestamptz AS removed_at
            FROM customer_orders
            WHERE restaurant_id = $1 AND customer_account_id = $2
+             AND NOT EXISTS (
+               SELECT 1
+               FROM customer_hidden_order_history AS hidden
+               WHERE hidden.restaurant_id = customer_orders.restaurant_id
+                 AND hidden.customer_account_id = customer_orders.customer_account_id
+                 AND hidden.order_id = customer_orders.id
+             )
 
            UNION ALL
 
@@ -936,6 +955,13 @@ module.exports = function registerCustomerAccounts(app, deps) {
                   removed_at
            FROM admin_removed_orders
            WHERE restaurant_id = $1 AND customer_account_id = $2
+             AND NOT EXISTS (
+               SELECT 1
+               FROM customer_hidden_order_history AS hidden
+               WHERE hidden.restaurant_id = admin_removed_orders.restaurant_id
+                 AND hidden.customer_account_id = admin_removed_orders.customer_account_id
+                 AND hidden.order_id = admin_removed_orders.original_order_id
+             )
          ) AS customer_orders
          ORDER BY created_at DESC, id DESC
          LIMIT 100`,
@@ -953,6 +979,55 @@ module.exports = function registerCustomerAccounts(app, deps) {
     } catch (error) {
       console.error('[customer:orders] Failed:', error);
       return res.status(500).json({ ok: false, message: 'Unable to load your orders.' });
+    }
+  });
+
+  app.delete('/api/customer/:slug/orders/:orderId', requireCustomer, async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+
+    const orderId = String(req.params.orderId || '');
+    if (!/^[1-9]\d*$/.test(orderId) ||
+        orderId.length > 19 ||
+        (orderId.length === 19 && orderId > '9223372036854775807')) {
+      return res.status(400).json({ ok: false, message: 'Invalid order ID.' });
+    }
+
+    try {
+      const eligible = await pool.query(
+        `SELECT id
+         FROM customer_orders
+         WHERE id = $1 AND restaurant_id = $2
+           AND customer_account_id = $3 AND status = 'completed'
+         UNION ALL
+         SELECT original_order_id AS id
+         FROM admin_removed_orders
+         WHERE original_order_id = $1 AND restaurant_id = $2
+           AND customer_account_id = $3
+         LIMIT 1`,
+        [orderId, req.restaurant.id, req.customer.id]
+      );
+      if (!eligible.rows.length) {
+        return res.status(404).json({
+          ok: false,
+          message: 'Completed order not found in your history.'
+        });
+      }
+
+      await pool.query(
+        `INSERT INTO customer_hidden_order_history
+           (restaurant_id, customer_account_id, order_id)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (restaurant_id, customer_account_id, order_id) DO NOTHING`,
+        [req.restaurant.id, req.customer.id, orderId]
+      );
+
+      return res.json({ ok: true, message: 'Order removed from your history.' });
+    } catch (error) {
+      console.error('[customer:orders:hide] Failed:', error);
+      return res.status(500).json({
+        ok: false,
+        message: 'Unable to remove the order from your history.'
+      });
     }
   });
 

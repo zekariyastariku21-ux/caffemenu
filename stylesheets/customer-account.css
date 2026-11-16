@@ -282,6 +282,76 @@ body.ca-lock { overflow: hidden; }
 .ca-item-note { margin-top: 2px; color: var(--ca-muted); font-size: 12px; }
 .ca-total { display: flex; justify-content: space-between; margin-top: 10px; font-size: 16px; }
 
+.ca-history-remove {
+  display: block;
+  margin: 12px 0 0 auto;
+  padding: 8px 12px;
+  border: 1px solid var(--ca-line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ca-danger);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ca-history-remove:hover { border-color: var(--ca-danger); background: #fff7f6; }
+.ca-history-remove:disabled { opacity: .6; cursor: default; }
+.ca-history-dialog {
+  width: calc(100vw - 32px);
+  max-width: 420px;
+  margin: auto;
+  padding: 24px;
+  border: 1px solid var(--ca-line);
+  border-radius: 18px;
+  background: var(--ca-bg);
+  color: var(--ca-text);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .24);
+}
+.ca-history-dialog::backdrop {
+  background: rgba(20, 12, 6, .58);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.ca-history-dialog-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #fdecea;
+  color: var(--ca-danger);
+  font-size: 22px;
+  font-weight: 800;
+}
+.ca-history-dialog-icon-success { background: #e4f4e9; color: var(--ca-ok); }
+.ca-history-dialog h2 { margin: 16px 0 8px; font-size: 20px; }
+.ca-history-dialog p { margin: 0; color: var(--ca-muted); font-size: 14px; line-height: 1.5; }
+.ca-history-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
+.ca-history-dialog-actions button {
+  padding: 8px 12px;
+  border: 1px solid var(--ca-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ca-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ca-history-dialog-actions .ca-history-remove-confirm {
+  border-color: var(--ca-danger);
+  background: var(--ca-danger);
+  color: #fff;
+}
+.ca-history-dialog-actions .ca-history-done {
+  border-color: var(--ca-ok);
+  background: var(--ca-ok);
+  color: #fff;
+}
+.ca-history-dialog-actions button:disabled { opacity: .6; cursor: default; }
+
 /* ---------- tracker ---------- */
 
 .ca-track { margin: 14px 0 4px; padding: 12px; border-radius: 12px; background: var(--ca-soft); }

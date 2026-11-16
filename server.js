@@ -2745,7 +2745,7 @@ app.delete('/api/admin/orders/:slug/:orderId', requireRestaurantAdmin, async (re
   }
 });
 
-app.get('/api/admin/removed-orders/:slug', requireRestaurantAdmin, async (req, res) => {
+app.get('/api/admin/removed-orders/:slug', requireRestaurantAdmin, requireSelfOrderingBySlug, async (req, res) => {
   try {
     const restaurant = await getAdminRestaurant(req, res);
     if (!restaurant) return;
@@ -3762,9 +3762,36 @@ app.patch(
    CASHIER PIN SETUP AND CASHIER ORDER VIEW
    ================================================================ */
 
+async function requireSelfOrderingBySlug(req, res, next) {
+  try {
+    const slug = String(req.params.slug || '').trim();
+    const result = await pool.query(
+      'SELECT id FROM restaurants WHERE slug = $1 LIMIT 1',
+      [slug]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ ok: false, message: 'Restaurant not found.' });
+    }
+
+    if (!(await customerAccounts.isSelfOrderingEnabled(result.rows[0].id))) {
+      return res.status(403).json({
+        ok: false,
+        code: 'self_ordering_disabled',
+        message: 'Self-ordering is disabled for this cafe.'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('[self-ordering-guard] Error:', error);
+    return res.status(500).json({ ok: false, message: 'Could not verify self-ordering status.' });
+  }
+}
+
 app.get(
   '/api/admin/cashier-pin/:slug',
-  requireRestaurantAdmin,
+  requireRestaurantAdmin, requireSelfOrderingBySlug,
   async (req, res) => {
     try {
       const slug = String(req.params.slug || '').trim();
@@ -3801,7 +3828,7 @@ app.get(
 
 app.put(
   '/api/admin/cashier-pin/:slug',
-  requireRestaurantAdmin,
+  requireRestaurantAdmin, requireSelfOrderingBySlug,
   async (req, res) => {
     try {
       const slug = String(req.params.slug || '').trim();
@@ -3856,7 +3883,7 @@ app.put(
   }
 );
 
-app.post('/api/cashier/login/:slug', async (req, res) => {
+app.post('/api/cashier/login/:slug', requireSelfOrderingBySlug, async (req, res) => {
   try {
     const slug = String(req.params.slug || '').trim();
     const pin = String(req.body?.pin || '');
@@ -3940,7 +3967,7 @@ app.post('/api/cashier/login/:slug', async (req, res) => {
   }
 });
 
-app.get('/api/cashier/orders/:slug', requireCashier, async (req, res) => {
+app.get('/api/cashier/orders/:slug', requireCashier, requireSelfOrderingBySlug, async (req, res) => {
   try {
     const slug = String(req.params.slug || '').trim();
 

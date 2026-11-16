@@ -29,12 +29,14 @@
 
   var state = {
     enabled: false,
+    enabledKnown: false,
     token: store.get(TOKEN_KEY) || '',
     customer: parseJson(store.get(PROFILE_KEY)),
     orders: [],
     ordersLoaded: false,
     view: null,                // null | 'auth' | 'account'
     tab: 'active',             // 'active' | 'history'
+    historyDeleteBusyId: null,
     auth: { mode: 'login', step: 'details', channel: '', phone: '', name: '', code: '', devOtp: '', resendAt: 0, busy: false, error: '', info: '' },
     pending: null,             // callback to run after a successful login
     channels: null,            // ways a code can be sent: [] | ['sms'] | ['sms','whatsapp'] (null = not loaded yet)
@@ -148,8 +150,9 @@
 
   function renderButton() {
     if (!el.button) return;
-    el.button.hidden = !state.enabled;
-    if (el.bar) el.bar.hidden = !state.enabled;
+    var visible = state.enabled || !state.enabledKnown;
+    el.button.hidden = !visible;
+    if (el.bar) el.bar.hidden = !visible;
     el.button.replaceChildren();
 
     if (isLoggedIn()) {
@@ -617,7 +620,50 @@
     return h('div', { class: 'ca-track' }, [list, note ? h('p', { class: 'ca-track-note', text: note }) : null]);
   }
 
-  function orderCard(order, withTracker) {
+  function confirmRemoveOrderFromHistory(order) {
+    if (state.historyDeleteBusyId) return;
+
+    var orderNumber = order.display_number != null ? order.display_number : order.id;
+    var dialog = h('dialog', {
+      class: 'ca-history-dialog',
+      role: 'alertdialog',
+      'aria-modal': 'true',
+      'aria-labelledby': 'caHistoryDialogTitle',
+      'aria-describedby': 'caHistoryDialogMessage'
+    }, [
+      h('div', { class: 'ca-history-dialog-icon', 'aria-hidden': 'true', text: '!' }),
+      h('h2', { id: 'caHistoryDialogTitle', text: 'Remove order from history?' }),
+      h('p', {
+        id: 'caHistoryDialogMessage',
+        class: 'ca-history-dialog-message',
+        'aria-live': 'polite',
+        text: "Order #" + orderNumber + " will be removed from your history. The cafe's order record will remain."
+      }),
+      h('div', { class: 'ca-history-dialog-actions' }, [
+        h('button', {
+          type: 'button',
+          class: 'ca-history-cancel',
+          onclick: function () { dialog.close(); },
+          text: 'Keep order'
+        }),
+        h('button', {
+          type: 'button',
+          class: 'ca-history-remove-confirm',
+          onclick: function () { removeOrderFromHistory(order, dialog); },
+          text: 'Remove order'
+        })
+      ])
+    ]);
+
+    dialog.addEventListener('close', function () { dialog.remove(); });
+    dialog.addEventListener('cancel', function (event) {
+      if (state.historyDeleteBusyId) event.preventDefault();
+    });
+    document.body.appendChild(dialog);
+    dialog.showModal();
+  }
+
+  function orderCard(order, withTracker, canRemoveFromHistory) {
     var status = String(order.status || 'pending').toLowerCase();
     var items = (Array.isArray(order.items) ? order.items : []).map(function (item) {
       var qty = Number(item.quantity != null ? item.quantity : item.qty) || 1;
@@ -672,6 +718,16 @@
     var where = [order.branch_name, order.order_type === 'dine-in' ? 'Dine-in' : (order.order_type === 'pickup' ? 'Pick-up' : 'Delivery')];
     if (order.table_number) where.push('Table ' + order.table_number);
 
+    var historyAction = canRemoveFromHistory
+      ? h('button', {
+        type: 'button',
+        class: 'ca-history-remove',
+        disabled: !!state.historyDeleteBusyId,
+        onclick: function () { confirmRemoveOrderFromHistory(order); },
+        text: 'Remove from history'
+      })
+      : null;
+
     return h('article', { class: 'ca-order ca-status-' + status }, [
       h('div', { class: 'ca-order-head' }, [
         h('strong', { text: 'Order #' + (order.display_number != null ? order.display_number : order.id) }),
@@ -685,7 +741,8 @@
       order.customer_address ? h('p', { class: 'ca-order-meta', text: 'Address: ' + order.customer_address }) : null,
       withTracker ? trackerFor(order) : null,
       h('ul', { class: 'ca-items' }, items),
-      h('div', { class: 'ca-total' }, [h('span', { text: 'Total' }), h('strong', { text: money(order.total) })])
+      h('div', { class: 'ca-total' }, [h('span', { text: 'Total' }), h('strong', { text: money(order.total) })]),
+      historyAction
     ]);
   }
 
@@ -707,7 +764,7 @@
         : h('p', { class: 'ca-empty', text: 'You have no active orders right now.' });
     } else {
       list = past.length
-        ? h('div', null, past.map(function (o) { return orderCard(o, false); }))
+        ? h('div', null, past.map(function (o) { return orderCard(o, false, true); }))
         : h('p', { class: 'ca-empty', text: 'Your completed orders will appear here.' });
     }
 
@@ -772,6 +829,73 @@
       });
   }
 
+  function removeOrderFromHistory(order, dialog) {
+    var orderId = String(order.id);
+    if (state.historyDeleteBusyId) return;
+
+    var title = dialog.querySelector('#caHistoryDialogTitle');
+    var message = dialog.querySelector('#caHistoryDialogMessage');
+    var icon = dialog.querySelector('.ca-history-dialog-icon');
+    var actions = dialog.querySelector('.ca-history-dialog-actions');
+    var cancelButton = actions.querySelector('.ca-history-cancel');
+    var removeButton = actions.querySelector('.ca-history-remove-confirm');
+    var orderNumber = order.display_number != null ? order.display_number : order.id;
+
+    state.historyDeleteBusyId = orderId;
+    message.textContent = 'Removing order #' + orderNumber + ' from your history...';
+    message.setAttribute('role', 'status');
+    cancelButton.disabled = true;
+    removeButton.disabled = true;
+    removeButton.textContent = 'Removing...';
+    renderAccount();
+    api('/orders/' + encodeURIComponent(orderId), { method: 'DELETE' })
+      .then(function () {
+        state.orders = state.orders.filter(function (item) {
+          return String(item.id) !== orderId;
+        });
+        state.historyDeleteBusyId = null;
+        renderAccount();
+        if (dialog.open) {
+          title.textContent = 'Order removed';
+          message.textContent = "Order #" + orderNumber + " has been removed from your history. The cafe's order record remains.";
+          icon.textContent = '\u2713';
+          icon.classList.add('ca-history-dialog-icon-success');
+          actions.replaceChildren(h('button', {
+            type: 'button',
+            class: 'ca-history-done',
+            onclick: function () { dialog.close(); },
+            text: 'Done'
+          }));
+          actions.querySelector('.ca-history-done').focus();
+        } else {
+          toast('Order removed from your history.');
+        }
+      })
+      .catch(function (err) {
+        state.historyDeleteBusyId = null;
+        renderAccount();
+        if (err.status === 401) {
+          if (dialog.open) dialog.close();
+          handleUnauthorized();
+          return;
+        }
+        if (err.code === 'self_ordering_disabled') {
+          if (dialog.open) dialog.close();
+          setEnabled(false);
+          return;
+        }
+        if (dialog.open) {
+          message.textContent = err.message || 'Unable to remove the order from your history.';
+          message.setAttribute('role', 'alert');
+          cancelButton.disabled = false;
+          removeButton.disabled = false;
+          removeButton.textContent = 'Try again';
+        } else {
+          toast(err.message || 'Unable to remove the order from your history.', 'error');
+        }
+      });
+  }
+
   function scheduleRefresh() {
     clearTimeout(state.refreshTimer);
     state.refreshTimer = setTimeout(loadOrders, 400);
@@ -815,6 +939,7 @@
 
   function setEnabled(value) {
     state.enabled = !!value;
+    state.enabledKnown = true;
     if (!state.enabled) {
       state.pending = null;
       closeOverlay();

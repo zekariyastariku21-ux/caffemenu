@@ -9,6 +9,14 @@
 
     <link rel="stylesheet" href="stylesheets/admin-panel.css?v=20261104a">
     <link rel="stylesheet" href="stylesheets/menu-expiration.css?v=20261013a">
+<style id="selfOrderingPendingStyle">
+  html.so-pending #cashierSettingsBtn,
+  html.so-pending #ordersDisplayBtn,
+  html.so-pending #removedOrdersBtn,
+  html.so-pending #newItemCustomization,
+  html.so-pending #editItemCustomization { display: none !important; }
+</style>
+<script>document.documentElement.classList.add('so-pending');</script>
 </head>
 
 <body>
@@ -711,7 +719,7 @@
     }
 </script>
 <script src="/scripts/menu-expiration.js?v=20261013a"></script>
-<script src="/scripts/admin.js?v=20261101b"></script>
+<script src="/scripts/admin.js?v=20261101e"></script>
 <script src="/scripts/admin-hamburger.js?v=1"></script>
 
 <script>

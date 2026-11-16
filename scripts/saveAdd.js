@@ -4,6 +4,7 @@ let recentlyAddedCartLineId = null;
 
 let currentCategory = 'all';
 let selfOrderingEnabled = false;
+let selfOrderingStatusLoaded = false;
 
 let searchTerm = '';
 
@@ -2035,7 +2036,9 @@ function isExtraItemsCategory(category) {
     );
 }
 
-function getCustomerMenuCategories(includeExtraItems = !selfOrderingEnabled) {
+function getCustomerMenuCategories(
+    includeExtraItems = selfOrderingStatusLoaded && !selfOrderingEnabled
+) {
     return getOrderedMenuCategories().filter(
         category => includeExtraItems || !isExtraItemsCategory(category)
     );
@@ -2159,7 +2162,8 @@ function renderItems() {
     } else {
 
         items =
-            (!isExtraItemsCategory(currentCategory) || !selfOrderingEnabled) &&
+            (!isExtraItemsCategory(currentCategory) ||
+                (selfOrderingStatusLoaded && !selfOrderingEnabled)) &&
             Array.isArray(
                 foods[currentCategory]
             )
@@ -4753,7 +4757,12 @@ async function loadCustomerTelebirrSetting() {
     if (paymentButton) paymentButton.hidden = true;
     if (telebirrOption) telebirrOption.hidden = true;
 
-    if (!CAFE_SLUG) return;
+    if (!CAFE_SLUG) {
+        if (window.CustomerAccount) {
+            window.CustomerAccount.setEnabled(false);
+        }
+        return;
+    }
 
     try {
         const response = await fetch(
@@ -4763,6 +4772,9 @@ async function loadCustomerTelebirrSetting() {
 
         if (!response.ok) {
             if (orderNowButton) orderNowButton.hidden = false;
+            if (window.CustomerAccount) {
+                window.CustomerAccount.setEnabled(false);
+            }
             return;
         }
 
@@ -4775,6 +4787,13 @@ async function loadCustomerTelebirrSetting() {
         selfOrderingEnabled =
             data?.ok === true &&
             data?.self_ordering_enabled !== false;
+        selfOrderingStatusLoaded = true;
+        if (window.CustomerAccount) {
+            window.CustomerAccount.setEnabled(
+                selfOrderingEnabled
+            );
+        }
+
         if (
             selfOrderingEnabled &&
             isExtraItemsCategory(currentCategory)
@@ -4785,15 +4804,11 @@ async function loadCustomerTelebirrSetting() {
         renderCategoryButtons();
         renderCart();
 
-        // Login / account button follows the super-admin Self-Ordering switch.
-        if (window.CustomerAccount) {
-            window.CustomerAccount.setEnabled(
-                selfOrderingEnabled
-            );
-        }
-
     } catch (error) {
         selfOrderingEnabled = false;
+        if (window.CustomerAccount) {
+            window.CustomerAccount.setEnabled(false);
+        }
         if (isExtraItemsCategory(currentCategory)) {
             currentCategory = 'all';
         }

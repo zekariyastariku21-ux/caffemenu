@@ -5354,3 +5354,30 @@ async function refreshCustomerMenuSilently() {
 
 
 
+
+
+/* ---- Hide self-ordering features when disabled by super admin ---- */
+function applySelfOrderingVisibility(selfOrderingEnabled) {
+    ['cashierSettingsBtn', 'ordersDisplayBtn', 'removedOrdersBtn', 'newItemCustomization', 'editItemCustomization'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = selfOrderingEnabled ? '' : 'none';
+    });
+}
+
+async function loadSelfOrderingFlag() {
+    try {
+        var slug = localStorage.getItem('adminRestaurantSlug') || localStorage.getItem('selectedRestaurantSlug') || new URLSearchParams(location.search).get('slug');
+        if (!slug) return;
+        var response = await fetch('/api/public/payment-settings/' + encodeURIComponent(slug), { cache: 'no-store' });
+        var data = await response.json();
+        applySelfOrderingVisibility(data.self_ordering_enabled !== false);
+        document.documentElement.classList.remove('so-pending');
+    } catch (error) {
+        console.error('[admin] Could not load self-ordering flag:', error);
+        document.documentElement.classList.remove('so-pending');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(loadSelfOrderingFlag, 0);
+});
