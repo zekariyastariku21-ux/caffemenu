@@ -29,13 +29,16 @@
 
   var state = {
     enabled: false,
-    enabledKnown: false,
     token: store.get(TOKEN_KEY) || '',
     customer: parseJson(store.get(PROFILE_KEY)),
     orders: [],
     ordersLoaded: false,
-    view: null,                // null | 'auth' | 'account'
+    ordersError: '',
+    view: null,                // null | 'auth' | 'account' | 'status'
     tab: 'active',             // 'active' | 'history'
+    statusLoginPending: false,
+    showCustomerOrders: false,
+    showStatusSidebar: true,
     historyDeleteBusyId: null,
     auth: { mode: 'login', step: 'details', channel: '', phone: '', name: '', code: '', devOtp: '', resendAt: 0, busy: false, error: '', info: '' },
     pending: null,             // callback to run after a successful login
@@ -44,7 +47,16 @@
     stream: null,
     poll: null,
     refreshTimer: null,
-    tick: null
+    tick: null,
+    statusBranches: [],
+    statusBranchId: '',
+    statusData: null,
+    statusError: '',
+    statusLoading: false,
+    statusUpdatedAt: null,
+    statusRequestId: 0,
+    statusPoll: null,
+    statusExpanded: false
   };
 
   var el = {};   // DOM references
@@ -139,7 +151,7 @@
     toast('You are logged out.');
   }
 
-  /* ---------------- header button ---------------- */
+  /* ---------------- live-status account button ---------------- */
 
   function activeOrders() {
     return state.orders.filter(function (o) {
@@ -150,86 +162,57 @@
 
   function renderButton() {
     if (!el.button) return;
-    var visible = state.enabled || !state.enabledKnown;
+    var visible = state.enabled;
+    var loggedIn = isLoggedIn();
     el.button.hidden = !visible;
-    if (el.bar) el.bar.hidden = !visible;
+    if (el.statusButton) {
+      el.statusButton.hidden = !visible;
+      el.statusButton.setAttribute('aria-label', 'View live cafe status');
+    }
     el.button.replaceChildren();
 
-    if (isLoggedIn()) {
-      var first = String(state.customer.full_name || '').split(' ')[0] || 'Account';
+    if (loggedIn) {
+      var name = String(state.customer.full_name || '').trim() || 'Account';
       el.button.appendChild(h('span', { class: 'ca-btn-icon', 'aria-hidden': 'true', text: '\u{1F464}' }));
-      el.button.appendChild(h('span', { class: 'ca-btn-label notranslate', translate: 'no', text: first }));
+      el.button.appendChild(h('span', {
+        class: 'ca-btn-label notranslate',
+        translate: 'no',
+        text: name
+      }));
       var n = activeOrders().length;
       if (n > 0) el.button.appendChild(h('span', { class: 'ca-badge', 'aria-label': n + ' active order(s)', text: String(n) }));
-      el.button.setAttribute('aria-label', 'My account');
+      el.button.setAttribute('aria-label', 'My account for ' + name);
     } else {
       el.button.appendChild(h('span', { class: 'ca-btn-icon', 'aria-hidden': 'true', text: '\u{1F464}' }));
       el.button.appendChild(h('span', { class: 'ca-btn-label', text: 'Log in' }));
       el.button.setAttribute('aria-label', 'Log in or create account');
     }
-    placeButton();
-  }
-
-  // The language selector in this menu is pinned (position:absolute) to the top-right
-  // corner of the header. Preferred spot for the button: far right of the logo / name
-  // row, just under the selector. If the row is too short for that (small phones), put
-  // it right beside the selector instead. Either way the cafe name never goes under it.
-  function placeButton() {
-    var btn = el.button;
-    var row = btn && btn.parentElement;
-    if (!btn || !row || !row.classList.contains('menu-brand-row')) return;
-
-    // 1) start from the normal in-row position
-    btn.classList.remove('ca-btn-abs');
-    btn.style.top = btn.style.right = btn.style.height = '';
-    row.classList.remove('ca-reserve');
-    row.style.removeProperty('--ca-reserve');
-    if (btn.hidden) return;
-
-    var lang = document.getElementById('customerLanguageControl');
-    var cs = lang ? window.getComputedStyle(lang) : null;
-    if (!lang || cs.position !== 'absolute' || !lang.offsetWidth) return;   // nothing to avoid
-
-    var b = btn.getBoundingClientRect();
-    var l = lang.getBoundingClientRect();
-    var clash = !(b.right <= l.left - 4 || b.left >= l.right + 4 || b.bottom <= l.top - 4 || b.top >= l.bottom + 4);
-    if (!clash) return;                                                    // fits under the selector
-
-    // 2) not enough room: sit beside the selector, same height
-    btn.classList.add('ca-btn-abs');
-    btn.style.top = cs.top;
-    btn.style.right = ((parseFloat(cs.right) || 0) + lang.offsetWidth + 8) + 'px';
-    btn.style.height = Math.max(26, lang.offsetHeight) + 'px';
-
-    var info = row.querySelector('.menu-brand-info');
-    row.style.setProperty('--ca-reserve', '0px');
-    row.classList.add('ca-reserve');
-    if (info) {
-      var need = Math.ceil(info.getBoundingClientRect().right - btn.getBoundingClientRect().left + 8);
-      row.style.setProperty('--ca-reserve', Math.max(0, need) + 'px');
-    }
   }
 
   function buildButton() {
     el.button = h('button', { type: 'button', class: 'ca-btn', id: 'customerAccountBtn', hidden: true, onclick: onButtonClick });
-
-    // Same row as the logo and cafe name, at the far right.
-    var row = document.querySelector('header.menu-profile-header .menu-brand-row');
-    if (row) {
-      row.appendChild(el.button);
-      window.addEventListener('resize', placeButton);
-      if (window.ResizeObserver) {
-        try { new ResizeObserver(placeButton).observe(el.button); } catch (_) {}
-      }
-    } else {
-      // Fallback if the header layout is not found: small floating button.
-      el.bar = h('div', { class: 'ca-bar ca-bar-floating', hidden: true }, [el.button]);
-      document.body.appendChild(el.bar);
+    el.statusButton = document.getElementById('liveStatusButton');
+    if (el.statusButton) {
+      el.statusButton.addEventListener('click', function () {
+        openLiveStatus();
+      });
     }
     renderButton();
   }
 
   function onButtonClick() {
+    if (state.view === 'status') {
+      if (!isLoggedIn()) {
+        state.statusLoginPending = true;
+        openAuth('login');
+        return;
+      }
+      state.showCustomerOrders = true;
+      state.tab = 'active';
+      renderLiveStatus();
+      if (state.showCustomerOrders) loadOrders();
+      return;
+    }
     if (isLoggedIn()) openAccount('active');
     else openAuth('login');
   }
@@ -250,11 +233,23 @@
   }
 
   function closeOverlay() {
+    if (state.view === 'status') {
+      leaveLiveStatus();
+    }
+    if (state.view === 'auth') state.statusLoginPending = false;
     state.view = null;
     state.pending = null;
     clearInterval(state.tick);
     if (el.overlay) el.overlay.hidden = true;
     document.body.classList.remove('ca-lock');
+  }
+
+  function leaveLiveStatus() {
+    stopLiveStatusUpdates();
+    state.statusRequestId += 1;
+    state.statusExpanded = false;
+    el.overlay.classList.remove('ca-live-overlay', 'is-open');
+    el.card.classList.remove('ca-live-card', 'is-expanded');
   }
 
   function closeButton() {
@@ -264,7 +259,9 @@
   /* ---------------- login / sign-up ---------------- */
 
   function openAuth(mode, notice) {
+    if (state.view === 'status') leaveLiveStatus();
     state.view = 'auth';
+    el.card.setAttribute('aria-label', 'Customer account');
     loadChannels();
     state.auth = {
       mode: mode === 'signup' || mode === 'reset' ? mode : 'login',
@@ -490,6 +487,8 @@
   function finishLogin(data) {
     saveSession(data.token, data.customer);
     var cb = state.pending;
+    var statusLogin = state.statusLoginPending;
+    state.statusLoginPending = false;
     state.pending = null;
     state.auth.password = state.auth.confirm = '';
     closeOverlay();
@@ -498,6 +497,7 @@
     loadOrders().then(function () {
       toast(data.message || 'You are logged in.');
       if (typeof cb === 'function') cb();
+      else if (statusLogin) openLiveStatus();
       else openAccount('active');
     });
   }
@@ -582,11 +582,415 @@
 
   function openAccount(tab) {
     if (!isLoggedIn()) { openAuth('login'); return; }
+    if (state.view === 'status') leaveLiveStatus();
     state.view = 'account';
+    el.card.setAttribute('aria-label', 'Customer account');
     state.tab = tab === 'history' ? 'history' : 'active';
     renderAccount();
     showOverlay();
     loadOrders();
+  }
+
+  function openLiveStatus() {
+    state.view = 'status';
+    state.showCustomerOrders = isLoggedIn();
+    state.showStatusSidebar = true;
+    state.statusExpanded = false;
+    state.tab = 'active';
+    el.overlay.classList.add('ca-live-overlay');
+    el.card.classList.add('ca-live-card');
+    el.card.classList.remove('is-expanded');
+    el.card.setAttribute('aria-label', 'Live cafe status');
+    renderButton();
+    state.statusBranches = [];
+    state.statusBranchId = '';
+    state.statusData = null;
+    state.statusError = '';
+    state.statusLoading = true;
+    state.statusUpdatedAt = null;
+    showOverlay();
+    renderLiveStatus();
+    window.requestAnimationFrame(function () {
+      if (state.view === 'status') el.overlay.classList.add('is-open');
+    });
+
+    var orderBranch = document.getElementById('orderBranch');
+    loadLiveStatusBranches(orderBranch ? orderBranch.value : '');
+  }
+
+  function renderLiveStatus() {
+    if (state.view !== 'status' || !el.card) return;
+
+    var options = [
+      h('option', {
+        value: '',
+        selected: !state.statusBranchId,
+        text: 'Choose a branch'
+      })
+    ];
+    state.statusBranches.forEach(function (branch) {
+      options.push(h('option', {
+        value: String(branch.id),
+        selected: String(branch.id) === state.statusBranchId,
+        text: branch.name
+      }));
+    });
+
+    var branchSelect = h('select', {
+      class: 'ca-live-branch',
+      id: 'caLiveStatusBranch',
+      'aria-label': 'Choose a branch'
+    }, options);
+
+    var statusToggle = h('button', {
+      type: 'button',
+      class: 'ca-live-sidebar-toggle',
+      'aria-expanded': String(state.showStatusSidebar),
+      'aria-label': state.showStatusSidebar ? 'Collapse cafe status panel' : 'Expand cafe status panel',
+      title: 'Cafe status',
+      onclick: function () {
+        state.showStatusSidebar = !state.showStatusSidebar;
+        renderLiveStatus();
+      }
+    }, [h('span', { class: 'ca-live-sidebar-icon', 'aria-hidden': 'true' })]);
+    var header = h('header', { class: 'ca-live-header' }, [
+      h('div', { class: 'ca-live-heading' }, [
+        h('h2', { class: 'ca-title', text: 'Live cafe status' }),
+        h('p', {
+          class: 'ca-sub',
+          text: 'Check order activity, track your orders, and view order history.'
+        })
+      ]),
+      h('div', { class: 'ca-live-header-actions' }, [
+        statusToggle,
+        el.button,
+        closeButton()
+      ])
+    ]);
+    var handle = h('button', {
+      type: 'button',
+      class: 'ca-live-handle',
+      'aria-label': state.statusExpanded ? 'Collapse live status' : 'Expand live status',
+      'aria-expanded': String(state.statusExpanded),
+      onclick: function (event) {
+        state.statusExpanded = !state.statusExpanded;
+        el.card.classList.toggle('is-expanded', state.statusExpanded);
+        event.currentTarget.setAttribute('aria-expanded', String(state.statusExpanded));
+        event.currentTarget.setAttribute(
+          'aria-label',
+          state.statusExpanded ? 'Collapse live status' : 'Expand live status'
+        );
+      }
+    }, [h('span', { 'aria-hidden': 'true' })]);
+
+    var sidebarContent = [branchSelect];
+    if (state.statusError) {
+      sidebarContent.push(h('p', {
+        class: 'ca-error',
+        role: 'alert',
+        text: state.statusError
+      }));
+    }
+
+    if (state.statusLoading && !state.statusData) {
+      sidebarContent.push(h('p', {
+        class: 'ca-live-message',
+        role: 'status',
+        text: 'Loading todayâ€™s cafe status...'
+      }));
+    } else if (!state.statusBranchId && !state.statusError) {
+      sidebarContent.push(h('p', {
+        class: 'ca-live-message',
+        role: 'status',
+        text: state.statusBranches.length
+          ? 'Choose a branch to see its live order status.'
+          : 'No order-enabled branches are available right now.'
+      }));
+    }
+
+    if (state.statusData) {
+      var cafeStatus = state.statusData.cafe_status || 'quiet';
+      var busy = cafeStatus === 'busy';
+      var statusLabel = {
+        busy: 'Busy',
+        normal: 'Normal',
+        quiet: 'Quiet'
+      }[cafeStatus] || 'Quiet';
+      var counts = state.statusData.counts || {};
+      var average = state.statusData.average_completion_minutes;
+      var averageText = average == null
+        ? 'No completed orders yet'
+        : (Number.isInteger(average) ? average : Number(average).toFixed(1)) + ' min';
+
+      sidebarContent.push(
+        h('div', {
+          class: 'ca-live-indicator is-' + cafeStatus,
+          role: 'status',
+          'aria-live': 'polite'
+        }, [
+          h('span', { class: 'ca-live-indicator-dot', 'aria-hidden': 'true' }),
+          h('div', null, [
+            h('strong', { text: statusLabel }),
+            h('span', {
+              text: cafeStatus === 'busy'
+                ? '10 or more orders are waiting.'
+                : cafeStatus === 'normal'
+                  ? '4–9 orders are waiting.'
+                  : 'Fewer than 4 orders are waiting.'
+            })
+          ])
+        ]),
+        h('div', { class: 'ca-live-grid' }, [
+          liveMetric('Waiting', counts.waiting, 'waiting'),
+          liveMetric('Preparing', counts.preparing, 'preparing'),
+          liveMetric('Ready', counts.ready, 'ready'),
+          liveMetric('Completed today', counts.completed, 'completed')
+        ]),
+        h('div', { class: 'ca-live-average' }, [
+          h('span', { text: 'Average completion time today' }),
+          h('strong', { text: averageText }),
+          average == null
+            ? h('small', { text: 'This will appear after orders are completed.' })
+            : h('small', { text: 'Based on orders completed at this branch today.' })
+        ]),
+        state.statusLoading
+          ? h('p', { class: 'ca-live-updated', text: 'Refreshing live status...' })
+          : h('p', {
+            class: 'ca-live-updated',
+            text: state.statusUpdatedAt
+              ? 'Updated ' + when(state.statusUpdatedAt)
+              : 'Updating live'
+          }),
+        h('p', {
+          class: 'ca-live-footnote',
+          text: 'Counts and average completion time reset each cafe day.'
+        })
+      );
+    }
+
+    var sidebar = state.showStatusSidebar
+      ? h('aside', { class: 'ca-live-sidebar', 'aria-label': 'Cafe status by branch' }, [
+        h('div', { class: 'ca-live-sidebar-heading' }, [
+          h('h3', { text: 'Cafe status' }),
+          h('span', { class: 'ca-live-sidebar-live', text: 'LIVE' })
+        ]),
+        h('label', {
+          class: 'ca-live-branch-label',
+          for: 'caLiveStatusBranch',
+          text: 'Branch'
+        }),
+        ...sidebarContent
+      ])
+      : null;
+
+    var mainContent;
+    if (isLoggedIn()) {
+      mainContent = renderLiveOrders();
+    } else {
+      mainContent = h('section', { class: 'ca-live-welcome' }, [
+        h('span', { class: 'ca-live-welcome-icon', 'aria-hidden': 'true', text: '\u{1F4CB}' }),
+        h('h3', { text: 'Welcome to the live cafe' }),
+        h('p', {
+          text: 'Log in from the popup header to follow your current order and order history.'
+        })
+      ]);
+    }
+
+    var layout = h('div', {
+      class: 'ca-live-layout' + (state.showStatusSidebar ? '' : ' no-sidebar')
+    }, [
+      h('main', { class: 'ca-live-main' }, [mainContent]),
+      sidebar
+    ]);
+    el.card.replaceChildren(handle, header, layout);
+    branchSelect.addEventListener('change', function () {
+      state.statusBranchId = branchSelect.value;
+      state.statusRequestId += 1;
+      state.statusData = null;
+      state.statusError = '';
+      syncOrderBranchSelection();
+      if (state.statusBranchId) {
+        loadLiveStatusStats();
+      } else {
+        state.statusLoading = false;
+        renderLiveStatus();
+      }
+    });
+  }
+
+  function renderLiveOrders() {
+    var active = activeOrders();
+    var past = state.orders.filter(function (order) {
+      var status = String(order.status || '').toLowerCase();
+      return status === 'completed' || status === 'deleted';
+    });
+    var selectedOrders = state.tab === 'history' ? past : active;
+    var orderList;
+
+    if (!state.ordersLoaded) {
+      orderList = h('p', { class: 'ca-live-message', role: 'status', text: 'Loading your orders...' });
+    } else if (state.ordersError) {
+      orderList = h('p', { class: 'ca-error', role: 'alert', text: state.ordersError });
+    } else if (!selectedOrders.length) {
+      orderList = h('p', {
+        class: 'ca-live-message ca-live-no-orders',
+        text: state.tab === 'history'
+          ? 'Your completed orders will appear here.'
+          : 'You have no active orders right now.'
+      });
+    } else {
+      orderList = h('div', { class: 'ca-live-order-list' }, selectedOrders.map(function (order) {
+        return orderCard(order, state.tab === 'active', state.tab === 'history');
+      }));
+    }
+
+    return h('section', { class: 'ca-live-orders', 'aria-label': 'Your orders' }, [
+      h('div', { class: 'ca-live-orders-heading' }, [
+        h('div', null, [
+          h('h3', { text: 'My orders' }),
+          h('p', { text: 'Track active orders or review your order history.' })
+        ]),
+        h('div', { class: 'ca-live-order-actions' }, [
+          h('button', {
+            type: 'button',
+            class: 'ca-live-logout',
+            onclick: logout,
+            text: 'Log out'
+          })
+        ])
+      ]),
+      h('div', { class: 'ca-switch ca-live-order-tabs', role: 'tablist' }, [
+        h('button', {
+          type: 'button',
+          role: 'tab',
+          'aria-selected': String(state.tab === 'active'),
+          class: state.tab === 'active' ? 'on' : '',
+          onclick: function () { state.tab = 'active'; renderLiveStatus(); },
+          text: 'Current order' + (active.length ? ' (' + active.length + ')' : '')
+        }),
+        h('button', {
+          type: 'button',
+          role: 'tab',
+          'aria-selected': String(state.tab === 'history'),
+          class: state.tab === 'history' ? 'on' : '',
+          onclick: function () { state.tab = 'history'; renderLiveStatus(); },
+          text: 'Order history'
+        })
+      ]),
+      h('div', { class: 'ca-live-order-scroll' }, [orderList])
+    ]);
+  }
+
+  function liveMetric(label, value, kind) {
+    return h('div', { class: 'ca-live-metric ca-live-' + kind }, [
+      h('span', { text: label }),
+      h('strong', { text: String(Number(value) || 0) }),
+      h('small', { text: 'orders today' })
+    ]);
+  }
+
+  function syncOrderBranchSelection() {
+    var select = document.getElementById('orderBranch');
+    var branch = state.statusBranches.find(function (item) {
+      return String(item.id) === state.statusBranchId;
+    });
+    if (!select || !branch) return;
+
+    var option = Array.prototype.find.call(select.options, function (item) {
+      return item.value === state.statusBranchId;
+    });
+    if (!option) select.add(new Option(branch.name, state.statusBranchId));
+    select.value = state.statusBranchId;
+  }
+
+  function loadLiveStatusBranches(preferredBranchId) {
+    var requestId = ++state.statusRequestId;
+    fetch('/api/public/payment-branches/' + encodeURIComponent(SLUG), {
+      cache: 'no-store'
+    })
+      .then(function (response) {
+        return response.json().then(function (data) {
+          if (!response.ok || data.ok !== true) {
+            throw new Error(data.message || 'Unable to load cafe branches.');
+          }
+          return data;
+        });
+      })
+      .then(function (data) {
+        if (requestId !== state.statusRequestId || state.view !== 'status') return;
+        state.statusBranches = Array.isArray(data.branches)
+          ? data.branches.filter(function (branch) {
+            return branch && branch.id != null && branch.name;
+          })
+          : [];
+        var preferred = state.statusBranches.find(function (branch) {
+          return String(branch.id) === String(preferredBranchId || '');
+        });
+        state.statusBranchId = preferred
+          ? String(preferred.id)
+          : state.statusBranches.length === 1
+            ? String(state.statusBranches[0].id)
+            : '';
+        state.statusLoading = false;
+        syncOrderBranchSelection();
+        renderLiveStatus();
+        startLiveStatusUpdates();
+        if (state.statusBranchId) loadLiveStatusStats();
+      })
+      .catch(function (error) {
+        if (requestId !== state.statusRequestId || state.view !== 'status') return;
+        state.statusLoading = false;
+        state.statusError = error.message || 'Unable to load cafe branches.';
+        renderLiveStatus();
+      });
+  }
+
+  function loadLiveStatusStats() {
+    if (!state.statusBranchId || state.view !== 'status') return;
+
+    var requestId = ++state.statusRequestId;
+    state.statusLoading = true;
+    state.statusError = '';
+    renderLiveStatus();
+
+    fetch(
+      '/api/public/order-status/' + encodeURIComponent(SLUG) +
+        '?branch_id=' + encodeURIComponent(state.statusBranchId),
+      { cache: 'no-store' }
+    )
+      .then(function (response) {
+        return response.json().then(function (data) {
+          if (!response.ok || data.ok !== true) {
+            throw new Error(data.message || 'Unable to load live cafe status.');
+          }
+          return data;
+        });
+      })
+      .then(function (data) {
+        if (requestId !== state.statusRequestId || state.view !== 'status') return;
+        state.statusData = data;
+        state.statusLoading = false;
+        state.statusUpdatedAt = new Date();
+        renderLiveStatus();
+      })
+      .catch(function (error) {
+        if (requestId !== state.statusRequestId || state.view !== 'status') return;
+        state.statusLoading = false;
+        state.statusError = error.message || 'Unable to load live cafe status.';
+        renderLiveStatus();
+      });
+  }
+
+  function startLiveStatusUpdates() {
+    stopLiveStatusUpdates();
+    state.statusPoll = setInterval(function () {
+      if (state.view === 'status' && !document.hidden) loadLiveStatusStats();
+    }, 20000);
+  }
+
+  function stopLiveStatusUpdates() {
+    clearInterval(state.statusPoll);
+    state.statusPoll = null;
   }
 
   function trackerFor(order) {
@@ -775,6 +1179,8 @@
     var list;
     if (!state.ordersLoaded) {
       list = h('p', { class: 'ca-empty', text: 'Loading your orders...' });
+    } else if (state.ordersError) {
+      list = h('p', { class: 'ca-error', role: 'alert', text: state.ordersError });
     } else if (state.tab === 'active') {
       list = active.length
         ? h('div', null, active.map(function (o) { return orderCard(o, true); }))
@@ -811,10 +1217,16 @@
     if (nextScroll) nextScroll.scrollTop = previousScroll;
   }
 
+  function renderOrdersView() {
+    if (state.view === 'status') renderLiveStatus();
+    else renderAccount();
+  }
+
   /* ---------------- orders + live updates ---------------- */
 
   function loadOrders() {
     if (!isLoggedIn()) return Promise.resolve();
+    state.ordersError = '';
     return api('/orders')
       .then(function (data) {
         var previousOrders = Object.create(null);
@@ -835,14 +1247,16 @@
         }
         state.orders = orders;
         state.ordersLoaded = true;
+        state.ordersError = '';
         renderButton();
-        renderAccount();
+        renderOrdersView();
       })
       .catch(function (err) {
         if (err.status === 401) { handleUnauthorized(); return; }
         if (err.code === 'self_ordering_disabled') { setEnabled(false); return; }
         state.ordersLoaded = true;
-        renderAccount();
+        state.ordersError = err.message || 'Unable to load your orders right now.';
+        renderOrdersView();
       });
   }
 
@@ -864,14 +1278,14 @@
     cancelButton.disabled = true;
     removeButton.disabled = true;
     removeButton.textContent = 'Removing...';
-    renderAccount();
+    renderOrdersView();
     api('/orders/' + encodeURIComponent(orderId), { method: 'DELETE' })
       .then(function () {
         state.orders = state.orders.filter(function (item) {
           return String(item.id) !== orderId;
         });
         state.historyDeleteBusyId = null;
-        renderAccount();
+        renderOrdersView();
         if (dialog.open) {
           title.textContent = 'Order removed';
           message.textContent = "Order #" + orderNumber + " has been removed from your history. The cafe's order record remains.";
@@ -890,7 +1304,7 @@
       })
       .catch(function (err) {
         state.historyDeleteBusyId = null;
-        renderAccount();
+        renderOrdersView();
         if (err.status === 401) {
           if (dialog.open) dialog.close();
           handleUnauthorized();
@@ -932,7 +1346,11 @@
     // Safety net in case the live connection drops.
     state.poll = setInterval(function () {
       if (document.hidden) return;
-      if (state.view === 'account' || activeOrders().length) loadOrders();
+      if (
+        state.view === 'account' ||
+        (state.view === 'status' && state.showCustomerOrders) ||
+        activeOrders().length
+      ) loadOrders();
     }, 20000);
   }
 
@@ -944,6 +1362,7 @@
 
   function handleUnauthorized(callback) {
     var wasOpen = !!state.view;
+    state.statusLoginPending = state.view === 'status';
     clearSession();
     renderButton();
     if (wasOpen || typeof callback === 'function') {
@@ -956,7 +1375,6 @@
 
   function setEnabled(value) {
     state.enabled = !!value;
-    state.enabledKnown = true;
     if (!state.enabled) {
       state.pending = null;
       closeOverlay();
@@ -984,7 +1402,7 @@
   }
 
   function onOrderPlaced() {
-    loadOrders().then(function () { openAccount('active'); });
+    loadOrders().then(function () { openLiveStatus(); });
   }
 
   window.CustomerAccount = {

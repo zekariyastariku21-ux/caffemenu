@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="stylesheets/save.css?v=4">
   <link rel="stylesheet" href="stylesheets/day-special.css">
   <link rel="stylesheet" href="stylesheets/menu-expiration.css?v=20261013a">
-  <link rel="stylesheet" href="stylesheets/customer-account.css?v=9">
+  <link rel="stylesheet" href="stylesheets/customer-account.css?v=16">
 </head>
 
 <body>
@@ -263,7 +263,7 @@
         <span class="customer-language-name notranslate" translate="no">Chinese</span>
             <span class="customer-language-code notranslate" translate="no" aria-hidden="true">ZH</span>
           </button>
-        </div>
+      </div>
 
         <select id="customerLanguage" class="customer-language-state" tabindex="-1" aria-hidden="true">
           <option value="en">English</option>
@@ -449,6 +449,17 @@
     <div>
 
       <button
+        id="liveStatusButton"
+        class="live-status-button"
+        type="button"
+        aria-label="View live cafe status"
+        hidden
+      >
+        <span class="live-status-dot" aria-hidden="true"></span>
+        <span>Live Status</span>
+      </button>
+
+      <button
         class="cartbutton"
         type="button"
         aria-expanded="false"
@@ -471,7 +482,7 @@
 
 
   <script src="scripts/menu-expiration.js?v=20261013a"></script>
-  <script src="scripts/customer-account.js?v=10"></script>
+  <script src="scripts/customer-account.js?v=17"></script>
   <script src="scripts/saveAdd.js?v=20261116-customer-button-fast"></script>
   <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 

@@ -1907,6 +1907,83 @@ app.get('/api/public/payment-branches/:slug', async (req, res) => {
   }
 });
 
+app.get('/api/public/order-status/:slug', async (req, res) => {
+  try {
+    const branchId = Number(req.query.branch_id);
+    if (!Number.isSafeInteger(branchId) || branchId <= 0) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Choose a valid branch to view its live status.'
+      });
+    }
+
+    const restaurantResult = await pool.query(`
+      SELECT id
+      FROM restaurants
+      WHERE slug = $1 AND status = 'active'
+      LIMIT 1
+    `, [req.params.slug]);
+    if (!restaurantResult.rows.length) {
+      return res.status(404).json({ ok: false, message: 'Restaurant not found.' });
+    }
+
+    const branchResult = await pool.query(`
+      SELECT id, name
+      FROM restaurant_payment_branches
+      WHERE id = $1 AND restaurant_id = $2 AND order_now_enabled = TRUE
+      LIMIT 1
+    `, [branchId, restaurantResult.rows[0].id]);
+    if (!branchResult.rows.length) {
+      return res.status(404).json({ ok: false, message: 'Branch not found.' });
+    }
+
+    const statusResult = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'pending')::int AS waiting,
+        COUNT(*) FILTER (WHERE status = 'preparing')::int AS preparing,
+        COUNT(*) FILTER (WHERE status = 'ready')::int AS ready,
+        COUNT(*) FILTER (WHERE status = 'completed')::int AS completed,
+        AVG(EXTRACT(EPOCH FROM (completed_at - created_at)) / 60)
+          FILTER (WHERE status = 'completed' AND completed_at IS NOT NULL)
+          AS average_completion_minutes
+      FROM customer_orders
+      WHERE restaurant_id = $1
+        AND branch_id = $2
+        AND (created_at AT TIME ZONE $3)::date = (NOW() AT TIME ZONE $3)::date
+    `, [restaurantResult.rows[0].id, branchId, ADMIN_DAY_TZ]);
+
+    const row = statusResult.rows[0] || {};
+    const waiting = Number(row.waiting) || 0;
+    const average = row.average_completion_minutes == null
+      ? null
+      : Number(row.average_completion_minutes);
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      ok: true,
+      branch: branchResult.rows[0],
+      cafe_status:
+        waiting >= 10 ? 'busy' :
+        waiting >= 4 ? 'normal' :
+        'quiet',
+      counts: {
+        waiting,
+        preparing: Number(row.preparing) || 0,
+        ready: Number(row.ready) || 0,
+        completed: Number(row.completed) || 0
+      },
+      average_completion_minutes: Number.isFinite(average)
+        ? Math.round(average * 10) / 10
+        : null
+    });
+  } catch (error) {
+    console.error('[public:order-status] Failed to load cafe status:', error);
+    return res.status(500).json({
+      ok: false,
+      message: 'Unable to load the cafe status right now.'
+    });
+  }
+});
 
 
 

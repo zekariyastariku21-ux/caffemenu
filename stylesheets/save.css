@@ -4792,6 +4792,16 @@ html body {
         min-width: 138px;
         padding: 0 18px 0 12px;
     }
+
+}
+
+@media (max-width: 360px) {
+    .cartbutton {
+        min-width: 0;
+        padding-right: 12px;
+        padding-left: 10px;
+    }
+
 }
 
 
