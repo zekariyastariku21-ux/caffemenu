@@ -38,7 +38,7 @@
     tab: 'active',             // 'active' | 'history'
     statusLoginPending: false,
     showCustomerOrders: false,
-    showStatusSidebar: true,
+    showStatusSidebar: false,
     historyDeleteBusyId: null,
     auth: { mode: 'login', step: 'details', channel: '', phone: '', name: '', code: '', devOtp: '', resendAt: 0, busy: false, error: '', info: '' },
     pending: null,             // callback to run after a successful login
@@ -594,7 +594,7 @@
   function openLiveStatus() {
     state.view = 'status';
     state.showCustomerOrders = isLoggedIn();
-    state.showStatusSidebar = true;
+    state.showStatusSidebar = false;
     state.statusExpanded = false;
     state.tab = 'active';
     el.overlay.classList.add('ca-live-overlay');
@@ -696,7 +696,7 @@
       sidebarContent.push(h('p', {
         class: 'ca-live-message',
         role: 'status',
-        text: 'Loading today’s cafe status...'
+        text: 'Loading today\u2019s cafe status...'
       }));
     } else if (!state.statusBranchId && !state.statusError) {
       sidebarContent.push(h('p', {
@@ -735,7 +735,7 @@
               text: cafeStatus === 'busy'
                 ? '10 or more orders are waiting.'
                 : cafeStatus === 'normal'
-                  ? '4�9 orders are waiting.'
+                  ? '4\u20139 orders are waiting.'
                   : 'Fewer than 4 orders are waiting.'
             })
           ])
@@ -1119,7 +1119,7 @@
           return h('div', { class: 'ca-item-row ca-item-extra' }, [
             h('span', {
               text: '+ ' + String(extra.name || '') +
-                (extra.packaging && extraQuantity > 1 ? ' × ' + extraQuantity : '')
+                (extra.packaging && extraQuantity > 1 ? ' \u00D7 ' + extraQuantity : '')
             }),
             h('span', {
               text: money(
