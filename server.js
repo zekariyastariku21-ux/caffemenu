@@ -1623,7 +1623,7 @@ require('./contacts-routes')(app, pool, requireRestaurantAdmin);
 const telebirrModule = require('./telebirr-routes')(app, pool, requireRestaurantAdmin, () => ({ isSuperAdminRole, customerAccounts, broadcastOrderEvent }));
 require('./branch-cashier-routes')(app, pool, requireRestaurantAdmin, () => ({
   jwt, isSuperAdminRole, requireCashier, hashCashierPin, safeCompareCashierPin, cashierCookieOptions,
-  applyCustomerOrderStatus, cashierPinAttempts, CASHIER_PIN_MAX_ATTEMPTS, CASHIER_PIN_LOCK_MS, CASHIER_SESSION_MS
+  applyCustomerOrderStatus, associateLegacyPackaging, cashierPinAttempts, CASHIER_PIN_MAX_ATTEMPTS, CASHIER_PIN_LOCK_MS, CASHIER_SESSION_MS
 }));
 /* ================================================================
    RESTAURANT PROFILE - GET
@@ -2592,6 +2592,86 @@ const mapAdminOrder = order => ({
   items: Array.isArray(order.items) ? order.items : []
 });
 
+function associateLegacyPackaging(items, menu) {
+  const orderItems = Array.isArray(items) ? items : [];
+  const packagingLines = orderItems.filter(item => item && item.packaging);
+  if (!packagingLines.some(item => item.packagingForIndex == null)) {
+    return orderItems;
+  }
+
+  const foodItems = orderItems.filter(item => item && !item.packaging);
+  if (!foodItems.length) return orderItems;
+
+  const menuItems = Object.entries(menu && typeof menu === 'object' ? menu : {})
+    .filter(([category, products]) =>
+      !/^packaging$/i.test(String(category || '').trim()) &&
+      !/^extras?(?:\s+items?)?$/i.test(String(category || '').trim()) &&
+      Array.isArray(products)
+    )
+    .flatMap(([, products]) => products);
+  const mappedItems = foodItems.map((item, index) => {
+    const menuItem = menuItems.find(product =>
+      product &&
+      item.id != null &&
+      product.id != null &&
+      String(product.id) === String(item.id)
+    ) || menuItems.find(product =>
+      product && String(product.name || '').trim() === String(item.name || '').trim()
+    );
+    return {
+      index,
+      item,
+      packagingItem: String(menuItem?.packagingItem || '').trim()
+    };
+  });
+  const normalizedPackaging = [];
+
+  packagingLines.forEach(line => {
+    if (line.packagingForIndex != null) {
+      normalizedPackaging.push(line);
+      return;
+    }
+
+    const firstEligible = mappedItems.find(item => item.packagingItem);
+    if (/\bbag\b/i.test(String(line.name || ''))) {
+      normalizedPackaging.push({
+        ...line,
+        packagingForIndex: firstEligible?.index ?? 0
+      });
+      return;
+    }
+
+    let remaining = Math.max(0, Number(line.quantity) || 0);
+    const candidates = mappedItems.filter(item =>
+      item.packagingItem === String(line.name || '').trim()
+    );
+    candidates.forEach(candidate => {
+      const quantity = Math.min(
+        remaining,
+        Math.max(0, Number(candidate.item.quantity) || 0)
+      );
+      if (quantity > 0) {
+        normalizedPackaging.push({
+          ...line,
+          quantity,
+          packagingForIndex: candidate.index
+        });
+        remaining -= quantity;
+      }
+    });
+
+    if (remaining > 0) {
+      normalizedPackaging.push({
+        ...line,
+        quantity: remaining,
+        packagingForIndex: candidates[0]?.index ?? firstEligible?.index ?? 0
+      });
+    }
+  });
+
+  return [...foodItems, ...normalizedPackaging];
+}
+
 function hashAdminOrderDeletePin(pin, salt) {
   return crypto.scryptSync(pin, salt, 64).toString('hex');
 }
@@ -3219,12 +3299,18 @@ app.post('/api/orders/:slug', async (req, res) => {
     const isExtraItemsCategory = category =>
       /^extras?(?:\s+items?)?$/i.test(String(category || '').trim());
     const menuItems = Object.entries(menu).flatMap(([category, products]) =>
-      !isExtraItemsCategory(category) && Array.isArray(products)
+      !isExtraItemsCategory(category) && !/^packaging$/i.test(String(category || '').trim()) && Array.isArray(products)
         ? products
         : []
     );
 
     const savedItems = [];
+    const isPackagingCategory = c => /^packaging$/i.test(String(c || '').trim());
+    const packagingProducts = Object.entries(menu)
+      .filter(([c, p]) => isPackagingCategory(c) && Array.isArray(p))
+      .flatMap(([, p]) => p)
+      .filter(p => p && typeof p === 'object' && p.available !== false && p.isAvailable !== false && String(p.name || '').trim());
+    const packagingNeeds = [];
     let totalCents = 0;
     const defaultRemovableIngredients = [
       'No vegetables',
@@ -3294,6 +3380,13 @@ app.post('/api/orders/:slug', async (req, res) => {
       }
 
       const food = matches[0];
+      if (food.packagingItem) {
+        packagingNeeds.push({
+          name: String(food.packagingItem).trim(),
+          quantity,
+          itemIndex: savedItems.length
+        });
+      }
       const price = Number(food.price);
       const foodCustomization =
         food.customization &&
@@ -3442,6 +3535,52 @@ app.post('/api/orders/:slug', async (req, res) => {
         extras: savedExtras,
         note
       });
+    }
+
+    // Auto packaging: pickup and delivery only, never dine-in.
+    if (orderType !== 'dine-in' && packagingProducts.length) {
+      const counts = new Map();
+      let containers = 0;
+      for (const need of packagingNeeds) {
+        if (!need.name) continue;
+        const key = `${need.itemIndex}:${need.name}`;
+        const groupedNeed = counts.get(key) || {
+          name: need.name,
+          quantity: 0,
+          itemIndex: need.itemIndex
+        };
+        groupedNeed.quantity += need.quantity;
+        counts.set(key, groupedNeed);
+        containers += need.quantity;
+      }
+      const addPackagingLine = (product, qty, itemIndex) => {
+        const cents = Math.round(Number(product.price || 0) * 100);
+        if (!Number.isSafeInteger(cents) || cents < 0 || qty < 1) return;
+        totalCents += cents * qty;
+        savedItems.push({
+          id: product.id ?? null,
+          name: String(product.name).trim(),
+          quantity: qty,
+          base_price: cents / 100,
+          price: cents / 100,
+          removedIngredients: [],
+          adjustments: [],
+          extras: [],
+          note: '',
+          packaging: true,
+          packagingForIndex: itemIndex
+        });
+      };
+      for (const need of counts.values()) {
+        const product = packagingProducts.find(p => String(p.name).trim() === need.name);
+        if (product) addPackagingLine(product, need.quantity, need.itemIndex);
+      }
+      const bag = packagingProducts.find(p => /\bbag\b/i.test(String(p.name)));
+      if (bag && containers > 0) {
+        const cap = Math.floor(Number(bag.bagCapacity)) > 0 ? Math.floor(Number(bag.bagCapacity)) : 3;
+        const firstItemIndex = packagingNeeds.find(need => need.name)?.itemIndex;
+        addPackagingLine(bag, Math.ceil(containers / cap), firstItemIndex);
+      }
     }
 
     const total = totalCents / 100;
@@ -3599,6 +3738,11 @@ app.get(
         `,
         [restaurant.id, ADMIN_DAY_TZ, adminBranchFilter(req)]
       );
+      const menuResult = await pool.query(
+        'SELECT menu FROM menu_data WHERE restaurant_id = $1 LIMIT 1',
+        [restaurant.id]
+      );
+      const menu = menuResult.rows[0]?.menu;
 
       return res.json({
         ok: true,
@@ -3609,7 +3753,7 @@ app.get(
         orders: ordersResult.rows.map(order => ({
           ...order,
           total: Number(order.total),
-          items: Array.isArray(order.items) ? order.items : []
+          items: associateLegacyPackaging(order.items, menu)
         }))
       });
     } catch (error) {

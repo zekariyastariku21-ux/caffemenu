@@ -254,6 +254,21 @@ function getMenuExtraItems() {
         );
 }
 
+function getMenuPackagingItems() {
+    return Object.entries(foods)
+        .filter(([category, items]) =>
+            /^packaging$/i.test(String(category || '').trim()) &&
+            Array.isArray(items)
+        )
+        .flatMap(([, items]) =>
+            items.filter(item =>
+                item &&
+                typeof item === 'object' &&
+                String(item.name || '').trim()
+            )
+        );
+}
+
 function getItemCustomization(item) {
     const customization =
         item?.customization &&
@@ -313,12 +328,38 @@ function renderItemCustomizationEditor(containerId, item = null) {
 
     const customization = getItemCustomization(item);
     const extraItems = getMenuExtraItems();
+    const packagingItems = getMenuPackagingItems();
+    const packagingItem = String(item?.packagingItem || '').trim();
+    const hasCurrentPackagingItem = packagingItems.some(
+        option => String(option.name).trim() === packagingItem
+    );
 
     container.innerHTML = `
         <div class="item-customization-heading">
             <h4>Item Customization</h4>
             <p>Configure what customers can remove, adjust, or add.</p>
         </div>
+        <section class="item-customization-group">
+            <h5>Packaging for delivery / pick-up</h5>
+            <p>Packaging is added to delivery and pick-up orders only, never dine-in.</p>
+            <select data-item-packaging aria-label="Packaging for delivery and pick-up">
+                <option value="">No packaging</option>
+                ${packagingItem && !hasCurrentPackagingItem ? `
+                    <option value="${escapeAttributeForAdmin(packagingItem)}" selected>
+                        ${escapeHtmlForAdmin(packagingItem)} (not in Packaging category)
+                    </option>
+                ` : ''}
+                ${packagingItems.map(option => {
+                    const name = String(option.name).trim();
+                    return `
+                        <option
+                            value="${escapeAttributeForAdmin(name)}"
+                            ${name === packagingItem ? 'selected' : ''}
+                        >${escapeHtmlForAdmin(name)}</option>
+                    `;
+                }).join('')}
+            </select>
+        </section>
         <div class="item-customization-groups">
             <section class="item-customization-group">
                 <h5>Remove ingredients</h5>
@@ -418,6 +459,12 @@ function collectItemCustomization(containerId) {
         adjustments: getSelected('adjustments'),
         extraItems: getSelected('extraItems')
     };
+}
+
+function collectItemPackaging(containerId) {
+    return String(
+        document.querySelector(`#${containerId} select[data-item-packaging]`)?.value || ''
+    ).trim();
 }
 
 function refreshCustomizationEditors() {
@@ -2272,6 +2319,9 @@ async function addItemFromUI() {
         price,
         ingridient: ingredient,
         image,
+        packagingItem: collectItemPackaging(
+            'newItemCustomization'
+        ),
         customization: collectItemCustomization(
             'newItemCustomization'
         ),
@@ -2429,6 +2479,9 @@ async function updateSelectedItem() {
         name,
         price,
         ingridient: ingredient,
+        packagingItem: collectItemPackaging(
+            'editItemCustomization'
+        ),
         customization: collectItemCustomization(
             'editItemCustomization'
         ),

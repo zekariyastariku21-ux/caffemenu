@@ -1,5 +1,4 @@
 let cart = [];
-let editingCartLineId = null;
 let recentlyAddedCartLineId = null;
 
 let currentCategory = 'all';
@@ -2036,11 +2035,15 @@ function isExtraItemsCategory(category) {
     );
 }
 
+function isPackagingCategory(category) {
+    return /^packaging$/i.test(String(category || '').trim());
+}
+
 function getCustomerMenuCategories(
     includeExtraItems = selfOrderingStatusLoaded && !selfOrderingEnabled
 ) {
     return getOrderedMenuCategories().filter(
-        category => includeExtraItems || !isExtraItemsCategory(category)
+        category => includeExtraItems || !(isExtraItemsCategory(category) || isPackagingCategory(category))
     );
 }
 
@@ -3121,29 +3124,42 @@ function getAllowedExtraProducts(food) {
         );
 }
 
-function renderCustomizationCheckboxes(group, options) {
+function renderCustomizationCheckboxes(group, options, selectedValues = []) {
     if (!options.length) {
         return '<p class="item-customization-empty">No options available.</p>';
     }
 
     return options.map(option => `
         <label class="customer-customization-choice">
-            <input type="checkbox" data-choice-group="${group}" value="${escapeAttribute(option)}">
+            <input
+                type="checkbox"
+                data-choice-group="${group}"
+                value="${escapeAttribute(option)}"
+                ${selectedValues.includes(option) ? 'checked' : ''}
+            >
             <span>${escapeHtml(option)}</span>
         </label>
     `).join('');
 }
 
-function openItemCustomization(event, button, onAdded) {
+function openItemCustomization(event, button, onAdded, itemToEdit = null) {
     if (!button) {
         return;
     }
 
-    const name = button.dataset?.name;
+    const name = itemToEdit?.name || button.dataset?.name;
     const food = Object.values(foods)
         .filter(Array.isArray)
         .flat()
-        .find(item => item && item.name === name);
+        .find(item =>
+            item &&
+            (
+                (itemToEdit?.id != null &&
+                    item.id != null &&
+                    String(item.id) === String(itemToEdit.id)) ||
+                item.name === name
+            )
+        );
 
     if (!food || food.available === false || food.isAvailable === false) {
         showToast(
@@ -3160,20 +3176,30 @@ function openItemCustomization(event, button, onAdded) {
     overlay.id = 'itemCustomizationOverlay';
 
     const extraRows = extras.length
-        ? extras.map(extra => `
-            <article class="customer-extra-row" data-extra-name="${escapeAttribute(extra.name)}" data-extra-price="${escapeAttribute(extra.price ?? 0)}" data-quantity="0">
+        ? extras.map(extra => {
+            const selectedExtra = itemToEdit?.extras?.find(
+                item => item && String(item.name).trim() === String(extra.name).trim()
+            );
+            const quantity = Math.min(
+                99,
+                Math.max(0, Number(selectedExtra?.quantity) || 0)
+            );
+
+            return `
+            <article class="customer-extra-row" data-extra-name="${escapeAttribute(extra.name)}" data-extra-price="${escapeAttribute(extra.price ?? 0)}" data-quantity="${quantity}">
                 <div>
                     <strong>${escapeHtml(extra.name)}</strong>
                     <span>+${formatCustomerCurrency(extra.price ?? 0)}</span>
                 </div>
-                <button type="button" class="customer-extra-add" data-extra-action="add">+ Add</button>
-                <div class="customer-extra-quantity" hidden>
+                <button type="button" class="customer-extra-add" data-extra-action="add"${quantity ? ' hidden' : ''}>+ Add</button>
+                <div class="customer-extra-quantity"${quantity ? '' : ' hidden'}>
                     <button type="button" data-extra-action="decrease" aria-label="Remove one ${escapeAttribute(extra.name)}">−</button>
-                    <span data-extra-count>0</span>
+                    <span data-extra-count>${quantity}</span>
                     <button type="button" data-extra-action="increase" aria-label="Add one ${escapeAttribute(extra.name)}">+</button>
                 </div>
             </article>
-        `).join('')
+        `;
+        }).join('')
         : '<p class="item-customization-empty">No extras are available for this item.</p>';
 
     overlay.innerHTML = `
@@ -3192,13 +3218,21 @@ function openItemCustomization(event, button, onAdded) {
                     <h3>Remove ingredients</h3>
                     <p>Choose anything you don't want.</p>
                     <div class="customer-customization-options">
-                        ${renderCustomizationCheckboxes('removeIngredients', customization.removeIngredients)}
+                        ${renderCustomizationCheckboxes(
+                            'removeIngredients',
+                            customization.removeIngredients,
+                            itemToEdit?.removedIngredients || []
+                        )}
                     </div>
                 </section>
                 <section class="customer-customization-section">
                     <h3>Adjust your taste</h3>
                     <div class="customer-customization-options">
-                        ${renderCustomizationCheckboxes('adjustments', customization.adjustments)}
+                        ${renderCustomizationCheckboxes(
+                            'adjustments',
+                            customization.adjustments,
+                            itemToEdit?.adjustments || []
+                        )}
                     </div>
                 </section>
                 <section class="customer-customization-section">
@@ -3208,13 +3242,13 @@ function openItemCustomization(event, button, onAdded) {
             </div>
             <label class="customer-customization-instructions">
                 <span>Special instructions</span>
-                <textarea maxlength="500" rows="3" placeholder="Any other requests?"></textarea>
+                <textarea maxlength="500" rows="3" placeholder="Any other requests?">${escapeHtml(itemToEdit?.note || '')}</textarea>
             </label>
             <div class="item-customization-total">
                 <span>Total</span>
                 <strong data-customization-total>${formatCustomerCurrency(food.price || 0)}</strong>
             </div>
-            <button type="button" class="item-customization-submit">Add to Cart</button>
+            <button type="button" class="item-customization-submit">${itemToEdit ? 'Save Changes' : 'Add to Cart'}</button>
         </section>
     `;
 
@@ -3238,6 +3272,8 @@ function openItemCustomization(event, button, onAdded) {
             totalElement.innerHTML = formatCustomerCurrency(total);
         }
     };
+
+    updateTotal();
 
     overlay.querySelector('.item-customization-close')
         .addEventListener('click', close);
@@ -3324,7 +3360,8 @@ function openItemCustomization(event, button, onAdded) {
                 );
             const item = {
                 id: food.id,
-                lineId: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+                lineId: itemToEdit?.lineId ||
+                    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
                 name: food.name,
                 price: unitPrice,
                 basePrice: Number(food.price || 0),
@@ -3333,7 +3370,7 @@ function openItemCustomization(event, button, onAdded) {
                 adjustments,
                 extras: selectedExtras,
                 note,
-                quantity: 1
+                quantity: Math.max(1, Number(itemToEdit?.quantity) || 1)
             };
             const signature = current =>
                 JSON.stringify([
@@ -3342,17 +3379,42 @@ function openItemCustomization(event, button, onAdded) {
                     current.extras || [],
                     current.note || ''
                 ]);
-            const matchingItem = cart.find(current =>
-                current.name === item.name &&
-                signature(current) === signature(item)
-            );
+            if (itemToEdit) {
+                const editIndex = cart.findIndex(
+                    current => current.lineId === itemToEdit.lineId
+                );
+                if (editIndex < 0) {
+                    showToast('This cart item is no longer available.', 'error');
+                    close();
+                    return;
+                }
 
-            if (matchingItem) {
-                matchingItem.quantity =
-                    Number(matchingItem.quantity || 0) + 1;
-                item.lineId = matchingItem.lineId;
+                const matchingItem = cart.find((current, index) =>
+                    index !== editIndex &&
+                    current.name === item.name &&
+                    signature(current) === signature(item)
+                );
+                if (matchingItem) {
+                    matchingItem.quantity =
+                        Number(matchingItem.quantity || 0) + item.quantity;
+                    item.lineId = matchingItem.lineId;
+                    cart.splice(editIndex, 1);
+                } else {
+                    cart[editIndex] = item;
+                }
             } else {
-                cart.push(item);
+                const matchingItem = cart.find(current =>
+                    current.name === item.name &&
+                    signature(current) === signature(item)
+                );
+
+                if (matchingItem) {
+                    matchingItem.quantity =
+                        Number(matchingItem.quantity || 0) + 1;
+                    item.lineId = matchingItem.lineId;
+                } else {
+                    cart.push(item);
+                }
             }
 
             recentlyAddedCartLineId = item.lineId;
@@ -3372,7 +3434,7 @@ function openItemCustomization(event, button, onAdded) {
 
             if (onAdded) {
                 onAdded();
-            } else if (button && 'textContent' in button) {
+            } else if (!itemToEdit && button && 'textContent' in button) {
                 const originalText = button.textContent;
                 button.textContent = '✓ Added';
                 button.disabled = true;
@@ -3564,6 +3626,8 @@ if (orderNowButton) {
     const cartSheetElement =
         document.getElementById('cartSheet');
 
+    const packagingLines = getPackagingLines();
+
     cartSheetElement?.classList.toggle(
         'has-recently-added',
         cart.some(item => item.lineId === recentlyAddedCartLineId)
@@ -3606,10 +3670,16 @@ if (orderNowButton) {
                     const note =
                         String(item.note || '').trim();
 
-                    const isEditingNote =
-                        editingCartLineId === lineId;
                     const customizationLabel =
                         getCartCustomizationLabel(item);
+                    const packagingExtrasMarkup = packagingLines
+                        .filter(line => line.forLineId === lineId)
+                        .map(line => `
+                            <div class="cart-item-extra-row">
+                                <span>+ ${escapeHtml(line.name)}${line.quantity > 1 ? ` × ${formatCustomerNumber(line.quantity)}` : ''}</span>
+                                <span>${formatCustomerCurrency(line.price * line.quantity)}</span>
+                            </div>
+                        `).join('');
 
                     const menuItem =
                         menuItems.find(
@@ -3643,33 +3713,18 @@ if (orderNowButton) {
                                             ${selfOrderingEnabled ? `
                                                 <button
                                                     type="button"
-                                                    class="cart-note-toggle"
-                                                    data-action="edit-note"
+                                                    class="cart-edit-item"
+                                                    data-action="edit-item"
                                                     data-line-id="${escapeAttribute(lineId)}"
-                                                    aria-label="Add or edit note for ${escapeAttribute(itemName)}"
-                                                    title="Add or edit item note"
+                                                    aria-label="Customize ${escapeAttribute(itemName)}"
+                                                    title="Edit item customization"
                                                 >✎</button>
                                             ` : ''}
                                         </div>
                                         <span class="cart-item-unit-price">${formatCustomerCurrency(itemPrice)}</span>
+                                        ${packagingExtrasMarkup}
                                         ${selfOrderingEnabled && customizationLabel ? `<span class="cart-item-customization">${escapeHtml(customizationLabel)}</span>` : ''}
                                         ${selfOrderingEnabled && note ? `<span class="cart-item-note">(${escapeHtml(note)})</span>` : ''}
-                                        ${selfOrderingEnabled && isEditingNote ? `
-                                            <div class="cart-note-editor">
-                                                <input
-                                                    type="text"
-                                                    class="cart-note-input"
-                                                    value="${escapeAttribute(note)}"
-                                                    maxlength="200"
-                                                    aria-label="Note for ${escapeAttribute(itemName)}"
-                                                    placeholder="e.g. No sugar, extra spicy"
-                                                >
-                                                <div class="cart-note-actions">
-                                                    <button type="button" data-action="save-note" data-line-id="${escapeAttribute(lineId)}">Done</button>
-                                                    <button type="button" data-action="cancel-note" data-line-id="${escapeAttribute(lineId)}">Cancel</button>
-                                                </div>
-                                            </div>
-                                        ` : ''}
                                     </div>
                                 </div>
                             </td>
@@ -3717,7 +3772,7 @@ if (orderNowButton) {
     }
 
     cartBody.querySelectorAll('button[data-action]').forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', event => {
             const action = button.dataset.action;
             const lineId = button.dataset.lineId;
 
@@ -3735,34 +3790,13 @@ if (orderNowButton) {
                 return;
             }
 
-            if (action === 'edit-note') {
-                editingCartLineId = lineId;
-                renderCart();
-                cartBody.querySelector('.cart-note-input')?.focus();
-                return;
-            }
-
-            if (action === 'save-note') {
-                const noteInput =
-                    button.closest('tr')?.querySelector('.cart-note-input');
-
-                const item =
-                    cart.find(currentItem => currentItem.lineId === lineId);
-
-                if (!item || !noteInput) {
-                    return;
+            if (action === 'edit-item') {
+                const item = cart.find(
+                    currentItem => currentItem.lineId === lineId
+                );
+                if (item) {
+                    openItemCustomization(event, button, null, item);
                 }
-
-                item.note = noteInput.value.trim();
-                editingCartLineId = null;
-                saveCart();
-                renderCart();
-                return;
-            }
-
-            if (action === 'cancel-note') {
-                editingCartLineId = null;
-                renderCart();
             }
         });
     });
@@ -3779,6 +3813,10 @@ if (orderNowButton) {
             0
         );
 
+    const packagingTotal = packagingLines.reduce(
+        (sum, line) => sum + line.price * line.quantity,
+        0
+    );
 
     const totalElement =
         document.getElementById(
@@ -3789,7 +3827,7 @@ if (orderNowButton) {
     if (totalElement) {
 
         totalElement.innerHTML =
-            formatCustomerCurrency(total);
+            formatCustomerCurrency(total + packagingTotal);
     }
 
     const cartSheet =
@@ -3925,7 +3963,6 @@ function clearCart() {
     }
 
     cart = [];
-    editingCartLineId = null;
     recentlyAddedCartLineId = null;
     saveCart();
     renderCart();
@@ -4428,10 +4465,13 @@ function renderOrderFormSummary() {
         return;
     }
 
+    const packagingLines = getPackagingLines();
+
     itemsContainer.innerHTML = `
         <div class="order-form-item-list">
             ${cart.map(item => {
                 const name = String(item.name ?? '');
+                const lineId = String(item.lineId || item.name || '');
                 const note = String(item.note || '').trim();
                 const quantity = Math.max(0, Number(item.quantity) || 0);
                 const price = Math.max(
@@ -4463,6 +4503,12 @@ function renderOrderFormSummary() {
                                 )}</span>
                             </div>
                         `).join('')}
+                        ${packagingLines.filter(line => line.forLineId === lineId).map(line => `
+                            <div class="order-form-item-extra">
+                                <span>+ ${escapeHtml(line.name)}${line.quantity > 1 ? ` × ${formatCustomerNumber(line.quantity)}` : ''}</span>
+                                <span>${formatCustomerCurrency(line.price * line.quantity)}</span>
+                            </div>
+                        `).join('')}
                         <div class="order-form-item-details">
                             Qty: ${formatCustomerNumber(quantity)}
                             - ${formatCustomerCurrency(price)} each
@@ -4481,7 +4527,50 @@ function renderOrderFormSummary() {
         0
     );
 
-    totalElement.innerHTML = formatCustomerCurrency(total);
+    const packagingTotal = packagingLines.reduce((sum, l) => sum + l.price * l.quantity, 0);
+    totalElement.innerHTML = formatCustomerCurrency(total + packagingTotal);
+}
+
+function getPackagingLines() {
+    const type = document.getElementById('orderType')?.value || '';
+    if (!selfOrderingEnabled || !type || type === 'dine-in') return [];
+    const entries = Object.entries(foods).filter(([, list]) => Array.isArray(list));
+    const foodList = entries.filter(([c]) => !isPackagingCategory(c)).flatMap(([, l]) => l);
+    const packs = entries.filter(([c]) => isPackagingCategory(c)).flatMap(([, l]) => l)
+        .filter(p => p && p.available !== false && p.isAvailable !== false);
+    if (!packs.length) return [];
+    let containers = 0;
+    let firstLineId = '';
+    const lines = [];
+    cart.forEach(line => {
+        const food = foodList.find(f => f && f.name === line.name);
+        const name = String(food?.packagingItem || '').trim();
+        if (!name) return;
+        const qty = Number(line.quantity) || 0;
+        containers += qty;
+        const product = packs.find(p => String(p.name).trim() === name);
+        const forLineId = String(line.lineId || line.name || '');
+        if (!firstLineId) firstLineId = forLineId;
+        if (product) {
+            lines.push({
+                name: product.name,
+                price: Number(product.price) || 0,
+                quantity: qty,
+                forLineId
+            });
+        }
+    });
+    const bag = packs.find(p => /\bbag\b/i.test(String(p.name)));
+    if (bag && containers > 0) {
+        const cap = Math.floor(Number(bag.bagCapacity)) > 0 ? Math.floor(Number(bag.bagCapacity)) : 3;
+        lines.push({
+            name: bag.name,
+            price: Number(bag.price) || 0,
+            quantity: Math.ceil(containers / cap),
+            forLineId: firstLineId
+        });
+    }
+    return lines;
 }
 
 function updateOrderFormFields() {
@@ -4551,6 +4640,8 @@ function setupOrderFormEvents() {
         'change',
         () => {
             updateOrderFormFields();
+            renderOrderFormSummary();
+            if (typeof renderCart === 'function') renderCart();
             const message = document.getElementById('orderFormMessage');
             if (message) message.textContent = '';
         }

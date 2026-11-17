@@ -601,13 +601,21 @@ main {
       message.textContent = `${orders.length} order(s) placed today.`;
       ordersContainer.innerHTML = orders.map(order => {
         const items = Array.isArray(order.items) ? order.items : [];
-        const itemMarkup = items.map(item => {
+        const packagingExtras = items.filter(item => item && item.packaging);
+        const orderItems = items.filter(item => item && !item.packaging);
+        const itemMarkup = orderItems.map((item, index) => {
           const qty = Number(item.quantity ?? item.qty) || 1;
           const price = Number(item.price ?? item.unit_price) || 0;
           const fmt = n => (Math.round(n * 100) / 100) + ' ETB';
-          const extras = Array.isArray(item.extras)
+          const itemExtras = Array.isArray(item.extras)
             ? item.extras.filter(extra => extra && typeof extra === 'object')
             : [];
+          const itemPackagingExtras = packagingExtras.filter(extra =>
+            extra.packagingForIndex == null
+              ? index === 0
+              : Number(extra.packagingForIndex) === index
+          );
+          const extras = [...itemExtras, ...itemPackagingExtras];
           const customization = [
             ...(Array.isArray(item.removedIngredients) && item.removedIngredients.length
               ? item.removedIngredients
@@ -627,7 +635,10 @@ main {
             ${extras.map(extra => {
               const extraQuantity = Number(extra.quantity) || 0;
               const extraPrice = Number(extra.price) || 0;
-              return `<div style="display:flex;justify-content:space-between;gap:12px;padding-left:12px;font-size:13px;"><span>+ ${escapeHtml(extra.name)}</span><span>${fmt(extraPrice * extraQuantity)}</span></div>`;
+              const quantityLabel = extra.packaging && extraQuantity > 1
+                ? ` × ${extraQuantity}`
+                : '';
+              return `<div style="display:flex;justify-content:space-between;gap:12px;padding-left:12px;font-size:13px;"><span>+ ${escapeHtml(extra.name)}${quantityLabel}</span><span>${fmt(extraPrice * extraQuantity)}</span></div>`;
             }).join('')}
             <div class="muted" style="font-size:13px;">Qty: ${qty} - ${fmt(price)} each</div>
             ${customization ? `<div class="order-customization">${customization}</div>` : ''}
@@ -818,12 +829,20 @@ function formatMoney(value) { return (Math.round((Number(value) || 0) * 100) / 1
 
 function historyOrderMarkup(order, isRemoved = false) {
   const items = Array.isArray(order.items) ? order.items : [];
-  const itemsHtml = items.map(item => {
+  const packagingExtras = items.filter(item => item && item.packaging);
+  const orderItems = items.filter(item => item && !item.packaging);
+  const itemsHtml = orderItems.map((item, index) => {
     const qty = Number(item.quantity ?? item.qty) || 1;
     const price = Number(item.price ?? item.unit_price) || 0;
-    const extras = Array.isArray(item.extras)
+    const itemExtras = Array.isArray(item.extras)
       ? item.extras.filter(extra => extra && typeof extra === 'object')
       : [];
+    const itemPackagingExtras = packagingExtras.filter(extra =>
+      extra.packagingForIndex == null
+        ? index === 0
+        : Number(extra.packagingForIndex) === index
+    );
+    const extras = [...itemExtras, ...itemPackagingExtras];
     const customization = [
       ...(Array.isArray(item.removedIngredients) && item.removedIngredients.length
         ? item.removedIngredients
@@ -838,7 +857,13 @@ function historyOrderMarkup(order, isRemoved = false) {
         : [])
     ].map(escapeHtml).join(', ');
     return `<li><div class="admin-item-row"><span>${escapeHtml(item.name)}</span><span>${formatMoney(price * qty)}</span></div>
-      ${extras.map(extra => `<div class="admin-item-row admin-item-sub"><span>+ ${escapeHtml(extra.name)}</span><span>${formatMoney((Number(extra.price) || 0) * (Number(extra.quantity) || 0))}</span></div>`).join('')}
+      ${extras.map(extra => {
+        const extraQuantity = Number(extra.quantity) || 0;
+        const quantityLabel = extra.packaging && extraQuantity > 1
+          ? ` × ${extraQuantity}`
+          : '';
+        return `<div class="admin-item-row admin-item-sub"><span>+ ${escapeHtml(extra.name)}${quantityLabel}</span><span>${formatMoney((Number(extra.price) || 0) * extraQuantity)}</span></div>`;
+      }).join('')}
       <div class="muted admin-item-sub">Qty: ${qty} - ${formatMoney(price)} each</div>
       ${customization ? `<div class="admin-item-customization">${customization}</div>` : ''}
       ${item.note ? `<div class="muted admin-item-sub">Note: ${escapeHtml(item.note)}</div>` : ''}</li>`;

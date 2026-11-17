@@ -240,18 +240,25 @@ main {
          if(order.customer_address)details.append(el('div','',`Address: ${order.customer_address}`));
          card.append(details);
          const itemWrap=el('div','items'),items=Array.isArray(order.items)?order.items:[];
-         if(items.length){items.forEach(item=>{
+         const packagingExtras=items.filter(item=>item&&item.packaging);
+         const orderItems=items.filter(item=>item&&!item.packaging);
+         if(orderItems.length){orderItems.forEach((item,index)=>{
            const qty=Number(item&& (item.quantity??item.qty))||1;
            const price=Number(item&& (item.price??item.unit_price))||0;
-           const extras=Array.isArray(item.extras)?item.extras.filter(extra=>extra&&typeof extra==='object'):[];
+           const itemExtras=Array.isArray(item.extras)?item.extras.filter(extra=>extra&&typeof extra==='object'):[];
+           const itemPackagingExtras=packagingExtras.filter(extra=>
+             extra.packagingForIndex==null?index===0:Number(extra.packagingForIndex)===index
+           );
+           const extras=itemExtras.concat(itemPackagingExtras);
             const row=el('div','item');row.append(el('span','',itemText(item)),el('span','',money(price*qty)));
             const block=el('div','');block.style.cssText='padding-bottom:6px;';block.append(row);
             extras.forEach(extra=>{
               const extraRow=el('div','item');
               extraRow.style.cssText='padding:2px 0 2px 12px;font-size:13px;';
+              const extraQuantity=Number(extra.quantity)||0;
               extraRow.append(
-                el('span','',`+ ${String(extra.name||'')}`),
-                el('span','',money((Number(extra.price)||0)*(Number(extra.quantity)||0)))
+                el('span','',`+ ${String(extra.name||'')}${extra.packaging&&extraQuantity>1?' × '+extraQuantity:''}`),
+                el('span','',money((Number(extra.price)||0)*extraQuantity))
               );
               block.append(extraRow);
             });

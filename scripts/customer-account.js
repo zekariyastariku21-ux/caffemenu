@@ -665,15 +665,28 @@
 
   function orderCard(order, withTracker, canRemoveFromHistory) {
     var status = String(order.status || 'pending').toLowerCase();
-    var items = (Array.isArray(order.items) ? order.items : []).map(function (item) {
+    var orderItems = Array.isArray(order.items) ? order.items : [];
+    var packagingExtras = orderItems.filter(function (item) {
+      return item && item.packaging;
+    });
+    orderItems = orderItems.filter(function (item) {
+      return item && !item.packaging;
+    });
+    var items = orderItems.map(function (item, index) {
       var qty = Number(item.quantity != null ? item.quantity : item.qty) || 1;
       var price = Number(item.price != null ? item.price : item.unit_price) || 0;
-      var extras = Array.isArray(item.extras)
+      var itemExtras = Array.isArray(item.extras)
         ? item.extras.filter(function (extra) {
           return extra && typeof extra === 'object';
         })
         : [];
-      var extrasTotal = extras.reduce(function (total, extra) {
+      var itemPackagingExtras = packagingExtras.filter(function (extra) {
+        return extra.packagingForIndex == null
+          ? index === 0
+          : Number(extra.packagingForIndex) === index;
+      });
+      var extras = itemExtras.concat(itemPackagingExtras);
+      var extrasTotal = itemExtras.reduce(function (total, extra) {
         return total + (Number(extra.price) || 0) * (Number(extra.quantity) || 0);
       }, 0);
       var basePrice = item.base_price != null
@@ -698,13 +711,17 @@
           h('span', { text: money(basePrice * qty) })
         ]),
         ...extras.map(function (extra) {
+          var extraQuantity = Number(extra.quantity) || 0;
           return h('div', { class: 'ca-item-row ca-item-extra' }, [
-            h('span', { text: '+ ' + String(extra.name || '') }),
+            h('span', {
+              text: '+ ' + String(extra.name || '') +
+                (extra.packaging && extraQuantity > 1 ? ' × ' + extraQuantity : '')
+            }),
             h('span', {
               text: money(
                 (Number(extra.price) || 0) *
-                (Number(extra.quantity) || 0) *
-                qty
+                extraQuantity *
+                (extra.packaging ? 1 : qty)
               )
             })
           ]);

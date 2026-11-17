@@ -4142,7 +4142,7 @@ html body {
     overflow-wrap: anywhere;
 }
 
-.cart-note-toggle {
+.cart-edit-item {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -4159,7 +4159,7 @@ html body {
     cursor: pointer;
 }
 
-.cart-note-toggle:hover {
+.cart-edit-item:hover {
     background: rgba(255, 255, 255, 0.16);
 }
 
@@ -4170,56 +4170,6 @@ html body {
     overflow-wrap: anywhere;
     white-space: normal;
     line-height: 1.4;
-}
-
-.cart-note-editor {
-    display: grid;
-    gap: 7px;
-    width: min(100%, 320px);
-    margin-top: 4px;
-}
-
-.cart-note-input {
-    width: 100%;
-    min-height: 40px;
-    padding: 9px 11px;
-    border: 1px solid rgba(255, 224, 187, 0.35);
-    border-radius: 10px;
-    background: rgba(24, 17, 13, 0.72);
-    color: #fffaf5;
-    font: inherit;
-}
-
-.cart-note-input::placeholder {
-    color: #c7b9af;
-}
-
-.cart-note-input:focus {
-    outline: 2px solid #d5ad83;
-    outline-offset: 1px;
-}
-
-.cart-note-actions {
-    display: flex;
-    gap: 7px;
-}
-
-.cart-note-actions button {
-    min-height: 30px;
-    padding: 5px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 8px;
-    background: #49392d;
-    color: #fffaf5;
-    font: inherit;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.cart-note-actions button:first-child {
-    border-color: rgba(255, 224, 187, 0.4);
-    background: #704321;
 }
 
 .cart tbody td:last-child {
@@ -4512,7 +4462,7 @@ html body {
     white-space: nowrap;
 }
 
-.cart-note-toggle {
+.cart-edit-item {
     width: 23px;
     height: 23px;
     flex-basis: 23px;
@@ -5448,6 +5398,16 @@ body.item-customization-open {
     font-weight: 700;
     line-height: 1.5;
     overflow-wrap: anywhere;
+}
+
+.cart-item-extra-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 5px;
+    padding-left: 10px;
+    color: #ffe0b9;
+    font-size: 13px;
 }
 
 @media (max-width: 540px) {

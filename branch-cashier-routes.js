@@ -137,13 +137,21 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
     customer_name, customer_phone, branch_name, order_type,
     table_number, customer_address, items, total`;
 
-  function mapOrders(rows) {
+  function mapOrders(rows, menu) {
     return rows.map(function (order) {
       return Object.assign({}, order, {
         total: Number(order.total),
-        items: Array.isArray(order.items) ? order.items : []
+        items: deps().associateLegacyPackaging(order.items, menu)
       });
     });
+  }
+
+  async function restaurantMenu(restaurantId) {
+    const result = await pool.query(
+      'SELECT menu FROM menu_data WHERE restaurant_id = $1 LIMIT 1',
+      [restaurantId]
+    );
+    return result.rows[0] && result.rows[0].menu;
   }
 
   /* ---------- admin: list branches + PIN status ---------- */
@@ -367,12 +375,13 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
          ORDER BY created_at DESC, id DESC
         `,
         [req.cashier.restaurant_id, branch.id, ADMIN_DAY_TZ]);
+      const menu = await restaurantMenu(req.cashier.restaurant_id);
       res.set('Cache-Control', 'no-store');
       return res.json({
         ok: true,
         restaurant: { name: (req.cashier.restaurant_name || slug) + ' - ' + branch.name, slug: slug },
         branch: { id: branch.id, name: branch.name },
-        orders: mapOrders(orders.rows)
+        orders: mapOrders(orders.rows, menu)
       });
     } catch (error) {
       console.error('[cashier:orders] Failed:', error);
@@ -439,12 +448,13 @@ module.exports = function registerBranchCashierRoutes(app, pool, requireRestaura
          ORDER BY created_at DESC, id DESC
         `,
         [restaurant.id, branch.id, ADMIN_DAY_TZ]);
+      const menu = await restaurantMenu(restaurant.id);
       res.set('Cache-Control', 'no-store');
       return res.json({
         ok: true,
         restaurant: { name: restaurant.name, slug: restaurant.slug },
         branch: { id: branch.id, name: branch.name },
-        orders: mapOrders(orders.rows)
+        orders: mapOrders(orders.rows, menu)
       });
     } catch (error) {
       console.error('[orders:list-branch] Failed:', error);
